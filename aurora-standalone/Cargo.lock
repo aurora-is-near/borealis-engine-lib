@@ -170,6 +170,7 @@ dependencies = [
  "impl-serde",
  "near-crypto",
  "near-primitives",
+ "serde",
  "sha3 0.10.1",
 ]
 

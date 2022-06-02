@@ -1,7 +1,7 @@
+use aurora_engine::parameters::ResultLog;
 use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::types::{Address, Wei};
 use aurora_engine_types::{H256, U256};
-use borealis_types::types::CryptoHash;
 use derive_builder::Builder;
 use near_primitives::hash::CryptoHash;
 use near_primitives::types::AccountId;
