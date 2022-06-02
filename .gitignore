@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Visual Studio Code
+.vscode/
+.run/
+
+# IDEA
+.idea
+.run/
+
+# Editor backup files
+*~
+
+# Rust artifacts
+target/

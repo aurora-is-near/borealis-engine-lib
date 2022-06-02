@@ -1,0 +1,19 @@
+[package]
+name = "aurora-refiner-types"
+version = "0.1.0"
+authors = ["Aurora <hello@aurora.dev>"]
+edition = "2021"
+description = "A library containing definitions of data structures relating to NEAR and Aurora blocks."
+homepage = "https://github.com/aurora-is-near/aurora-standalone"
+repository = "https://github.com/aurora-is-near/aurora-standalone"
+license = "CC0-1.0"
+publish = false
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]

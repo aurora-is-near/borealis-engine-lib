@@ -1,0 +1,16 @@
+[package]
+name = "aurora-refiner"
+version = "0.1.0"
+authors = ["Aurora <hello@aurora.dev>"]
+edition = "2021"
+description = "An application for creating data about Aurora transactions by consuming data from a NEAR RPC endpoint."
+homepage = "https://github.com/aurora-is-near/aurora-standalone"
+repository = "https://github.com/aurora-is-near/aurora-standalone"
+license = "CC0-1.0"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
