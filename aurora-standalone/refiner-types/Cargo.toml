@@ -1,0 +1,23 @@
+[package]
+name = "aurora-refiner-types"
+version = "0.1.0"
+authors = ["Aurora <hello@aurora.dev>"]
+edition = "2021"
+description = "A library containing definitions of data structures relating to NEAR and Aurora blocks."
+homepage = "https://github.com/aurora-is-near/aurora-standalone"
+repository = "https://github.com/aurora-is-near/aurora-standalone"
+license = "CC0-1.0"
+publish = false
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+aurora-engine = { path = "../../aurora-engine/engine", default-features = false, features = [ "std", "impl-serde" ] }
+aurora-engine-sdk = { path = "../../aurora-engine/engine-sdk", default-features = false, features = [ "std" ] }
+aurora-engine-transactions = { path = "../../aurora-engine/engine-transactions", default-features = false, features = [ "std", "impl-serde" ]  }
+aurora-engine-types = { path = "../../aurora-engine/engine-types", default-features = false,  features = [ "std", "impl-serde" ] }
+
+[dev-dependencies]
+
+[features]

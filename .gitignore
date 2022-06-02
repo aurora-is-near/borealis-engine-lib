@@ -13,4 +13,4 @@
 *~
 
 # Rust artifacts
-target/
+aurora-standalone/target/
