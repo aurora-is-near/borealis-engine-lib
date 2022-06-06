@@ -3,25 +3,45 @@ use strum::EnumString;
 
 #[derive(EnumString)]
 pub(crate) enum InnerTransactionKind {
+    #[strum(serialize = "submit")]
     Submit,
+    #[strum(serialize = "call")]
     Call,
+    #[strum(serialize = "deploy_code")]
     Deploy,
+    #[strum(serialize = "deploy_erc20_token")]
     DeployErc20,
+    #[strum(serialize = "ft_on_transfer")]
     FtOnTransfer,
+    #[strum(serialize = "deposit")]
     Deposit,
+    #[strum(serialize = "ft_transfer_call")]
     FtTransferCall,
+    #[strum(serialize = "finish_deposit")]
     FinishDeposit,
+    #[strum(serialize = "ft_resolve_transfer")]
     ResolveTransfer,
+    #[strum(serialize = "ft_transfer")]
     FtTransfer,
+    #[strum(serialize = "withdraw")]
     Withdraw,
+    #[strum(serialize = "storage_deposit")]
     StorageDeposit,
+    #[strum(serialize = "storage_unregister")]
     StorageUnregister,
+    #[strum(serialize = "storage_withdraw")]
     StorageWithdraw,
+    #[strum(serialize = "set_paused_flags")]
     SetPausedFlags,
+    #[strum(serialize = "register_relayer")]
     RegisterRelayer,
+    #[strum(serialize = "refund_on_error")]
     RefundOnError,
+    #[strum(serialize = "set_eth_connector_contract_data")]
     SetConnectorData,
+    #[strum(serialize = "new_eth_connector")]
     NewConnector,
+    #[strum(serialize = "new")]
     NewEngine,
     Unknown,
 }
