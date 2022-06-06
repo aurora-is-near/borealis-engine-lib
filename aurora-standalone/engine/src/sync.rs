@@ -101,7 +101,6 @@ pub fn consume_near_block(
                         .iter()
                         .map(|id| data_id_mapping.pop(id).flatten())
                         .collect();
-                    // TODO: will we need to handle the case where multiple actions are relevant to Aurora?
                     let maybe_tx = parse_actions(actions, &input_data);
 
                     (signer_id, maybe_tx)
@@ -236,11 +235,11 @@ pub fn consume_near_block(
                                 || submit_result.as_ref().unwrap() != &expected_result
                             {
                                 warn!(
-                            "Incorrect result in processing receipt_id={:?} computed={:?} expected={:?}",
-                            receipt_id,
-                            submit_result,
-                            expected_result,
-                        );
+                                    "Incorrect result in processing receipt_id={:?} computed={:?} expected={:?}",
+                                    receipt_id,
+                                    submit_result,
+                                    expected_result,
+                                );
                             }
                         }
                         Err(_) => warn!(
