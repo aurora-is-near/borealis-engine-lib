@@ -18,9 +18,11 @@ use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
 };
 use lru::LruCache;
-use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::{collections::HashMap, str::FromStr};
 use tracing::{debug, warn};
+
+use crate::types::InnerTransactionKind;
 
 pub fn consume_near_block(
     storage: &mut Storage,
@@ -559,102 +561,121 @@ fn parse_action(
     } = action
     {
         let bytes = base64::decode(&args).ok()?;
-        let transaction_kind = match method_name.as_str() {
-            "submit" => {
-                let eth_tx = EthTransactionKind::try_from(bytes.as_slice()).ok()?;
-                TransactionKind::Submit(eth_tx)
-            }
-            "call" => {
-                let call_args = parameters::CallArgs::deserialize(&bytes)?;
-                TransactionKind::Call(call_args)
-            }
-            "deploy_code" => TransactionKind::Deploy(bytes),
-            "deploy_erc20_token" => {
-                let deploy_args = parameters::DeployErc20TokenArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::DeployErc20(deploy_args)
-            }
-            "ft_on_transfer" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let transfer_args = parameters::NEP141FtOnTransferArgs::try_from(json_args).ok()?;
-                TransactionKind::FtOnTransfer(transfer_args)
-            }
-            "ft_transfer_call" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let transfer_args = parameters::TransferCallCallArgs::try_from(json_args).ok()?;
-                TransactionKind::FtTransferCall(transfer_args)
-            }
-            "deposit" => TransactionKind::Deposit(bytes),
-            "finish_deposit" => {
-                let args = parameters::FinishDepositCallArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::FinishDeposit(args)
-            }
-            "ft_resolve_transfer" => {
-                let args = parameters::ResolveTransferCallArgs::try_from_slice(&bytes).ok()?;
-                let promise_result = match promise_data.first().and_then(|x| x.as_ref()) {
-                    Some(bytes) => {
-                        aurora_engine_types::types::PromiseResult::Successful(bytes.clone())
-                    }
-                    None => aurora_engine_types::types::PromiseResult::Failed,
-                };
-                TransactionKind::ResolveTransfer(args, promise_result)
-            }
-            "ft_transfer" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let args = parameters::TransferCallArgs::try_from(json_args).ok()?;
-                TransactionKind::FtTransfer(args)
-            }
-            "withdraw" => {
-                let args =
-                    aurora_engine_types::parameters::WithdrawCallArgs::try_from_slice(&bytes)
-                        .ok()?;
-                TransactionKind::Withdraw(args)
-            }
-            "storage_deposit" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let args = parameters::StorageDepositCallArgs::from(json_args);
-                TransactionKind::StorageDeposit(args)
-            }
-            "storage_unregister" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let force = json_args.bool("force").ok();
-                TransactionKind::StorageUnregister(force)
-            }
-            "storage_withdraw" => {
-                let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                let args = parameters::StorageWithdrawCallArgs::from(json_args);
-                TransactionKind::StorageWithdraw(args)
-            }
-            "set_paused_flags" => {
-                let args = parameters::PauseEthConnectorCallArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::SetPausedFlags(args)
-            }
-            "register_relayer" => {
-                let address = Address::try_from_slice(&bytes).ok()?;
-                TransactionKind::RegisterRelayer(address)
-            }
-            "refund_on_error" => match promise_data.first().and_then(|x| x.as_ref()) {
-                None => TransactionKind::RefundOnError(None),
-                Some(_) => {
-                    let args =
-                        aurora_engine_types::parameters::RefundCallArgs::try_from_slice(&bytes)
-                            .ok()?;
-                    TransactionKind::RefundOnError(Some(args))
+
+        let transaction_kind = if let Ok(raw_tx_kind) =
+            InnerTransactionKind::from_str(method_name.as_str())
+        {
+            match raw_tx_kind {
+                InnerTransactionKind::Submit => {
+                    let eth_tx = EthTransactionKind::try_from(bytes.as_slice()).ok()?;
+                    TransactionKind::Submit(eth_tx)
                 }
-            },
-            "set_eth_connector_contract_data" => {
-                let args = parameters::SetContractDataCallArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::SetConnectorData(args)
+                InnerTransactionKind::Call => {
+                    let call_args = parameters::CallArgs::deserialize(&bytes)?;
+                    TransactionKind::Call(call_args)
+                }
+                InnerTransactionKind::Deploy => TransactionKind::Deploy(bytes),
+                InnerTransactionKind::DeployErc20 => {
+                    let deploy_args =
+                        parameters::DeployErc20TokenArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::DeployErc20(deploy_args)
+                }
+                InnerTransactionKind::FtOnTransfer => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let transfer_args =
+                        parameters::NEP141FtOnTransferArgs::try_from(json_args).ok()?;
+                    TransactionKind::FtOnTransfer(transfer_args)
+                }
+                InnerTransactionKind::Deposit => TransactionKind::Deposit(bytes),
+                InnerTransactionKind::FtTransferCall => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let transfer_args =
+                        parameters::TransferCallCallArgs::try_from(json_args).ok()?;
+                    TransactionKind::FtTransferCall(transfer_args)
+                }
+                InnerTransactionKind::FinishDeposit => {
+                    let args = parameters::FinishDepositCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::FinishDeposit(args)
+                }
+                InnerTransactionKind::ResolveTransfer => {
+                    let args = parameters::ResolveTransferCallArgs::try_from_slice(&bytes).ok()?;
+                    let promise_result = match promise_data.first().and_then(|x| x.as_ref()) {
+                        Some(bytes) => {
+                            aurora_engine_types::types::PromiseResult::Successful(bytes.clone())
+                        }
+                        None => aurora_engine_types::types::PromiseResult::Failed,
+                    };
+                    TransactionKind::ResolveTransfer(args, promise_result)
+                }
+                InnerTransactionKind::FtTransfer => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let args = parameters::TransferCallArgs::try_from(json_args).ok()?;
+                    TransactionKind::FtTransfer(args)
+                }
+                InnerTransactionKind::Withdraw => {
+                    let args =
+                        aurora_engine_types::parameters::WithdrawCallArgs::try_from_slice(&bytes)
+                            .ok()?;
+                    TransactionKind::Withdraw(args)
+                }
+                InnerTransactionKind::StorageDeposit => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let args = parameters::StorageDepositCallArgs::from(json_args);
+                    TransactionKind::StorageDeposit(args)
+                }
+                InnerTransactionKind::StorageUnregister => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let force = json_args.bool("force").ok();
+                    TransactionKind::StorageUnregister(force)
+                }
+                InnerTransactionKind::StorageWithdraw => {
+                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
+                    let args = parameters::StorageWithdrawCallArgs::from(json_args);
+                    TransactionKind::StorageWithdraw(args)
+                }
+                InnerTransactionKind::SetPausedFlags => {
+                    let args =
+                        parameters::PauseEthConnectorCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetPausedFlags(args)
+                }
+                InnerTransactionKind::RegisterRelayer => {
+                    let address = Address::try_from_slice(&bytes).ok()?;
+                    TransactionKind::RegisterRelayer(address)
+                }
+                InnerTransactionKind::RefundOnError => match promise_data
+                    .first()
+                    .and_then(|x| x.as_ref())
+                {
+                    None => TransactionKind::RefundOnError(None),
+                    Some(_) => {
+                        let args =
+                            aurora_engine_types::parameters::RefundCallArgs::try_from_slice(&bytes)
+                                .ok()?;
+                        TransactionKind::RefundOnError(Some(args))
+                    }
+                },
+                InnerTransactionKind::SetConnectorData => {
+                    let args = parameters::SetContractDataCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetConnectorData(args)
+                }
+                InnerTransactionKind::NewConnector => {
+                    let args = parameters::InitCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::NewConnector(args)
+                }
+                InnerTransactionKind::NewEngine => {
+                    let args = parameters::NewCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::NewEngine(args)
+                }
+                InnerTransactionKind::Unknown => {
+                    warn!("Unknown method name: {}", method_name);
+                    return None;
+                }
             }
-            "new_eth_connector" => {
-                let args = parameters::InitCallArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::NewConnector(args)
-            }
-            "new" => {
-                let args = parameters::NewCallArgs::try_from_slice(&bytes).ok()?;
-                TransactionKind::NewEngine(args)
-            }
-            _ => return None,
+        } else {
+            warn!("Unknown method name: {}", method_name);
+            return None;
         };
+
         return Some((transaction_kind, *deposit));
     }
 

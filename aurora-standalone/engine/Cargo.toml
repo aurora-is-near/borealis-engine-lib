@@ -23,6 +23,7 @@ borsh = { version = "0.8.2" }
 engine-standalone-storage = { path = "../../aurora-engine/engine-standalone-storage", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 lru = "0.7.3"
 tracing = "0.1"
+strum = {version = "0.24.0", features = ["derive"]}
 
 [dev-dependencies]
 
