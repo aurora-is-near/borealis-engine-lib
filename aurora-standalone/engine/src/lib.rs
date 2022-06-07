@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub mod sync;
+#[cfg(test)]
+mod tests;
 pub mod types;
 
 pub struct EngineContext {
