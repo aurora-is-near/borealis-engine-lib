@@ -1,31 +1,30 @@
 CARGO = cargo
-MAKE = make
 
 release: check-compile
-	cd aurora-standalone && $(CARGO) build --release
+	$(CARGO) build --release
 
 debug: check-compile
-	cd aurora-standalone && $(CARGO) build
+	$(CARGO) build
 
 check: check-compile test check-format check-clippy
 
 check-compile:
-	cd aurora-standalone && $(CARGO) check --all-targets
+	$(CARGO) check --all-targets
 
 test:
-	cd aurora-standalone && $(CARGO) test
+	$(CARGO) test
 
 check-format:
-	cd aurora-standalone && $(CARGO) fmt -- --check
+	$(CARGO) fmt -- --check
 
 check-clippy:
-	cd aurora-standalone && $(CARGO) clippy -- -D warnings
+	$(CARGO) clippy -- -D warnings
 
 format:
-	cd aurora-standalone && $(CARGO) fmt
+	$(CARGO) fmt
 
 clean:
-	cd aurora-standalone && $(CARGO) clean
+	$(CARGO) clean
 
 .PHONY: release debug check check-compile test check-format check-clippy format clean
 
