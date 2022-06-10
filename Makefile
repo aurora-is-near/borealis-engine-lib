@@ -10,7 +10,6 @@ debug: check-compile
 check: check-compile test check-format check-clippy
 
 check-compile:
-	cd aurora-engine && $(MAKE) release
 	cd aurora-standalone && $(CARGO) check --all-targets
 
 test:
