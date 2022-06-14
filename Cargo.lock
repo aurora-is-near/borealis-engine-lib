@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "2.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "aurora-bn",
  "aurora-engine-precompiles",
@@ -97,7 +97,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "aurora-bn",
  "aurora-engine-sdk",
@@ -119,7 +119,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "aurora-engine-types",
  "borsh 0.8.2",
@@ -130,7 +130,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -144,7 +144,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "borsh 0.8.2",
  "ethabi",
@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b99e2b537e2d91285fbaa7a936202413f9fbc73#5b99e2b537e2d91285fbaa7a936202413f9fbc73"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=44316677d62d0e20bae283d0ecd3641b8c55201b#44316677d62d0e20bae283d0ecd3641b8c55201b"
 dependencies = [
  "aurora-engine",
  "aurora-engine-sdk",

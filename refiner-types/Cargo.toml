@@ -13,10 +13,10 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b99e2b537e2d91285fbaa7a936202413f9fbc73", default-features = false, features = [ "std", "impl-serde" ] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b99e2b537e2d91285fbaa7a936202413f9fbc73", default-features = false, features = [ "std" ] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b99e2b537e2d91285fbaa7a936202413f9fbc73", default-features = false, features = [ "std", "impl-serde" ]  }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b99e2b537e2d91285fbaa7a936202413f9fbc73", default-features = false,  features = [ "std", "impl-serde" ] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = [ "std", "impl-serde" ] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = [ "std" ] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = [ "std", "impl-serde" ]  }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false,  features = [ "std", "impl-serde" ] }
 derive_builder = "0.10.2"
 fixed-hash = "0.7.0"
 impl-serde = "0.3.2"
