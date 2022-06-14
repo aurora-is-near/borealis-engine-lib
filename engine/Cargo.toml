@@ -1,0 +1,33 @@
+[package]
+name = "aurora-standalone-engine"
+version = "0.1.0"
+authors = ["Aurora <hello@aurora.dev>"]
+edition = "2021"
+description = "A library for interacting with the Aurora Engine deployed locally (standalone), as opposed to on-chain as a NEAR smart contract."
+homepage = "https://github.com/aurora-is-near/aurora-standalone"
+repository = "https://github.com/aurora-is-near/aurora-standalone"
+license = "CC0-1.0"
+publish = false
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = ["std"] }
+aurora-refiner-types = { path = "../refiner-types" }
+base64 = "0.13.0"
+borsh = { version = "0.8.2" }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "44316677d62d0e20bae283d0ecd3641b8c55201b", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
+lru = "0.7.3"
+tracing = "0.1"
+strum = {version = "0.24.0", features = ["derive"]}
+
+[dev-dependencies]
+hex = "0.4.3"
+serde_json = "1.0.55"
+tempfile = "3.2.0"
+
+[features]
