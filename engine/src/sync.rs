@@ -29,9 +29,10 @@ pub fn consume_near_block(
     message: &aurora_refiner_types::near_block::NEARBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
     engine_account_id: &AccountId,
+    chain_id: [u8; 32],
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), engine_standalone_storage::Error> {
-    let block_hash = add_block_data_from_near_block(storage, message)?;
+    let block_hash = add_block_data_from_near_block(storage, message, chain_id, engine_account_id)?;
 
     // Capture data receipts (for using in promises)
     message
@@ -315,17 +316,20 @@ fn to_vec<T: AsRef<[u8]>>(t: T) -> Vec<u8> {
 fn add_block_data_from_near_block(
     storage: &mut Storage,
     message: &aurora_refiner_types::near_block::NEARBlock,
+    chain_id: [u8; 32],
+    account_id: &AccountId,
 ) -> Result<H256, engine_standalone_storage::Error> {
+    let block_height = message.block.header.height;
+    let block_hash =
+        aurora_engine::engine::compute_block_hash(chain_id, block_height, account_id.as_bytes());
     let block_message = types::BlockMessage {
-        height: message.block.header.height,
-        hash: message.block.header.hash.0.into(),
+        height: block_height,
+        hash: block_hash,
         metadata: BlockMetadata {
             timestamp: env::Timestamp::new(message.block.header.timestamp_nanosec),
             random_seed: message.block.header.random_value.0.into(),
         },
     };
-    // TODO: Should covert to Aurora block hash?
-    let block_hash = block_message.hash;
 
     debug!("Consuming block {}", block_message.height);
     sync::consume_message(storage, Message::Block(block_message))?;
