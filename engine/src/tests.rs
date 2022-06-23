@@ -21,11 +21,13 @@ fn test_batched_transactions() {
     };
     let mut data_id_mapping = lru::LruCache::new(1000);
     let mut outcomes_map = HashMap::new();
+    let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
     crate::sync::consume_near_block(
         &mut test_context.storage,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
+        chain_id,
         Some(&mut outcomes_map),
     )
     .unwrap();

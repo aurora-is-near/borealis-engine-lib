@@ -12,6 +12,7 @@ pub mod types;
 pub struct EngineContext {
     storage: Storage,
     engine_account_id: AccountId,
+    chain_id: [u8; 32],
     data_id_mapping: lru::LruCache<CryptoHash, Option<Vec<u8>>>,
 }
 
@@ -19,11 +20,14 @@ impl EngineContext {
     pub fn new<P: AsRef<Path>>(
         storage_path: P,
         engine_account_id: AccountId,
+        chain_id: u64,
     ) -> Result<Self, error::Error> {
         let storage = Storage::open(storage_path)?;
+        let chain_id = aurora_engine_types::types::u256_to_arr(&(chain_id.into()));
         Ok(Self {
             storage,
             engine_account_id,
+            chain_id,
             data_id_mapping: lru::LruCache::new(1000),
         })
     }
@@ -39,6 +43,7 @@ pub fn consume_near_block(
         block,
         &mut context.data_id_mapping,
         &context.engine_account_id,
+        context.chain_id,
         outcomes,
     )
 }
