@@ -1,4 +1,4 @@
-use crate::metrics::LATEST_BLOCK_PROCESSED;
+use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
 use aurora_engine_sdk::sha256;
@@ -19,12 +19,14 @@ use aurora_refiner_types::near_primitives::types::BlockHeight;
 use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
+use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::BorshDeserialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
+use std::str::FromStr;
 use tracing::{error, trace, warn};
 use triehash_ethereum::ordered_trie_root;
 
@@ -299,6 +301,7 @@ struct BuiltTransaction {
     transaction_hash: H256,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_transaction(
     near_block: &BlockView,
     action_index: usize,
@@ -311,7 +314,7 @@ fn build_transaction(
 ) -> Result<BuiltTransaction, RefinerError> {
     let mut bloom = Bloom::default();
 
-    let mut hash = Default::default();
+    let hash;
 
     let mut tx = AuroraTransactionBuilder::default()
         .block_hash(compute_block_hash(near_block.header.height, chain_id))
@@ -335,36 +338,21 @@ fn build_transaction(
 
             transaction_hash = sha256(bytes.as_slice());
 
-            // Fill `from` field when it is not a `submit` transaction.
-            tx = match method_name.as_str() {
-                "submit" => tx,
-                _ => {
-                    hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ))
-                }
-            };
+            let raw_tx_kind: InnerTransactionKind =
+                InnerTransactionKind::from_str(method_name.as_str())
+                    .unwrap_or(InnerTransactionKind::Unknown);
 
-            // Fill default fields from methods other than `submit` and `call`
-            tx = match method_name.as_str() {
-                "submit" | "call" => tx,
-                method_name => {
-                    tx = fill_result(
-                        tx,
-                        &outcome.execution_outcome.outcome.status,
-                        false,
-                        &mut bloom,
-                        txs.get(&hash),
-                    )?;
-                    fill_tx(tx, method_name, bytes.clone())
-                }
-            };
+            record_metric(&raw_tx_kind);
 
-            // TODO: Change to enum
-            tx = match method_name.as_str() {
-                "submit" => {
-                    crate::metrics::TRANSACTION_TYPE_SUBMIT.inc();
+            match raw_tx_kind {
+                InnerTransactionKind::Unknown => {
+                    warn!("Unknown method: {}", method_name);
+                }
+                _ => {}
+            }
+
+            tx = match raw_tx_kind {
+                InnerTransactionKind::Submit => {
                     let tx_metadata = TxMetadata::try_from(bytes.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
 
@@ -402,8 +390,11 @@ fn build_transaction(
                         txs.get(&hash),
                     )?
                 }
-                "call" => {
-                    crate::metrics::TRANSACTION_TYPE_CALL.inc();
+                InnerTransactionKind::Call => {
+                    hash = virtual_receipt_id.0.try_into().unwrap();
+                    tx = tx.hash(hash).from(near_account_to_evm_address(
+                        outcome.receipt.predecessor_id.as_bytes(),
+                    ));
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (address, value, input) = match call_args {
@@ -437,46 +428,19 @@ fn build_transaction(
                         txs.get(&hash),
                     )?
                 }
-                "deploy_code" => {
-                    crate::metrics::TRANSACTION_TYPE_DEPLOY_CODE.inc();
-                    tx
-                }
-                "deploy_erc20_token" => {
-                    crate::metrics::TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
-                    tx
-                }
-                "deposit" => {
-                    crate::metrics::TRANSACTION_TYPE_DEPOSIT.inc();
-                    tx
-                }
-                "finish_deposit" => {
-                    crate::metrics::TRANSACTION_TYPE_FINISH_DEPOSIT.inc();
-                    tx
-                }
-                "ft_on_transfer" => {
-                    crate::metrics::TRANSACTION_TYPE_FT_ON_TRANSFER.inc();
-                    tx
-                }
-                "ft_transfer" => {
-                    crate::metrics::TRANSACTION_TYPE_FT_TRANSFER.inc();
-                    tx
-                }
-                "ft_transfer_call" => {
-                    crate::metrics::TRANSACTION_TYPE_FT_TRANSFER_CALL.inc();
-                    tx
-                }
-                "ft_resolve_transfer" => {
-                    crate::metrics::TRANSACTION_TYPE_FT_RESOLVE_TRANSFER.inc();
-                    tx
-                }
-                "withdraw" => {
-                    crate::metrics::TRANSACTION_TYPE_WITHDRAW.inc();
-                    tx
-                }
-                method_name => {
-                    crate::metrics::TRANSACTION_TYPE_OTHER.inc();
-                    warn!("Unexpected method: {}", method_name);
-                    tx
+                _ => {
+                    hash = virtual_receipt_id.0.try_into().unwrap();
+                    tx = tx.hash(hash).from(near_account_to_evm_address(
+                        outcome.receipt.predecessor_id.as_bytes(),
+                    ));
+                    tx = fill_result(
+                        tx,
+                        &outcome.execution_outcome.outcome.status,
+                        false,
+                        &mut bloom,
+                        txs.get(&hash),
+                    )?;
+                    fill_tx(tx, method_name, bytes.clone())
                 }
             }
         }

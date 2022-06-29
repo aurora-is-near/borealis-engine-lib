@@ -1,3 +1,4 @@
+use aurora_standalone_engine::types::InnerTransactionKind;
 use lazy_static::lazy_static;
 use prometheus::{self, register_int_counter, register_int_gauge, IntCounter, IntGauge};
 
@@ -92,9 +93,54 @@ lazy_static! {
         "Number of transactions of type: ft_resolve_transfer"
     )
     .unwrap();
-    pub static ref TRANSACTION_TYPE_OTHER: IntCounter = register_int_counter!(
-        "refiner_tx_type_other",
-        "Number of transactions of type: other"
+    pub static ref TRANSACTION_TYPE_STORAGE_DEPOSIT: IntCounter = register_int_counter!(
+        "refiner_tx_type_storage_deposit",
+        "Number of transactions of type: storage_deposit"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_STORAGE_UNREGISTER: IntCounter = register_int_counter!(
+        "refiner_tx_type_storage_unregister",
+        "Number of transactions of type: storage_unregister"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_STORAGE_WITHDRAW: IntCounter = register_int_counter!(
+        "refiner_tx_type_storage_deposit",
+        "Number of transactions of type: storage_deposit"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_SET_PAUSED_FLAGS: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_paused_flags",
+        "Number of transactions of type: set_paused_flags"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_REGISTER_RELAYER: IntCounter = register_int_counter!(
+        "refiner_tx_type_register_relayer",
+        "Number of transactions of type: register_relayer"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_REFUND_ON_ERROR: IntCounter = register_int_counter!(
+        "refiner_tx_type_refund_on_error",
+        "Number of transactions of type: refund_on_error"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_SET_CONNECTOR_DATA: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_connector_data",
+        "Number of transactions of type: set_connector_data"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_NEW_CONNECTOR: IntCounter = register_int_counter!(
+        "refiner_tx_type_new_connector",
+        "Number of transactions of type: new_connector"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_NEW_ENGINE: IntCounter = register_int_counter!(
+        "refiner_tx_type_new_engine",
+        "Number of transactions of type: new_engine"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_UNKNOWN: IntCounter = register_int_counter!(
+        "refiner_tx_type_unknown",
+        "Number of transactions of type: unknown"
     )
     .unwrap();
     pub static ref SKIP_BLOCKS: IntCounter = register_int_counter!(
@@ -107,4 +153,72 @@ lazy_static! {
         "Number of blocks processed"
     )
     .unwrap();
+}
+
+pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
+    match tx_kind {
+        InnerTransactionKind::Submit => {
+            TRANSACTION_TYPE_SUBMIT.inc();
+        }
+        InnerTransactionKind::Call => {
+            TRANSACTION_TYPE_CALL.inc();
+        }
+        InnerTransactionKind::Deploy => {
+            TRANSACTION_TYPE_DEPLOY_CODE.inc();
+        }
+        InnerTransactionKind::DeployErc20 => {
+            TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
+        }
+        InnerTransactionKind::FtOnTransfer => {
+            TRANSACTION_TYPE_FT_ON_TRANSFER.inc();
+        }
+        InnerTransactionKind::Deposit => {
+            TRANSACTION_TYPE_DEPOSIT.inc();
+        }
+        InnerTransactionKind::FtTransferCall => {
+            TRANSACTION_TYPE_FT_TRANSFER_CALL.inc();
+        }
+        InnerTransactionKind::FinishDeposit => {
+            TRANSACTION_TYPE_FINISH_DEPOSIT.inc();
+        }
+        InnerTransactionKind::ResolveTransfer => {
+            TRANSACTION_TYPE_FT_RESOLVE_TRANSFER.inc();
+        }
+        InnerTransactionKind::FtTransfer => {
+            TRANSACTION_TYPE_FT_TRANSFER.inc();
+        }
+        InnerTransactionKind::Withdraw => {
+            TRANSACTION_TYPE_WITHDRAW.inc();
+        }
+        InnerTransactionKind::StorageDeposit => {
+            TRANSACTION_TYPE_STORAGE_DEPOSIT.inc();
+        }
+        InnerTransactionKind::StorageUnregister => {
+            TRANSACTION_TYPE_STORAGE_UNREGISTER.inc();
+        }
+        InnerTransactionKind::StorageWithdraw => {
+            TRANSACTION_TYPE_STORAGE_WITHDRAW.inc();
+        }
+        InnerTransactionKind::SetPausedFlags => {
+            TRANSACTION_TYPE_SET_PAUSED_FLAGS.inc();
+        }
+        InnerTransactionKind::RegisterRelayer => {
+            TRANSACTION_TYPE_REGISTER_RELAYER.inc();
+        }
+        InnerTransactionKind::RefundOnError => {
+            TRANSACTION_TYPE_REFUND_ON_ERROR.inc();
+        }
+        InnerTransactionKind::SetConnectorData => {
+            TRANSACTION_TYPE_SET_CONNECTOR_DATA.inc();
+        }
+        InnerTransactionKind::NewConnector => {
+            TRANSACTION_TYPE_NEW_CONNECTOR.inc();
+        }
+        InnerTransactionKind::NewEngine => {
+            TRANSACTION_TYPE_NEW_ENGINE.inc();
+        }
+        InnerTransactionKind::Unknown => {
+            TRANSACTION_TYPE_UNKNOWN.inc();
+        }
+    }
 }
