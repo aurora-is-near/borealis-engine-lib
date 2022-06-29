@@ -5,7 +5,7 @@ use aurora_standalone_engine::EngineContext;
 use tracing::warn;
 
 // TODO: Move to config file
-const AURORA: &'static str = "aurora";
+const AURORA: &str = "aurora";
 
 pub async fn run_refiner(
     chain_id: u64,

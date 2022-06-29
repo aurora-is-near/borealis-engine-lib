@@ -28,7 +28,7 @@ impl TryFrom<&[u8]> for TxMetadata {
     type Error = DecoderError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() == 0 {
+        if value.is_empty() {
             Err(DecoderError::Custom("Transaction"))
         } else {
             match value[0] {
@@ -55,7 +55,7 @@ impl TryFrom<&[u8]> for TxMetadata {
                 )),
                 0xff => Err(DecoderError::Custom("Unsupported transaction type (0xff)")),
                 _ => {
-                    let rlp = Rlp::new(&value);
+                    let rlp = Rlp::new(value);
                     Ok(TxMetadata {
                         tx_type: 0x0,
                         v: rlp.val_at(6)?,

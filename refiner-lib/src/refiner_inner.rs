@@ -118,11 +118,11 @@ impl Refiner {
             gas_limit: U256::max_value(),
             size: U256::zero(),
             gas_used: U256::zero(),
-            transactions_root: self.empty_merkle_tree_root.clone(),
-            receipts_root: self.empty_merkle_tree_root.clone(),
+            transactions_root: self.empty_merkle_tree_root,
+            receipts_root: self.empty_merkle_tree_root,
             transactions: vec![],
             near_metadata: NearBlock::SkipBlock,
-            state_root: self.prev_state_root.clone(),
+            state_root: self.prev_state_root,
             logs_bloom: Default::default(),
         }
     }
@@ -175,12 +175,12 @@ impl Refiner {
                     match build_transaction(
                         block,
                         index,
-                        &action,
-                        &execution_outcome,
+                        action,
+                        execution_outcome,
                         self.chain_id,
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
-                        &txs,
+                        txs,
                     ) {
                         Ok(tx) => {
                             let BuiltTransaction {
@@ -261,14 +261,14 @@ impl Refiner {
             miner: near_account_to_evm_address(block.author.as_bytes()),
             timestamp: block.header.timestamp,
             gas_limit: U256::max_value(),
-            state_root: self.prev_state_root.clone(),
+            state_root: self.prev_state_root,
             size: U256::from(self.partial_state.size),
             gas_used: U256::from(self.partial_state.total_gas),
             transactions_root,
             receipts_root,
             transactions: self.partial_state.transactions.drain(..).collect(),
             near_metadata: NearBlock::ExistingBlock(near_header),
-            logs_bloom: self.partial_state.bloom_filter.clone(),
+            logs_bloom: self.partial_state.bloom_filter,
         };
 
         LATEST_BLOCK_PROCESSED.set(block.header.height as i64);
@@ -287,7 +287,7 @@ fn build_virtual_receipt_id(
     total_actions: usize,
 ) -> CryptoHash {
     if action_index + 1 == total_actions {
-        receipt_id.clone()
+        *receipt_id
     } else {
         let mut bytes = [0u8; 36];
         bytes[0..32].copy_from_slice(receipt_id.0.as_slice());
@@ -324,7 +324,7 @@ fn build_transaction(
         .gas_price(U256::zero())
         .near_metadata(NearTransaction {
             action_index,
-            receipt_hash: outcome.receipt.receipt_id.clone(),
+            receipt_hash: outcome.receipt.receipt_id,
         });
 
     // Hash used to build transactions merkle tree
@@ -344,11 +344,8 @@ fn build_transaction(
 
             record_metric(&raw_tx_kind);
 
-            match raw_tx_kind {
-                InnerTransactionKind::Unknown => {
-                    warn!("Unknown method: {}", method_name);
-                }
-                _ => {}
+            if let InnerTransactionKind::Unknown = raw_tx_kind {
+                warn!("Unknown method: {}", method_name);
             }
 
             tx = match raw_tx_kind {
@@ -440,7 +437,7 @@ fn build_transaction(
                         &mut bloom,
                         txs.get(&hash),
                     )?;
-                    fill_tx(tx, method_name, bytes.clone())
+                    fill_tx(tx, method_name, bytes)
                 }
             }
         }
@@ -494,7 +491,7 @@ fn fill_result(
                             .gas_used(err.gas_used)
                             .logs(vec![])
                             .status(false)
-                            .output(format!("{:?}", err.kind).to_string().as_bytes().to_vec()),
+                            .output(format!("{:?}", err.kind).as_bytes().to_vec()),
                     },
                     TransactionExecutionResult::DeployErc20(address) => tx
                         .gas_used(0)
@@ -505,7 +502,7 @@ fn fill_result(
                         .gas_used(0)
                         .logs(vec![])
                         .status(true)
-                        .output(format!("{:?}", promise).to_string().as_bytes().to_vec()),
+                        .output(format!("{:?}", promise).as_bytes().to_vec()),
                 });
             }
         }
