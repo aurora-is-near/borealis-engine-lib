@@ -141,7 +141,6 @@ impl Refiner {
         execution_outcome: &ExecutionOutcomeWithReceipt,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
     ) {
-        // TODO: Replace with proper output
         let NEARBlock { block, .. } = &block;
 
         if self
@@ -323,8 +322,6 @@ fn build_transaction(
         .near_metadata(NearTransaction {
             action_index,
             receipt_hash: outcome.receipt.receipt_id.clone(),
-            // TODO: Handle proper values for NEAR Transaction
-            transaction_hash: CryptoHash::default(),
         });
 
     // Hash used to build transactions merkle tree

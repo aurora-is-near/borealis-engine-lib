@@ -151,6 +151,4 @@ pub struct NearTransaction {
     pub action_index: usize,
     /// Receipt hash on NEAR
     pub receipt_hash: CryptoHash,
-    /// Transaction hash on NEAR
-    pub transaction_hash: CryptoHash,
 }
