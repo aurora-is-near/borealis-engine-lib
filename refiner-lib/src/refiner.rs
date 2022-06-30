@@ -1,20 +1,20 @@
 use crate::near_stream::NearStream;
+use aurora_engine_types::account_id::AccountId;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
 use aurora_standalone_engine::EngineContext;
+use std::path::Path;
 use tracing::warn;
 
-// TODO: Move to config file
-const AURORA: &str = "aurora";
-
-pub async fn run_refiner(
+pub async fn run_refiner<P: AsRef<Path>>(
     chain_id: u64,
+    engine_storage_path: P,
+    engine_account_id: AccountId,
     mut input: tokio::sync::mpsc::Receiver<NEARBlock>,
     output: tokio::sync::mpsc::Sender<AuroraBlock>,
     last_block: Option<u64>,
 ) {
-    // TODO: Add storage path to config file
-    let ctx = EngineContext::new("", AURORA.parse().unwrap(), chain_id).unwrap();
+    let ctx = EngineContext::new(engine_storage_path, engine_account_id, chain_id).unwrap();
     let mut stream = NearStream::new(chain_id, last_block, ctx);
 
     while let Some(message) = input.recv().await {
