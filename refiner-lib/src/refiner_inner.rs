@@ -168,8 +168,8 @@ impl Refiner {
 
                     let virtual_receipt_id = build_virtual_receipt_id(
                         &execution_outcome.receipt.receipt_id,
-                        index,
-                        actions.len(),
+                        index as u32,
+                        actions.len() as u32,
                     );
 
                     match build_transaction(
@@ -283,8 +283,8 @@ impl Refiner {
 /// Receipt id of internal actions, when several actions are batched in the same receipt
 fn build_virtual_receipt_id(
     receipt_id: &CryptoHash,
-    action_index: usize,
-    total_actions: usize,
+    action_index: u32,
+    total_actions: u32,
 ) -> CryptoHash {
     if action_index + 1 == total_actions {
         *receipt_id
