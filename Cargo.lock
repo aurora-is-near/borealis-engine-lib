@@ -185,6 +185,7 @@ dependencies = [
  "rlp 0.5.1",
  "serde",
  "serde_cbor",
+ "serde_json",
  "sha3 0.10.1",
  "tokio",
  "tracing",

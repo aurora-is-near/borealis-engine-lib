@@ -21,6 +21,7 @@ use aurora_refiner_types::near_primitives::views::{
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::BorshDeserialize;
+use borsh_0_9_3::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
@@ -441,7 +442,48 @@ fn build_transaction(
                 }
             }
         }
-        action => Err(RefinerError::SkipNonFunctionCall(action.clone()))?,
+        action => {
+            let input = action.try_to_vec().unwrap();
+
+            tx = tx
+                .hash(virtual_receipt_id.0.try_into().unwrap())
+                .from(near_account_to_evm_address(
+                    outcome.receipt.predecessor_id.as_bytes(),
+                ))
+                .to(Some(near_account_to_evm_address(b"aurora")))
+                .contract_address(None)
+                .nonce(U256::zero())
+                .gas_limit(U256::max_value())
+                .gas_used(0)
+                .max_priority_fee_per_gas(U256::zero())
+                .max_fee_per_gas(U256::zero())
+                .value(Wei::new(U256::zero()))
+                .input(input)
+                .access_list(vec![])
+                .tx_type(0xff)
+                .logs(vec![])
+                .v(0)
+                .r(U256::zero())
+                .s(U256::zero())
+                // Type for NEAR custom transactions
+                .tx_type(0xfe)
+                .access_list(vec![]);
+
+            match &outcome.execution_outcome.outcome.status {
+                ExecutionStatusView::Unknown => {
+                    tx = tx.output(vec![]).status(false);
+                }
+                ExecutionStatusView::Failure(err) => {
+                    tx = tx.output(err.try_to_vec().unwrap()).status(false);
+                }
+                ExecutionStatusView::SuccessValue(value) => {
+                    tx = tx.output(value.as_bytes().to_vec()).status(true);
+                }
+                ExecutionStatusView::SuccessReceiptId(data) => {
+                    tx = tx.output(data.0.to_vec()).status(true);
+                }
+            }
+        }
     }
 
     tx = tx.logs_bloom(bloom);
@@ -572,8 +614,6 @@ fn fill_tx(
 enum RefinerError {
     /// Fail building transaction. Most likely some arguments missing
     BuilderError(AuroraTransactionBuilderError),
-    /// Skip all action views that are not Function Calls
-    SkipNonFunctionCall(ActionView),
     /// Failed to parse Ethereum Transaction
     ParseTransaction(ParseTransactionError),
     /// Failed to parse metadata from Ethereum Transaction
@@ -609,6 +649,7 @@ mod tests {
             ]
         );
     }
+
     #[test]
     fn test_block_hash() {
         // Example of block: https://explorer.mainnet.aurora.dev/block/62482103/transactions
