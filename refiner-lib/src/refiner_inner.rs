@@ -28,7 +28,6 @@ use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
 use std::str::FromStr;
-use tracing::{error, trace, warn};
 use triehash_ethereum::ordered_trie_root;
 
 fn compute_block_hash_preimage(height: BlockHeight, chain_id: u64) -> Vec<u8> {
@@ -131,9 +130,9 @@ impl Refiner {
     pub fn on_block_start(&mut self, block: &NEARBlock) {
         let NEARBlock { block, shards, .. } = &block;
         // Check if all chunks were parsed
-        trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);
+        tracing::trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);
         if block.header.chunk_mask.len() != shards.len() {
-            warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.chunk_mask.len(), shards.len());
+            tracing::warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.chunk_mask.len(), shards.len());
             crate::metrics::MISSING_SHARDS.inc();
         }
     }
@@ -190,7 +189,7 @@ impl Refiner {
                             } = tx;
 
                             let result_hash = sha256(transaction.output.as_slice());
-                            trace!(target: "transactions", "New transaction: {}", transaction.hash);
+                            tracing::trace!(target: "transactions", "New transaction: {}", transaction.hash);
                             self.partial_state.total_gas += transaction.gas_used;
                             self.partial_state
                                 .bloom_filter
@@ -204,7 +203,7 @@ impl Refiner {
                                 });
                         }
                         Err(err) => {
-                            error!(target: "transactions", "Error while building transaction: {:?}. Block: {}", err, block.header.hash);
+                            tracing::error!(target: "transactions", "Error while building transaction: {:?}. Block: {}", err, block.header.hash);
                             crate::metrics::ERROR_BUILDING_TRANSACTION.inc();
                         }
                     }
@@ -213,7 +212,7 @@ impl Refiner {
             // Ignore receipts of type Data
             ReceiptEnumView::Data { data_id, .. } => {
                 crate::metrics::TRANSACTIONS_DATA.inc();
-                warn!(target: "transactions",
+                tracing::warn!(target: "transactions",
                     "Ignore receipt data. Receipt Id: {} Data Id: {:?}",
                     execution_outcome.receipt.receipt_id,
                     data_id,
@@ -346,7 +345,7 @@ fn build_transaction(
             record_metric(&raw_tx_kind);
 
             if let InnerTransactionKind::Unknown = raw_tx_kind {
-                warn!("Unknown method: {}", method_name);
+                tracing::warn!("Unknown method: {}", method_name);
             }
 
             tx = match raw_tx_kind {
@@ -571,7 +570,7 @@ fn fill_result(
             .output(result.0.to_vec())),
         _ => {
             crate::metrics::FAILING_NEAR_TRANSACTION.inc();
-            warn!("Failing NEAR transaction: {:?}", status);
+            tracing::warn!("Failing NEAR transaction: {:?}", status);
             Ok(tx.gas_used(0).logs(vec![]).status(false).output(
                 vec![
                     b"ERR_NEAR_TX:".to_vec(),

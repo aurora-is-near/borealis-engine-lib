@@ -16,7 +16,7 @@ lazy_static! {
     )
     .unwrap();
     pub static ref LATEST_BLOCK_PROCESSED: IntGauge = register_int_gauge!(
-        "refine_number_of_latest_block_processed",
+        "refiner_number_of_latest_block_processed",
         "Height of last block processed. Can be slightly out of sync with the actual height given multiple process."
     )
     .unwrap();
