@@ -11,7 +11,7 @@ pub mod types;
 
 pub struct EngineContext {
     storage: Storage,
-    engine_account_id: AccountId,
+    pub engine_account_id: AccountId,
     chain_id: [u8; 32],
     data_id_mapping: lru::LruCache<CryptoHash, Option<Vec<u8>>>,
 }

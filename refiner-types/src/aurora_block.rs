@@ -147,6 +147,8 @@ pub struct AuroraTransaction {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NearTransaction {
+    /// Index of the action on action list
+    pub action_index: usize,
     /// Receipt hash on NEAR
     pub receipt_hash: CryptoHash,
 }

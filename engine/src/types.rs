@@ -2,7 +2,7 @@ use engine_standalone_storage::sync::types::TransactionKind;
 use strum::EnumString;
 
 #[derive(EnumString)]
-pub(crate) enum InnerTransactionKind {
+pub enum InnerTransactionKind {
     #[strum(serialize = "submit")]
     Submit,
     #[strum(serialize = "call")]

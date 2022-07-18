@@ -3,5 +3,5 @@ members = [
     "engine",
     "refiner-lib",
     "refiner-types",
-    "refiner-rpc-app",
+    "refiner-app",
 ]
