@@ -10,7 +10,9 @@ license = "CC0-1.0"
 publish = false
 
 [dependencies]
-
-[dev-dependencies]
-
-[features]
+near-indexer = { git = "https://github.com/near/nearcore", rev = "04b35b9cc10b9ec94b9436cd943eac14f34f8e2e" }
+aurora-refiner-lib = { path = "../refiner-lib" }
+aurora-refiner-types = { path = "../refiner-types" }
+actix = "0.13.0"
+tokio = { version = "1.18.0", features = ["sync", "rt-multi-thread"] }
+actix-rt = "2.7.0"
