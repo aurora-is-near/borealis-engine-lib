@@ -571,13 +571,7 @@ fn fill_result(
         _ => {
             crate::metrics::FAILING_NEAR_TRANSACTION.inc();
             tracing::warn!("Failing NEAR transaction: {:?}", status);
-            Ok(tx.gas_used(0).logs(vec![]).status(false).output(
-                vec![
-                    b"ERR_NEAR_TX:".to_vec(),
-                    format!("{:?}", status).as_bytes().to_vec(),
-                ]
-                .concat(),
-            ))
+            Err(RefinerError::FailNearTx)
         }
     }
 }
@@ -623,6 +617,8 @@ enum RefinerError {
     SuccessValueBase64Args(base64::DecodeError),
     /// Error decoding Submit Result
     SubmitResultArgs(std::io::Error),
+    /// NEAR transaction failed
+    FailNearTx,
 }
 
 fn get_log_blooms(log: &ResultLog) -> Bloom {
