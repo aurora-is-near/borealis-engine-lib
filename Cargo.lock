@@ -183,6 +183,7 @@ dependencies = [
  "prometheus",
  "reference-trie",
  "rlp 0.5.1",
+ "rocksdb",
  "serde",
  "serde_cbor",
  "serde_json",

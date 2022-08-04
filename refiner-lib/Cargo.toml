@@ -39,6 +39,7 @@ tracing = "0.1.32"
 fixed-hash = "0.7.0"
 impl-serde = "0.3.2"
 tokio = { version = "1.19.2", features = ["sync"] }
+rocksdb = { version = "0.18.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 
 [dev-dependencies]
 serde_cbor = "0.11.2"
