@@ -11,6 +11,6 @@
     },
     "output_storage": {
         "path": "output/refiner",
-        "batch_size": 10000
+        "batch_size": 100
     }
 }

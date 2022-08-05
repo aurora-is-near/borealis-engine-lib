@@ -39,7 +39,10 @@ tracing = "0.1.32"
 fixed-hash = "0.7.0"
 impl-serde = "0.3.2"
 tokio = { version = "1.19.2", features = ["sync"] }
+rocksdb = { version = "0.18.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 
 [dev-dependencies]
 serde_cbor = "0.11.2"
 serde_json = "1"
+borealis-rs = { git = "ssh://git@github.com/aurora-is-near/borealis.rs.git", tag = "borealis-rs-v0.1.1" }
+borealis-types = { git = "ssh://git@github.com/aurora-is-near/borealis.rs.git", tag = "borealis-rs-v0.1.1" }

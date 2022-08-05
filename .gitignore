@@ -14,7 +14,6 @@
 
 # Rust artifacts
 target/
-
-*/test-storage/*
 storage/
+*/test-storage/*
 output/

@@ -1,3 +1,4 @@
+use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
@@ -20,7 +21,6 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::BorshDeserialize;
 use borsh_0_9_3::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
@@ -131,7 +131,7 @@ impl Refiner {
         let NEARBlock { block, shards, .. } = &block;
         // Check if all chunks were parsed
         tracing::trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);
-        if !block.header.chunk_mask.is_empty() && block.header.chunk_mask.len() != shards.len() {
+        if block.header.chunk_mask.len() != shards.len() {
             tracing::warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.chunk_mask.len(), shards.len());
             crate::metrics::MISSING_SHARDS.inc();
         }
@@ -381,6 +381,7 @@ fn build_transaction(
 
                     fill_result(
                         tx,
+                        outcome.receipt.receipt_id,
                         &outcome.execution_outcome.outcome.status,
                         true,
                         &mut bloom,
@@ -419,6 +420,7 @@ fn build_transaction(
 
                     fill_result(
                         tx,
+                        outcome.receipt.receipt_id,
                         &outcome.execution_outcome.outcome.status,
                         true,
                         &mut bloom,
@@ -432,6 +434,7 @@ fn build_transaction(
                     ));
                     tx = fill_result(
                         tx,
+                        outcome.receipt.receipt_id,
                         &outcome.execution_outcome.outcome.status,
                         false,
                         &mut bloom,
@@ -495,39 +498,55 @@ fn build_transaction(
 
 fn fill_with_submit_result(
     mut tx: AuroraTransactionBuilder,
-    result: SubmitResult,
+    result: Option<SubmitResult>,
     blooms: &mut Bloom,
 ) -> AuroraTransactionBuilder {
-    for log in result.logs.iter() {
-        blooms.accrue_bloom(&get_log_blooms(log));
-    }
+    if let Some(result) = result {
+        for log in result.logs.iter() {
+            blooms.accrue_bloom(&get_log_blooms(log));
+        }
 
-    tx = tx.gas_used(result.gas_used).logs(result.logs);
-    tx = match result.status {
-        aurora_engine::parameters::TransactionStatus::Succeed(output) => {
-            tx.status(true).output(output)
-        }
-        aurora_engine::parameters::TransactionStatus::Revert(output) => {
-            tx.status(false).output(output)
-        }
-        _ => tx.status(false).output(vec![]),
-    };
+        tx = tx.gas_used(result.gas_used).logs(result.logs);
+        tx = match result.status {
+            aurora_engine::parameters::TransactionStatus::Succeed(output) => {
+                tx.status(true).output(output)
+            }
+            aurora_engine::parameters::TransactionStatus::Revert(output) => {
+                tx.status(false).output(output)
+            }
+            _ => tx.status(false).output(vec![]),
+        };
+    } else {
+        // Filling result with default values
+        tx = tx.gas_used(0).logs(vec![]).status(false).output(vec![]);
+    }
     tx
 }
 
 fn fill_result(
     mut tx: AuroraTransactionBuilder,
+    receipt_id: CryptoHash,
     status: &ExecutionStatusView,
     submit_or_call: bool,
     blooms: &mut Bloom,
     included_outcome: Option<&TransactionIncludedOutcome>,
 ) -> Result<AuroraTransactionBuilder, RefinerError> {
+    // If the tx is failing on the NEAR runtime it should be discarded.
+    match &status {
+        ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_) => {
+            crate::metrics::FAILING_NEAR_TRANSACTION.inc();
+            tracing::debug!("Failing NEAR transaction: {:?}", status);
+            return Err(RefinerError::FailNearTx);
+        }
+        _ => {}
+    }
+
     if let Some(included_outcome) = included_outcome {
         if let Ok(execution_result) = included_outcome.maybe_result.as_ref() {
             if let Some(execution_result) = execution_result.as_ref() {
                 return Ok(match execution_result {
                     TransactionExecutionResult::Submit(result) => match result {
-                        Ok(result) => fill_with_submit_result(tx, result.clone(), blooms),
+                        Ok(result) => fill_with_submit_result(tx, Some(result.clone()), blooms),
                         Err(err) => tx
                             .gas_used(err.gas_used)
                             .logs(vec![])
@@ -554,8 +573,15 @@ fn fill_result(
             let result = base64::decode(&result).map_err(RefinerError::SuccessValueBase64Args)?;
 
             if submit_or_call {
-                let result: SubmitResult = SubmitResult::try_from_slice(result.as_slice())
-                    .map_err(RefinerError::SubmitResultArgs)?;
+                let result = decode_submit_result(result.as_slice()).ok();
+
+                if result.is_none() {
+                    tracing::warn!(
+                        "Submit Result format unknown for receipt {:?}. (FIX)",
+                        receipt_id
+                    );
+                }
+
                 tx = fill_with_submit_result(tx, result, blooms);
             } else {
                 tx = tx.gas_used(0).logs(vec![]).status(true).output(result);
@@ -568,17 +594,8 @@ fn fill_result(
             .logs(vec![])
             .status(true)
             .output(result.0.to_vec())),
-        _ => {
-            crate::metrics::FAILING_NEAR_TRANSACTION.inc();
-            tracing::warn!("Failing NEAR transaction: {:?}", status);
-            Ok(tx.gas_used(0).logs(vec![]).status(false).output(
-                vec![
-                    b"ERR_NEAR_TX:".to_vec(),
-                    format!("{:?}", status).as_bytes().to_vec(),
-                ]
-                .concat(),
-            ))
-        }
+        // Handled in the begginning of the function
+        _ => unreachable!(),
     }
 }
 
@@ -621,8 +638,8 @@ enum RefinerError {
     FunctionCallBase64Args(base64::DecodeError),
     /// Error decoding Success Value from Receipt
     SuccessValueBase64Args(base64::DecodeError),
-    /// Error decoding Submit Result
-    SubmitResultArgs(std::io::Error),
+    /// NEAR transaction failed
+    FailNearTx,
 }
 
 fn get_log_blooms(log: &ResultLog) -> Bloom {
