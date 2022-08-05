@@ -19,12 +19,17 @@ pub struct Refiner {
 #[derive(Deserialize, Clone, Debug)]
 pub enum InputMode {
     DataLake(DataLakeConfig),
-    Nearcore,
+    Nearcore(NearcoreConfig),
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct DataLakeConfig {
     pub network: Network,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct NearcoreConfig {
+    pub path: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]

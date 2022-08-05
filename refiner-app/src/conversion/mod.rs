@@ -42,7 +42,7 @@ pub fn convert(block: StreamerMessage) -> NEARBlock {
 }
 
 /// Convert between types that have the same json representation
-pub fn ch_json<'d, U: Serialize, V: DeserializeOwned>(input: U) -> V {
+pub fn ch_json<U: Serialize, V: DeserializeOwned>(input: U) -> V {
     let value = serde_json::to_value(input).unwrap();
     serde_json::from_value(value).unwrap()
 }

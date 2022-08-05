@@ -27,7 +27,6 @@ pub fn get_near_data_lake_stream(
             sender
                 .send(BlockWithMetadata::new(convert(block), ()))
                 .await
-                .map_err(|err| tracing::error!("{:?}", err))
                 .unwrap();
         }
     });

@@ -41,8 +41,8 @@ async fn main() -> Result<(), tokio::io::Error> {
         config::InputMode::DataLake(config) => {
             input::data_lake::get_near_data_lake_stream(next_block, &config)
         }
-        config::InputMode::Nearcore => {
-            unimplemented!();
+        config::InputMode::Nearcore(config) => {
+            input::nearcore::get_nearcore_stream(next_block, &config)
         }
     };
 
