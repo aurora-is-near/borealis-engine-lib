@@ -131,7 +131,7 @@ impl Refiner {
         let NEARBlock { block, shards, .. } = &block;
         // Check if all chunks were parsed
         tracing::trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);
-        if block.header.chunk_mask.len() != shards.len() {
+        if !block.header.chunk_mask.is_empty() && block.header.chunk_mask.len() != shards.len() {
             tracing::warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.chunk_mask.len(), shards.len());
             crate::metrics::MISSING_SHARDS.inc();
         }
