@@ -14,5 +14,6 @@
 
 # Rust artifacts
 target/
+storage/
 
 */test-storage/*
