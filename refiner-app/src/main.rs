@@ -32,33 +32,42 @@ async fn main() -> Result<(), tokio::io::Error> {
         serde_json::from_reader(reader).unwrap()
     };
 
-    // Load last block
-    let last_block = load_last_block_height(&config.output_storage.path).await;
-    let next_block = last_block.map(|x| x + 1).unwrap_or(0);
+    match args.command {
+        cli::Command::Run { height } => {
+            // Load last block
+            let (last_block, next_block) = if let Some(height) = height {
+                (height.checked_sub(1), height)
+            } else {
+                let last_block = load_last_block_height(&config.output_storage.path).await;
+                let next_block = last_block.map(|x| x + 1).unwrap_or(0);
+                (last_block, next_block)
+            };
 
-    // Build input stream
-    let input_stream = match config.input_mode {
-        config::InputMode::DataLake(config) => {
-            input::data_lake::get_near_data_lake_stream(next_block, &config)
+            // Build input stream
+            let input_stream = match config.input_mode {
+                config::InputMode::DataLake(config) => {
+                    input::data_lake::get_near_data_lake_stream(next_block, &config)
+                }
+                config::InputMode::Nearcore(config) => {
+                    input::nearcore::get_nearcore_stream(next_block, &config)
+                }
+            };
+
+            // Build output stream
+            let output_stream = get_output_stream(config.output_storage.clone());
+
+            // Run Refiner
+            aurora_refiner_lib::run_refiner::<_, ()>(
+                config.refiner.chain_id,
+                config.refiner.engine_path,
+                config.refiner.engine_account_id.parse().unwrap(),
+                input_stream,
+                output_stream,
+                last_block,
+            )
+            .await;
         }
-        config::InputMode::Nearcore(config) => {
-            input::nearcore::get_nearcore_stream(next_block, &config)
-        }
-    };
-
-    // Build output stream
-    let output_stream = get_output_stream(config.output_storage.clone());
-
-    // Run Refiner
-    aurora_refiner_lib::run_refiner::<_, ()>(
-        config.refiner.chain_id,
-        config.refiner.engine_path,
-        config.refiner.engine_account_id.parse().unwrap(),
-        input_stream,
-        output_stream,
-        last_block,
-    )
-    .await;
+    }
 
     Ok(())
 }

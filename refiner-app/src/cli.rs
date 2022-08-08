@@ -13,5 +13,8 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     /// Execute Refiner
-    Run,
+    Run {
+        #[clap(short = 'n', long)]
+        height: Option<u64>,
+    },
 }
