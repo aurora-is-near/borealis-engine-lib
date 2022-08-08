@@ -33,7 +33,7 @@ async fn main() -> Result<(), tokio::io::Error> {
     };
 
     // Load last block
-    let last_block = load_last_block_height(&config.output_storage.path);
+    let last_block = load_last_block_height(&config.output_storage.path).await;
     let next_block = last_block.map(|x| x + 1).unwrap_or(0);
 
     // Build input stream
