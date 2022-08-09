@@ -13,5 +13,11 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     /// Execute Refiner
-    Run,
+    Run {
+        /// [Optional] Start refiner from specified height.
+        /// If this value is passed, last height on disk will be ignored.
+        /// Setting the height is only recommended for advanced users.
+        #[clap(short = 'n', long)]
+        height: Option<u64>,
+    },
 }
