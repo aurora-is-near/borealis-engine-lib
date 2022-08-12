@@ -93,6 +93,16 @@ pub fn consume_near_block(
                 return None;
             }
 
+            // Ignore failed transactions since they do not impact the engine state
+            let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
+                near_primitives::views::ExecutionStatusView::Unknown => return None,
+                near_primitives::views::ExecutionStatusView::Failure(_) => return None,
+                near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => {
+                    Some(base64::decode(bytes).ok()?)
+                }
+                near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
+            };
+
             let (signer, maybe_tx) = match &outcome.receipt.receipt {
                 near_primitives::views::ReceiptEnumView::Action {
                     signer_id,
@@ -127,16 +137,6 @@ pub fn consume_near_block(
                         return None;
                     }
                 }
-            };
-
-            // Ignore failed transactions since they do not impact the engine state
-            let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
-                near_primitives::views::ExecutionStatusView::Unknown => return None,
-                near_primitives::views::ExecutionStatusView::Failure(_) => return None,
-                near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => {
-                    Some(base64::decode(bytes).ok()?)
-                }
-                near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
             };
 
             let transaction_messages = match maybe_batch_actions {
