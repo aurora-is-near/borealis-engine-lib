@@ -6,6 +6,33 @@ use engine_standalone_storage::sync::TransactionExecutionResult;
 use engine_standalone_storage::Storage;
 use std::collections::HashMap;
 
+/// This test confirms that the engine is able to process `submit` transactions
+/// with empty input (which failed on NEAR) without crashing.
+#[test]
+fn test_empty_submit_input() {
+    let mut test_context =
+        TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
+    let block: NEARBlock = {
+        let file = std::fs::File::open("src/res/block_71771951.json").unwrap();
+        serde_json::from_reader(file).unwrap()
+    };
+    let mut data_id_mapping = lru::LruCache::new(1000);
+    let mut outcomes_map = HashMap::new();
+    let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
+
+    crate::sync::consume_near_block(
+        &mut test_context.storage,
+        &block,
+        &mut data_id_mapping,
+        &test_context.engine_account_id,
+        chain_id,
+        Some(&mut outcomes_map),
+    )
+    .unwrap();
+
+    test_context.close()
+}
+
 /// This test processes a real block from mainnet:
 /// https://explorer.mainnet.near.org/blocks/GHxXqSq9RsV4UY6Cz4Hp64bBrqLtSAPXuzRck1KHZHH7
 /// It includes a batched transaction, as well as some normal transactions from the relayer.
