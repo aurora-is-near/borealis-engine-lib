@@ -9,13 +9,12 @@ const VERSION: u8 = 0;
 const BATCH_SIZE: usize = 100_000;
 
 pub fn init_storage(storage_path: PathBuf, account_id: String, chain_id: u64) {
-    let engine_account_id: AccountId = account_id.parse().expect(
-        format!(
+    let engine_account_id: AccountId = account_id.parse().unwrap_or_else(|_| {
+        panic!(
             "Provided engine_account_id={} is not a valid NEAR account ID",
             account_id
         )
-        .as_str(),
-    );
+    });
 
     let mut storage = migrate_block_hash(storage_path, &engine_account_id, chain_id);
 

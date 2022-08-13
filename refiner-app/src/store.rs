@@ -29,7 +29,7 @@ pub async fn store(config: &OutputStoreConfig, block: &AuroraBlock) {
     {
         let mut writer = tokio::io::BufWriter::new(file);
         let data = serde_json::to_string(block).unwrap();
-        writer.write(data.as_bytes()).await.unwrap();
+        writer.write_all(data.as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
     }
 
@@ -99,7 +99,7 @@ async fn save_last_block_height<P: AsRef<std::path::Path>>(storage_path: P, bloc
     {
         let mut writer = tokio::io::BufWriter::new(file);
         let data = serde_json::to_string(&block_height).unwrap();
-        writer.write(data.as_bytes()).await.unwrap();
+        writer.write_all(data.as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
     }
 

@@ -3,6 +3,8 @@ mod config;
 mod conversion;
 mod input;
 mod store;
+use std::path::PathBuf;
+
 use clap::Parser;
 use cli::Cli;
 
@@ -55,6 +57,13 @@ async fn main() -> Result<(), tokio::io::Error> {
 
             // Build output stream
             let output_stream = get_output_stream(config.output_storage.clone());
+
+            // Init storage
+            aurora_refiner_lib::storage::init_storage(
+                PathBuf::from(&config.refiner.engine_path),
+                config.refiner.engine_account_id.parse().unwrap(),
+                config.refiner.chain_id,
+            );
 
             // Run Refiner
             aurora_refiner_lib::run_refiner::<_, ()>(
