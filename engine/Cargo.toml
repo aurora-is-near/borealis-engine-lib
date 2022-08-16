@@ -13,14 +13,14 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std"] }
 aurora-refiner-types = { path = "../refiner-types" }
 base64 = "0.13.0"
-borsh = { version = "0.8.2" }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
+borsh = { version = "0.9.3" }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 lru = "0.7.3"
 tracing = "0.1"
 strum = {version = "0.24.0", features = ["derive"]}
