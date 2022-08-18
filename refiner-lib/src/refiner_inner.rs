@@ -202,6 +202,9 @@ impl Refiner {
                                     receipt_hash: result_hash,
                                 });
                         }
+                        Err(RefinerError::FailNearTx) => {
+                            tracing::trace!(target: "transactions", "Failing NEAR Transaction at block: {}", block.header.hash);
+                        }
                         Err(err) => {
                             tracing::error!(target: "transactions", "Error while building transaction: {:?}. Block: {}", err, block.header.hash);
                             crate::metrics::ERROR_BUILDING_TRANSACTION.inc();
