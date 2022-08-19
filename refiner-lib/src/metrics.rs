@@ -153,6 +153,21 @@ lazy_static! {
         "Number of blocks processed"
     )
     .unwrap();
+
+    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE: IntCounter = register_int_counter!(
+                "refiner_tx_type_factory_update",
+                        "Number of transactions of type: factory_update"
+                            ).unwrap();
+
+        pub static ref TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION: IntCounter = register_int_counter!(
+                    "refiner_tx_type_factory_update_address_version",
+                            "Number of transactions of type: factory_update_address_version"
+                                ).unwrap();
+
+            pub static ref TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS: IntCounter = register_int_counter!(
+                        "refiner_tx_type_factory_set_wnear_address",
+                                "Number of transactions of type: factory_set_wnear_address"
+                                    ).unwrap();
 }
 
 pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
@@ -216,6 +231,15 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::NewEngine => {
             TRANSACTION_TYPE_NEW_ENGINE.inc();
+        }
+        InnerTransactionKind::FactoryUpdate => {
+            TRANSACTION_TYPE_FACTORY_UPDATE.inc();
+        }
+        InnerTransactionKind::FactoryUpdateAddressVersion => {
+            TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION.inc();
+        }
+        InnerTransactionKind::FactorySetWNearAddress => {
+            TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS.inc();
         }
         InnerTransactionKind::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();

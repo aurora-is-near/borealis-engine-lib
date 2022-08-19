@@ -5,7 +5,7 @@ use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
-    EthTransactionKind, NormalizedEthTransaction, ParseTransactionError,
+    Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
@@ -21,7 +21,7 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh_0_9_3::BorshSerialize;
+use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
@@ -152,10 +152,9 @@ impl Refiner {
         {
             // Using recent version of borsh to serialize the receipt.
             // Include in the size of the block the size of this transaction.
-            self.partial_state.size +=
-                borsh_0_9_3::BorshSerialize::try_to_vec(&execution_outcome.receipt)
-                    .unwrap()
-                    .len() as u64;
+            self.partial_state.size += BorshSerialize::try_to_vec(&execution_outcome.receipt)
+                .unwrap()
+                .len() as u64;
         }
 
         match &execution_outcome.receipt.receipt {
@@ -358,15 +357,13 @@ fn build_transaction(
 
                     let eth_tx: NormalizedEthTransaction =
                         EthTransactionKind::try_from(bytes.as_slice())
-                            .map_err(RefinerError::ParseTransaction)?
-                            .into();
+                            .and_then(TryFrom::try_from)
+                            .map_err(RefinerError::ParseTransaction)?;
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
                     tx = tx
                         .hash(hash)
-                        .from(eth_tx.address.unwrap_or_else(|| {
-                            near_account_to_evm_address(outcome.receipt.predecessor_id.as_bytes())
-                        }))
+                        .from(eth_tx.address)
                         .to(eth_tx.to)
                         .nonce(eth_tx.nonce)
                         .gas_limit(eth_tx.gas_limit)

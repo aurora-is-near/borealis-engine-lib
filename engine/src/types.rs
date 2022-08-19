@@ -43,6 +43,12 @@ pub enum InnerTransactionKind {
     NewConnector,
     #[strum(serialize = "new")]
     NewEngine,
+    #[strum(serialize = "factory_update")]
+    FactoryUpdate,
+    #[strum(serialize = "factory_update_address_version")]
+    FactoryUpdateAddressVersion,
+    #[strum(serialize = "factory_set_wnear_address")]
+    FactorySetWNearAddress,
     Unknown,
 }
 
@@ -70,6 +76,13 @@ impl From<TransactionKind> for InnerTransactionKind {
             TransactionKind::SetConnectorData(_) => InnerTransactionKind::SetConnectorData,
             TransactionKind::NewConnector(_) => InnerTransactionKind::NewConnector,
             TransactionKind::NewEngine(_) => InnerTransactionKind::NewEngine,
+            TransactionKind::FactoryUpdate(_) => InnerTransactionKind::FactoryUpdate,
+            TransactionKind::FactoryUpdateAddressVersion(_) => {
+                InnerTransactionKind::FactoryUpdateAddressVersion
+            }
+            TransactionKind::FactorySetWNearAddress(_) => {
+                InnerTransactionKind::FactorySetWNearAddress
+            }
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
     }

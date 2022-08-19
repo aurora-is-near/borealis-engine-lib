@@ -11,17 +11,16 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false, features = ["std"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std"] }
 aurora-refiner-types = { path = "../refiner-types" }
 aurora-standalone-engine = { path = "../engine" }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "ee58890ef1e6c8631a21b1ef69e2111398451d45", default-features = false }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false }
 
 base64 = "0.13.0"
-borsh = { version = "0.8.2", default-features = false }
-borsh_0_9_3 = { package="borsh", version = "0.9.3", default-features = false }
+borsh = { version = "0.9.3", default-features = false }
 triehash-ethereum = { git = "https://github.com/openethereum/openethereum" }
 primitive-types = "0.7.2"
 byteorder = "1.4.3"

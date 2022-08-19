@@ -103,7 +103,7 @@ pub fn consume_near_block(
                 near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
             };
 
-            let (signer, maybe_tx) = match &outcome.receipt.receipt {
+            let (signer, maybe_tx, promise_data) = match &outcome.receipt.receipt {
                 near_primitives::views::ReceiptEnumView::Action {
                     signer_id,
                     actions,
@@ -116,7 +116,7 @@ pub fn consume_near_block(
                         .collect();
                     let maybe_tx = parse_actions(actions, &input_data);
 
-                    (signer_id, maybe_tx)
+                    (signer_id, maybe_tx, input_data)
                 }
                 near_primitives::views::ReceiptEnumView::Data { .. } => return None,
             };
@@ -150,6 +150,7 @@ pub fn consume_near_block(
                         caller,
                         attached_near,
                         transaction: *transaction_kind,
+                        promise_data,
                     };
                     position_counter += 1;
 
@@ -178,6 +179,7 @@ pub fn consume_near_block(
                                 caller: caller.clone(),
                                 attached_near,
                                 transaction: transaction_kind,
+                                promise_data: promise_data.clone(),
                             };
                             position_counter += 1;
 
@@ -669,6 +671,16 @@ fn parse_action(
                 InnerTransactionKind::NewEngine => {
                     let args = parameters::NewCallArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::NewEngine(args)
+                }
+                InnerTransactionKind::FactoryUpdate => TransactionKind::FactoryUpdate(bytes),
+                InnerTransactionKind::FactoryUpdateAddressVersion => {
+                    let args = aurora_engine::xcc::AddressVersionUpdateArgs::try_from_slice(&bytes)
+                        .ok()?;
+                    TransactionKind::FactoryUpdateAddressVersion(args)
+                }
+                InnerTransactionKind::FactorySetWNearAddress => {
+                    let address = Address::try_from_slice(&bytes).ok()?;
+                    TransactionKind::FactorySetWNearAddress(address)
                 }
                 InnerTransactionKind::Unknown => {
                     warn!("Unknown method name: {}", method_name);
