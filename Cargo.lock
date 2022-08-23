@@ -452,6 +452,8 @@ dependencies = [
 name = "aurora-refiner"
 version = "0.1.0"
 dependencies = [
+ "actix",
+ "actix-rt",
  "aurora-refiner-lib",
  "aurora-refiner-types",
  "clap",
