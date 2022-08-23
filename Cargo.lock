@@ -68,7 +68,7 @@ dependencies = [
  "actix-rt",
  "actix-service",
  "actix-utils",
- "ahash 0.7.6",
+ "ahash",
  "base64 0.13.0",
  "bitflags",
  "brotli",
@@ -203,7 +203,7 @@ dependencies = [
  "actix-service",
  "actix-utils",
  "actix-web-codegen",
- "ahash 0.7.6",
+ "ahash",
  "bytes",
  "bytestring",
  "cfg-if 1.0.0",
@@ -265,12 +265,6 @@ name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
-
-[[package]]
-name = "ahash"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
 
 [[package]]
 name = "ahash"
@@ -380,59 +374,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-bn"
-version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-bn.git#8f1743884061981cac84388862e2763b2aa09307"
-dependencies = [
- "byteorder",
- "getrandom 0.2.7",
- "rand 0.8.5",
- "serde",
-]
-
-[[package]]
-name = "aurora-engine"
-version = "2.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45#ee58890ef1e6c8631a21b1ef69e2111398451d45"
-dependencies = [
- "aurora-bn",
- "aurora-engine-precompiles 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "base64 0.13.0",
- "borsh 0.8.2",
- "byte-slice-cast 1.2.1",
- "ethabi 14.1.0",
- "evm 0.33.1",
- "evm-core 0.33.0",
- "hex",
- "libsecp256k1",
- "logos",
- "num",
- "primitive-types 0.10.1",
- "ripemd160",
- "rjson",
- "rlp 0.5.1",
- "serde",
- "sha3 0.9.1",
- "wee_alloc",
-]
-
-[[package]]
 name = "aurora-engine"
 version = "2.7.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "aurora-engine-precompiles 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
+ "aurora-engine-precompiles",
+ "aurora-engine-sdk",
+ "aurora-engine-transactions",
+ "aurora-engine-types",
  "base64 0.13.0",
- "borsh 0.9.3",
+ "borsh",
  "byte-slice-cast 1.2.1",
- "ethabi 17.2.0",
- "evm 0.35.0",
+ "ethabi",
+ "evm",
  "hex",
  "rjson",
  "rlp 0.5.1",
@@ -445,62 +399,29 @@ name = "aurora-engine-precompiles"
 version = "1.0.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "borsh 0.9.3",
- "ethabi 17.2.0",
- "evm 0.35.0",
+ "aurora-engine-sdk",
+ "aurora-engine-types",
+ "borsh",
+ "ethabi",
+ "evm",
  "hex",
  "libsecp256k1",
  "num",
  "ripemd",
  "sha2 0.10.2",
- "sha3 0.10.2",
+ "sha3",
  "zeropool-bn",
 ]
 
 [[package]]
-name = "aurora-engine-precompiles"
-version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45#ee58890ef1e6c8631a21b1ef69e2111398451d45"
-dependencies = [
- "aurora-bn",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "base64 0.13.0",
- "borsh 0.8.2",
- "ethabi 14.1.0",
- "evm 0.33.1",
- "evm-core 0.33.0",
- "hex",
- "libsecp256k1",
- "num",
- "primitive-types 0.10.1",
- "ripemd160",
- "sha2 0.9.9",
- "sha3 0.9.1",
-]
-
-[[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "borsh 0.9.3",
+ "aurora-engine-types",
+ "borsh",
  "sha2 0.10.2",
- "sha3 0.10.2",
-]
-
-[[package]]
-name = "aurora-engine-sdk"
-version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45#ee58890ef1e6c8631a21b1ef69e2111398451d45"
-dependencies = [
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "borsh 0.8.2",
- "sha2 0.9.9",
- "sha3 0.9.1",
+ "sha3",
 ]
 
 [[package]]
@@ -508,24 +429,10 @@ name = "aurora-engine-transactions"
 version = "1.0.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "aurora-engine-precompiles 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "evm 0.35.0",
- "rlp 0.5.1",
- "serde",
-]
-
-[[package]]
-name = "aurora-engine-transactions"
-version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45#ee58890ef1e6c8631a21b1ef69e2111398451d45"
-dependencies = [
- "aurora-engine-precompiles 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "evm 0.33.1",
- "hex",
+ "aurora-engine-precompiles",
+ "aurora-engine-sdk",
+ "aurora-engine-types",
+ "evm",
  "rlp 0.5.1",
  "serde",
 ]
@@ -535,31 +442,20 @@ name = "aurora-engine-types"
 version = "1.0.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "hex",
  "primitive-types 0.11.1",
  "serde",
 ]
 
 [[package]]
-name = "aurora-engine-types"
-version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45#ee58890ef1e6c8631a21b1ef69e2111398451d45"
-dependencies = [
- "borsh 0.8.2",
- "ethabi 14.1.0",
- "hex",
- "primitive-types 0.10.1",
- "serde",
- "sha3 0.9.1",
-]
-
-[[package]]
 name = "aurora-refiner"
 version = "0.1.0"
 dependencies = [
+ "actix",
+ "actix-rt",
  "aurora-refiner-lib",
- "aurora-refiner-types 0.1.0",
+ "aurora-refiner-types",
  "clap",
  "futures",
  "itertools",
@@ -577,16 +473,14 @@ dependencies = [
 name = "aurora-refiner-lib"
 version = "0.1.0"
 dependencies = [
- "aurora-engine 2.7.0",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-refiner-types 0.1.0",
+ "aurora-engine",
+ "aurora-engine-sdk",
+ "aurora-engine-transactions",
+ "aurora-engine-types",
+ "aurora-refiner-types",
  "aurora-standalone-engine",
  "base64 0.13.0",
- "borealis-rs",
- "borealis-types",
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "derive_builder 0.10.2",
  "engine-standalone-storage",
@@ -603,7 +497,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
- "sha3 0.10.2",
+ "sha3",
  "tokio",
  "tracing",
  "triehash-ethereum",
@@ -613,48 +507,30 @@ dependencies = [
 name = "aurora-refiner-types"
 version = "0.1.0"
 dependencies = [
- "aurora-engine 2.7.0",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
+ "aurora-engine",
+ "aurora-engine-sdk",
+ "aurora-engine-transactions",
+ "aurora-engine-types",
  "derive_builder 0.10.2",
  "fixed-hash 0.7.0",
  "impl-serde",
  "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "near-primitives 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "serde",
- "sha3 0.10.2",
-]
-
-[[package]]
-name = "aurora-refiner-types"
-version = "0.1.0"
-source = "git+ssh://git@github.com/aurora-is-near/borealis-engine-lib.git?tag=v0.13.0-pre.1#79aded306ade99da4986fdf6bff79d3367c01253"
-dependencies = [
- "aurora-engine 2.1.0",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=ee58890ef1e6c8631a21b1ef69e2111398451d45)",
- "derive_builder 0.10.2",
- "fixed-hash 0.7.0",
- "impl-serde",
- "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
- "near-primitives 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
- "serde",
- "sha3 0.10.2",
+ "sha3",
 ]
 
 [[package]]
 name = "aurora-standalone-engine"
 version = "0.1.0"
 dependencies = [
- "aurora-engine 2.7.0",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-refiner-types 0.1.0",
+ "aurora-engine",
+ "aurora-engine-sdk",
+ "aurora-engine-transactions",
+ "aurora-engine-types",
+ "aurora-refiner-types",
  "base64 0.13.0",
- "borsh 0.9.3",
+ "borsh",
  "engine-standalone-storage",
  "hex",
  "lru",
@@ -703,7 +579,7 @@ dependencies = [
  "actix-service",
  "actix-tls",
  "actix-utils",
- "ahash 0.7.6",
+ "ahash",
  "base64 0.13.0",
  "bytes",
  "cfg-if 1.0.0",
@@ -1054,12 +930,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
-name = "beef"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1135,7 +1005,7 @@ checksum = "0a4e37d16930f5459780f5621038b6382b9bb37c19016f39fb6b5808d831f174"
 dependencies = [
  "crypto-mac",
  "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "opaque-debug",
 ]
 
 [[package]]
@@ -1155,23 +1025,10 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"
-dependencies = [
- "block-padding 0.1.5",
- "byte-tools",
- "byteorder",
- "generic-array 0.12.4",
-]
-
-[[package]]
-name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "block-padding 0.2.1",
  "generic-array 0.14.6",
 ]
 
@@ -1185,87 +1042,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-padding"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
-dependencies = [
- "byte-tools",
-]
-
-[[package]]
-name = "block-padding"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
-
-[[package]]
-name = "borealis-rs"
-version = "0.1.0"
-source = "git+ssh://git@github.com/aurora-is-near/borealis.rs.git?tag=borealis-rs-v0.1.1#6c4a1a4be71c602a58f24ad6d962033c101f4d2e"
-dependencies = [
- "aurora-refiner-types 0.1.0 (git+ssh://git@github.com/aurora-is-near/borealis-engine-lib.git?tag=v0.13.0-pre.1)",
- "clap",
- "lz4",
- "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-primitives 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "num-derive",
- "num-traits",
- "rand 0.8.5",
- "serde",
- "serde_bytes",
- "serde_cbor",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "borealis-types"
-version = "0.9.0"
-source = "git+ssh://git@github.com/aurora-is-near/borealis.rs.git?tag=borealis-rs-v0.1.1#6c4a1a4be71c602a58f24ad6d962033c101f4d2e"
-dependencies = [
- "lz4",
- "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-primitives 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "rand 0.8.5",
- "serde",
- "serde_bytes",
- "serde_cbor",
- "serde_json",
-]
-
-[[package]]
-name = "borsh"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09a7111f797cc721407885a323fb071636aee57f750b1a4ddc27397eba168a74"
-dependencies = [
- "borsh-derive 0.8.2",
- "hashbrown 0.9.1",
-]
-
-[[package]]
 name = "borsh"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
 dependencies = [
- "borsh-derive 0.9.3",
+ "borsh-derive",
  "hashbrown 0.11.2",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "307f3740906bac2c118a8122fe22681232b244f1369273e45f1156b45c43d2dd"
-dependencies = [
- "borsh-derive-internal 0.8.2",
- "borsh-schema-derive-internal 0.8.2",
- "proc-macro-crate 0.1.5",
- "proc-macro2",
- "syn",
 ]
 
 [[package]]
@@ -1274,21 +1057,10 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal 0.9.3",
- "borsh-schema-derive-internal 0.9.3",
+ "borsh-derive-internal",
+ "borsh-schema-derive-internal",
  "proc-macro-crate 0.1.5",
  "proc-macro2",
- "syn",
-]
-
-[[package]]
-name = "borsh-derive-internal"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2104c73179359431cc98e016998f2f23bc7a05bc53e79741bcba705f30047bc"
-dependencies = [
- "proc-macro2",
- "quote",
  "syn",
 ]
 
@@ -1297,17 +1069,6 @@ name = "borsh-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5449c28a7b352f2d1e592a8a28bf139bc71afb0764a14f3c02500935d8c44065"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "borsh-schema-derive-internal"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae29eb8418fcd46f723f8691a2ac06857d31179d33d2f2d91eb13967de97c728"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1369,12 +1130,6 @@ name = "byte-slice-cast"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87c5fdd0166095e1d463fc6cc01aa8ce547ad77a4e84d42eb6762b084e28067e"
-
-[[package]]
-name = "byte-tools"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytecheck"
@@ -2182,13 +1937,13 @@ name = "engine-standalone-storage"
 version = "0.1.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0#22c176c572bc32e9951348892401d9039b8efef8"
 dependencies = [
- "aurora-engine 2.7.0",
- "aurora-engine-sdk 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-transactions 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.7.0)",
+ "aurora-engine",
+ "aurora-engine-sdk",
+ "aurora-engine-transactions",
+ "aurora-engine-types",
  "base64 0.13.0",
- "borsh 0.9.3",
- "evm-core 0.35.0",
+ "borsh",
+ "evm-core",
  "postgres",
  "rocksdb",
  "serde",
@@ -2265,28 +2020,13 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "14.1.0"
-source = "git+https://github.com/darwinia-network/ethabi?branch=xavier-no-std#09da0834d95f8b43377ca22d7b1c97a2401f4b0c"
-dependencies = [
- "anyhow",
- "ethereum-types 0.12.1",
- "hex",
- "serde",
- "serde_json",
- "sha3 0.9.1",
- "thiserror",
- "uint 0.9.3",
-]
-
-[[package]]
-name = "ethabi"
 version = "17.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4966fba78396ff92db3b817ee71143eccd98acf0f876b8d600e585a670c5d1b"
 dependencies = [
  "ethereum-types 0.13.1",
  "hex",
- "sha3 0.10.2",
+ "sha3",
  "thiserror",
  "uint 0.9.3",
 ]
@@ -2301,20 +2041,6 @@ dependencies = [
  "fixed-hash 0.6.1",
  "impl-rlp 0.2.1",
  "impl-serde",
- "tiny-keccak 2.0.2",
-]
-
-[[package]]
-name = "ethbloom"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfb684ac8fa8f6c5759f788862bb22ec6fe3cb392f6bfd08e3c64b603661e3f8"
-dependencies = [
- "crunchy",
- "fixed-hash 0.7.0",
- "impl-codec 0.5.1",
- "impl-rlp 0.3.0",
- "scale-info 1.0.0",
  "tiny-keccak 2.0.2",
 ]
 
@@ -2335,25 +2061,6 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34c90e0a755da706ce0970ec0fa8cc48aabcc8e8efa1245336acf718dab06ffe"
-dependencies = [
- "bytes",
- "ethereum-types 0.12.1",
- "hash-db 0.15.2",
- "hash256-std-hasher",
- "parity-scale-codec 2.3.1",
- "rlp 0.5.1",
- "rlp-derive",
- "scale-info 1.0.0",
- "serde",
- "sha3 0.9.1",
- "triehash 0.8.4",
-]
-
-[[package]]
-name = "ethereum"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23750149fe8834c0e24bb9adcbacbe06c45b9861f15df53e09f26cb7c4ab91ef"
@@ -2367,7 +2074,7 @@ dependencies = [
  "rlp-derive",
  "scale-info 2.1.2",
  "serde",
- "sha3 0.10.2",
+ "sha3",
  "triehash 0.8.4",
 ]
 
@@ -2383,21 +2090,6 @@ dependencies = [
  "impl-serde",
  "primitive-types 0.7.3",
  "uint 0.8.5",
-]
-
-[[package]]
-name = "ethereum-types"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05136f7057fe789f06e6d41d07b34e6f70d8c86e5693b60f97aaa6553553bdaf"
-dependencies = [
- "ethbloom 0.11.1",
- "fixed-hash 0.7.0",
- "impl-codec 0.5.1",
- "impl-rlp 0.3.0",
- "primitive-types 0.10.1",
- "scale-info 1.0.0",
- "uint 0.9.3",
 ]
 
 [[package]]
@@ -2418,54 +2110,22 @@ dependencies = [
 
 [[package]]
 name = "evm"
-version = "0.33.1"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?rev=37448b6cacd98b06282cff5a559684505c29bd2b#37448b6cacd98b06282cff5a559684505c29bd2b"
-dependencies = [
- "auto_impl",
- "environmental",
- "ethereum 0.11.1",
- "evm-core 0.33.0",
- "evm-gasometer 0.33.0",
- "evm-runtime 0.33.0",
- "log",
- "parity-scale-codec 2.3.1",
- "primitive-types 0.10.1",
- "rlp 0.5.1",
- "scale-info 1.0.0",
- "serde",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
 version = "0.35.0"
 source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.36.0-aurora#7dfbeb535e7105a7531a4e6c559f0f5d45f20014"
 dependencies = [
  "auto_impl",
  "environmental",
- "ethereum 0.12.0",
- "evm-core 0.35.0",
- "evm-gasometer 0.35.0",
- "evm-runtime 0.35.0",
+ "ethereum",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec 3.1.5",
  "primitive-types 0.11.1",
  "rlp 0.5.1",
  "scale-info 2.1.2",
  "serde",
- "sha3 0.10.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.33.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?rev=37448b6cacd98b06282cff5a559684505c29bd2b#37448b6cacd98b06282cff5a559684505c29bd2b"
-dependencies = [
- "funty 1.1.0",
- "parity-scale-codec 2.3.1",
- "primitive-types 0.10.1",
- "scale-info 1.0.0",
- "serde",
+ "sha3",
 ]
 
 [[package]]
@@ -2481,36 +2141,13 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.33.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?rev=37448b6cacd98b06282cff5a559684505c29bd2b#37448b6cacd98b06282cff5a559684505c29bd2b"
-dependencies = [
- "environmental",
- "evm-core 0.33.0",
- "evm-runtime 0.33.0",
- "primitive-types 0.10.1",
-]
-
-[[package]]
-name = "evm-gasometer"
 version = "0.35.0"
 source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.36.0-aurora#7dfbeb535e7105a7531a4e6c559f0f5d45f20014"
 dependencies = [
  "environmental",
- "evm-core 0.35.0",
- "evm-runtime 0.35.0",
+ "evm-core",
+ "evm-runtime",
  "primitive-types 0.11.1",
-]
-
-[[package]]
-name = "evm-runtime"
-version = "0.33.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?rev=37448b6cacd98b06282cff5a559684505c29bd2b#37448b6cacd98b06282cff5a559684505c29bd2b"
-dependencies = [
- "auto_impl",
- "environmental",
- "evm-core 0.33.0",
- "primitive-types 0.10.1",
- "sha3 0.8.2",
 ]
 
 [[package]]
@@ -2520,9 +2157,9 @@ source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.36.0-aurora
 dependencies = [
  "auto_impl",
  "environmental",
- "evm-core 0.35.0",
+ "evm-core",
  "primitive-types 0.11.1",
- "sha3 0.10.2",
+ "sha3",
 ]
 
 [[package]]
@@ -2774,10 +2411,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6"
 dependencies = [
  "cfg-if 1.0.0",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -2845,20 +2480,11 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-dependencies = [
- "ahash 0.4.7",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash 0.7.6",
+ "ahash",
 ]
 
 [[package]]
@@ -2867,7 +2493,7 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 dependencies = [
- "ahash 0.7.6",
+ "ahash",
 ]
 
 [[package]]
@@ -3391,29 +3017,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "logos"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf8b031682c67a8e3d5446840f9573eb7fe26efe7ec8d195c9ac4c0647c502f1"
-dependencies = [
- "logos-derive",
-]
-
-[[package]]
-name = "logos-derive"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1d849148dbaf9661a6151d1ca82b13bb4c4c128146a88d05253b38d4e2f496c"
-dependencies = [
- "beef",
- "fnv",
- "proc-macro2",
- "quote",
- "regex-syntax",
- "syn",
-]
-
-[[package]]
 name = "loupe"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3440,26 +3043,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e999beba7b6e8345721bd280141ed958096a2e4abdf74f67ff4ce49b4b54e47a"
 dependencies = [
  "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "lz4"
-version = "1.23.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4edcb94251b1c375c459e5abe9fb0168c1c826c3370172684844f8f3f8d1a885"
-dependencies = [
- "libc",
- "lz4-sys",
-]
-
-[[package]]
-name = "lz4-sys"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7be8908e2ed6f31c02db8a9fa962f03e36c53fbfde437363eae3306b85d7e17"
-dependencies = [
- "cc",
- "libc",
 ]
 
 [[package]]
@@ -3623,16 +3206,7 @@ name = "near-account-id"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6bd5496d506a2f16f46"
 dependencies = [
- "borsh 0.9.3",
- "serde",
-]
-
-[[package]]
-name = "near-account-id"
-version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "serde",
 ]
 
@@ -3641,7 +3215,7 @@ name = "near-account-id"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "serde",
 ]
 
@@ -3651,7 +3225,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b81ee2cf429b8bc04046d94f725a4f192fe7b13f42d76649d0177fd9ea719d8"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "serde",
 ]
 
@@ -3669,7 +3243,7 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "actix",
- "borsh 0.9.3",
+ "borsh",
  "chrono",
  "crossbeam-channel",
  "delay-detector",
@@ -3729,7 +3303,7 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "actix",
- "borsh 0.9.3",
+ "borsh",
  "chrono",
  "futures",
  "lru",
@@ -3765,7 +3339,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "ansi_term",
- "borsh 0.9.3",
+ "borsh",
  "chrono",
  "delay-detector",
  "futures",
@@ -3824,7 +3398,7 @@ source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6
 dependencies = [
  "arrayref",
  "blake2",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "c2-chacha",
  "curve25519-dalek",
@@ -3846,36 +3420,11 @@ dependencies = [
 [[package]]
 name = "near-crypto"
 version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "arrayref",
- "blake2",
- "borsh 0.9.3",
- "bs58",
- "c2-chacha",
- "curve25519-dalek",
- "derive_more",
- "ed25519-dalek",
- "near-account-id 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "once_cell",
- "parity-secp256k1",
- "primitive-types 0.10.1",
- "rand 0.7.3",
- "rand_core 0.5.1",
- "serde",
- "serde_json",
- "subtle",
- "thiserror",
-]
-
-[[package]]
-name = "near-crypto"
-version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "arrayref",
  "blake2",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "c2-chacha",
  "curve25519-dalek",
@@ -3901,7 +3450,7 @@ checksum = "d301d3ca4f59ab69c4b8ff625e7b2ef624345f69ab651d15c5fd59382096d2b1"
 dependencies = [
  "arrayref",
  "blake2",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "c2-chacha",
  "curve25519-dalek",
@@ -3925,7 +3474,7 @@ name = "near-epoch-manager"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "near-cache",
  "near-chain",
  "near-chain-configs",
@@ -4107,7 +3656,7 @@ dependencies = [
  "actix",
  "anyhow",
  "assert_matches",
- "borsh 0.9.3",
+ "borsh",
  "bytes",
  "bytesize",
  "chrono",
@@ -4151,7 +3700,7 @@ source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943ea
 dependencies = [
  "actix",
  "anyhow",
- "borsh 0.9.3",
+ "borsh",
  "chrono",
  "near-crypto 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
  "near-primitives 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
@@ -4215,7 +3764,7 @@ name = "near-pool"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "near-crypto 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
  "near-metrics",
  "near-primitives 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
@@ -4228,7 +3777,7 @@ name = "near-primitives"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6bd5496d506a2f16f46"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "bytesize",
  "chrono",
@@ -4252,38 +3801,9 @@ dependencies = [
 [[package]]
 name = "near-primitives"
 version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "borsh 0.9.3",
- "byteorder",
- "bytesize",
- "cfg-if 1.0.0",
- "chrono",
- "derive_more",
- "easy-ext",
- "hex",
- "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-primitives-core 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-rpc-error-macro 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-vm-errors 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "num-rational 0.3.2",
- "once_cell",
- "primitive-types 0.10.1",
- "rand 0.7.3",
- "reed-solomon-erasure",
- "serde",
- "serde_json",
- "smart-default",
- "strum 0.24.1",
- "thiserror",
-]
-
-[[package]]
-name = "near-primitives"
-version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "bytesize",
  "cfg-if 1.0.0",
@@ -4313,7 +3833,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad6a0b49d322ebda81ec4fdd99dca804526539673d0b12133286e0d7934f4802"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "bytesize",
  "chrono",
@@ -4339,7 +3859,7 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6bd5496d506a2f16f46"
 dependencies = [
  "base64 0.11.0",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "derive_more",
  "near-account-id 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
@@ -4352,26 +3872,10 @@ dependencies = [
 [[package]]
 name = "near-primitives-core"
 version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "base64 0.11.0",
- "borsh 0.9.3",
- "bs58",
- "derive_more",
- "near-account-id 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "num-rational 0.3.2",
- "serde",
- "sha2 0.10.2",
- "strum 0.24.1",
-]
-
-[[package]]
-name = "near-primitives-core"
-version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "base64 0.11.0",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "derive_more",
  "near-account-id 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
@@ -4388,7 +3892,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaae2d2271ecdb0e3d90c11724cdb46d7d5bb50838fdb3941bfc381634cf08a3"
 dependencies = [
  "base64 0.11.0",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "derive_more",
  "near-account-id 0.12.0",
@@ -4452,16 +3956,6 @@ dependencies = [
 [[package]]
 name = "near-rpc-error-core"
 version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "quote",
- "serde",
- "syn",
-]
-
-[[package]]
-name = "near-rpc-error-core"
-version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "quote",
@@ -4486,16 +3980,6 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6bd5496d506a2f16f46"
 dependencies = [
  "near-rpc-error-core 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
- "serde",
- "syn",
-]
-
-[[package]]
-name = "near-rpc-error-macro"
-version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "near-rpc-error-core 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
  "serde",
  "syn",
 ]
@@ -4531,7 +4015,7 @@ name = "near-store"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "bytesize",
  "derive_more",
@@ -4580,7 +4064,7 @@ name = "near-vm-errors"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?tag=1.26.1#28d0603634454ef9ff43d6bd5496d506a2f16f46"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "near-account-id 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "near-rpc-error-macro 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "serde",
@@ -4589,20 +4073,9 @@ dependencies = [
 [[package]]
 name = "near-vm-errors"
 version = "0.0.0"
-source = "git+https://github.com/near/nearcore?tag=1.28.0#ef8862918ba8f7f5c31e47c7922a3fea4f30cedf"
-dependencies = [
- "borsh 0.9.3",
- "near-account-id 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "near-rpc-error-macro 0.0.0 (git+https://github.com/near/nearcore?tag=1.28.0)",
- "serde",
-]
-
-[[package]]
-name = "near-vm-errors"
-version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "near-account-id 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
  "near-rpc-error-macro 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
  "serde",
@@ -4614,7 +4087,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5092bbad4e16e48423d9be92e18b84af8e128c263df66d867a3f99c560b3cb28"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "near-account-id 0.12.0",
  "near-rpc-error-macro 0.12.0",
  "serde",
@@ -4626,7 +4099,7 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "base64 0.13.0",
- "borsh 0.9.3",
+ "borsh",
  "bs58",
  "byteorder",
  "near-account-id 0.0.0 (git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e)",
@@ -4637,7 +4110,7 @@ dependencies = [
  "ripemd",
  "serde",
  "sha2 0.10.2",
- "sha3 0.10.2",
+ "sha3",
  "zeropool-bn",
 ]
 
@@ -4647,7 +4120,7 @@ version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
  "anyhow",
- "borsh 0.9.3",
+ "borsh",
  "loupe",
  "memoffset",
  "near-cache",
@@ -4683,7 +4156,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "awc",
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "chrono",
  "delay-detector",
@@ -4748,7 +4221,7 @@ name = "node-runtime"
 version = "0.0.0"
 source = "git+https://github.com/near/nearcore?rev=04b35b9cc10b9ec94b9436cd943eac14f34f8e2e#04b35b9cc10b9ec94b9436cd943eac14f34f8e2e"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "hex",
  "near-chain-configs",
@@ -4833,17 +4306,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ae39348c8bc5fbd7f40c727a9925f03517afd2ab27d46702108b6a7e5414c19"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -4952,12 +4414,6 @@ name = "once_cell"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
-
-[[package]]
-name = "opaque-debug"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "opaque-debug"
@@ -5453,9 +4909,6 @@ checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
 dependencies = [
  "fixed-hash 0.7.0",
  "impl-codec 0.5.1",
- "impl-rlp 0.3.0",
- "impl-serde",
- "scale-info 1.0.0",
  "uint 0.9.3",
 ]
 
@@ -6029,17 +5482,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ripemd160"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eca4ecc81b7f313189bf73ce724400a07da2a6dac19588b03c8bd76a2dcc251"
-dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
 name = "rjson"
 version = "0.3.2"
 source = "git+https://github.com/aurora-is-near/rjson?rev=cc3da949#cc3da9495e7e520900d66d2b517539f74fff93cf"
@@ -6211,7 +5653,6 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c55b744399c25532d63a0d2789b109df8d46fc93752d46b0782991a931a782f"
 dependencies = [
- "bitvec 0.20.4",
  "cfg-if 1.0.0",
  "derive_more",
  "parity-scale-codec 2.3.1",
@@ -6445,7 +5886,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "opaque-debug",
 ]
 
 [[package]]
@@ -6457,31 +5898,6 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
  "digest 0.10.3",
-]
-
-[[package]]
-name = "sha3"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd26bc0e7a2e3a7c959bc494caf58b72ee0c71d67704e9520f736ca7e4853ecf"
-dependencies = [
- "block-buffer 0.7.3",
- "byte-tools",
- "digest 0.8.1",
- "keccak",
- "opaque-debug 0.2.3",
-]
-
-[[package]]
-name = "sha3"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f81199417d4e5de3f04b1e871023acea7389672c4135918f05aa9cbf2f2fa809"
-dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
- "keccak",
- "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -7516,7 +6932,7 @@ checksum = "5a3fac37da3c625e98708c5dd92d3f642aaf700fd077168d3d0fff277ec6a165"
 dependencies = [
  "bincode",
  "blake3",
- "borsh 0.9.3",
+ "borsh",
  "cc",
  "digest 0.8.1",
  "errno",
@@ -7559,7 +6975,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f6edd0ba6c0bcf9b279186d4dbe81649dda3e5ef38f586865943de4dcd653f8"
 dependencies = [
  "bincode",
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "dynasm",
  "dynasmrt",
@@ -7949,7 +7365,7 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71e61de68ede9ffdd69c01664f65a178c5188b73f78faa21f0936016a888ff7c"
 dependencies = [
- "borsh 0.9.3",
+ "borsh",
  "byteorder",
  "crunchy",
  "lazy_static",
