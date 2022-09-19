@@ -36,6 +36,7 @@ pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
             output
                 .send(BlockWithMetadata::new(block, metadata.clone()))
                 .await
+                .map_err(|_| ())
                 .expect("Failed to send output message");
         }
     }
