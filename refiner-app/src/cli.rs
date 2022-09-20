@@ -19,5 +19,9 @@ pub enum Command {
         /// Setting the height is only recommended for advanced users.
         #[clap(short = 'n', long)]
         height: Option<u64>,
+        /// [Optional] Number of blocks to download. If not specified it will
+        /// run no stop indexing the network in real time once in sync.
+        #[clap(short, long)]
+        total: Option<u64>,
     },
 }

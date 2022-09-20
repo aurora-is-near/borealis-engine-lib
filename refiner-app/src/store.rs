@@ -55,6 +55,7 @@ pub async fn store(config: &OutputStoreConfig, block: &AuroraBlock) {
 }
 
 pub fn get_output_stream(
+    mut total_blocks: Option<u64>,
     config: OutputStoreConfig,
 ) -> tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, ()>> {
     let (sender, mut receiver) =
@@ -64,6 +65,12 @@ pub fn get_output_stream(
         let config = config.clone();
         while let Some(block) = receiver.recv().await {
             store(&config, &block.block).await;
+            if let Some(total_blocks) = total_blocks.as_mut() {
+                *total_blocks -= 1;
+                if *total_blocks == 0 {
+                    break;
+                }
+            }
         }
     });
 

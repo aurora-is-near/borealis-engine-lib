@@ -35,7 +35,7 @@ async fn main() -> Result<(), tokio::io::Error> {
     };
 
     match args.command {
-        cli::Command::Run { height } => {
+        cli::Command::Run { height, total } => {
             // Load last block
             let (last_block, next_block) = if let Some(height) = height {
                 (height.checked_sub(1), height)
@@ -56,7 +56,7 @@ async fn main() -> Result<(), tokio::io::Error> {
             };
 
             // Build output stream
-            let output_stream = get_output_stream(config.output_storage.clone());
+            let output_stream = get_output_stream(total, config.output_storage.clone());
 
             // Init storage
             aurora_refiner_lib::storage::init_storage(
