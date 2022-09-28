@@ -491,7 +491,6 @@ dependencies = [
  "lazy_static",
  "primitive-types 0.7.3",
  "prometheus",
- "reference-trie",
  "rlp 0.5.1",
  "rocksdb",
  "serde",
@@ -5364,20 +5363,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reference-trie"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f63dfce83d1e0e80cf2dc5222df5c2bc30992b30c44d1e66e7c9793d3a418e4"
-dependencies = [
- "hash-db 0.15.2",
- "hash256-std-hasher",
- "keccak-hasher 0.15.3",
- "parity-scale-codec 3.1.5",
- "trie-db",
- "trie-root",
-]
-
-[[package]]
 name = "regalloc2"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6561,28 +6546,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "trie-db"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32d034c0d3db64b43c31de38e945f15b40cd4ca6d2dcfc26d4798ce8de4ab83"
-dependencies = [
- "hash-db 0.15.2",
- "hashbrown 0.12.3",
- "log",
- "rustc-hex",
- "smallvec",
-]
-
-[[package]]
-name = "trie-root"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a36c5ca3911ed3c9a5416ee6c679042064b93fc637ded67e25f92e68d783891"
-dependencies = [
- "hash-db 0.15.2",
 ]
 
 [[package]]
