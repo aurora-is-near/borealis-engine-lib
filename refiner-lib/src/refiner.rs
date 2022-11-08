@@ -31,7 +31,7 @@ pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
 
     while let Some(message) = input.recv().await {
         let BlockWithMetadata { block, metadata } = message;
-        for block in stream.next_block(block) {
+        for block in stream.next_block(&block) {
             // Unwrapping here, since it is better to crash the refiner than to make progress missing blocks.
             output
                 .send(BlockWithMetadata::new(block, metadata.clone()))

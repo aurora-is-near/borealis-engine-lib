@@ -22,14 +22,14 @@ impl NearStream {
         }
     }
 
-    fn handle_block(&mut self, near_block: NEARBlock) -> AuroraBlock {
-        self.handler.on_block_start(&near_block);
+    fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
+        self.handler.on_block_start(near_block);
 
         let mut txs = Default::default();
 
         // Panic if engine can't consume this block
         aurora_standalone_engine::consume_near_block(
-            &near_block,
+            near_block,
             &mut self.context,
             Some(&mut txs),
         )
@@ -44,28 +44,28 @@ impl NearStream {
             })
             .for_each(|outcome| {
                 self.handler
-                    .on_execution_outcome(&near_block, outcome, &txs);
+                    .on_execution_outcome(near_block, outcome, &txs);
             });
 
-        self.handler.on_block_end(&near_block)
+        self.handler.on_block_end(near_block)
     }
 
-    pub fn next_block(&mut self, message: NEARBlock) -> Vec<AuroraBlock> {
+    pub fn next_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
         let mut blocks = vec![];
 
-        let height = message.block.header.height;
+        let height = near_block.block.header.height;
 
         // Emit events for all skip blocks
         let mut last_height = self.last_block_height.unwrap_or(height);
         while last_height + 1 < height {
             last_height += 1;
-            let skip_block = self.handler.on_block_skip(last_height, &message);
+            let skip_block = self.handler.on_block_skip(last_height, near_block);
             blocks.push(skip_block);
             SKIP_BLOCKS.inc();
         }
 
         self.last_block_height = Some(height);
-        let block = self.handle_block(message);
+        let block = self.handle_block(near_block);
         blocks.push(block);
         PROCESSED_BLOCKS.inc();
 
