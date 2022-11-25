@@ -11,13 +11,13 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false, features = ["std"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std"] }
 aurora-refiner-types = { path = "../refiner-types" }
 aurora-standalone-engine = { path = "../engine" }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.7.0", default-features = false }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false }
 
 base64 = "0.13.0"
 borsh = { version = "0.9.3", default-features = false }
@@ -36,7 +36,7 @@ tracing = "0.1.32"
 fixed-hash = "0.7.0"
 impl-serde = "0.3.2"
 tokio = { version = "1.19.2", features = ["sync"] }
-rocksdb = { version = "0.18.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
+rocksdb = { version = "0.19.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 
 [dev-dependencies]
 serde_cbor = "0.11.2"

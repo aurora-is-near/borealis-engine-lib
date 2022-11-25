@@ -10,7 +10,7 @@ license = "CC0-1.0"
 publish = false
 
 [dependencies]
-near-indexer = { git = "https://github.com/near/nearcore", rev = "04b35b9cc10b9ec94b9436cd943eac14f34f8e2e" }
+near-indexer = { git = "https://github.com/near/nearcore", rev = "313693c442c3081537b51ebc9044800d590aea6b" }
 aurora-refiner-lib = { path = "../refiner-lib" }
 aurora-refiner-types = { path = "../refiner-types" }
 

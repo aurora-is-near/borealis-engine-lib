@@ -580,6 +580,14 @@ fn parse_action(
                     let call_args = parameters::CallArgs::deserialize(&bytes)?;
                     TransactionKind::Call(call_args)
                 }
+                InnerTransactionKind::PausePrecompiles => {
+                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::PausePrecompiles(args)
+                }
+                InnerTransactionKind::ResumePrecompiles => {
+                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::ResumePrecompiles(args)
+                }
                 InnerTransactionKind::Deploy => TransactionKind::Deploy(bytes),
                 InnerTransactionKind::DeployErc20 => {
                     let deploy_args =

@@ -48,6 +48,16 @@ lazy_static! {
         "Number of transactions of type: call"
     )
     .unwrap();
+    pub static ref TRANSACTION_TYPE_PAUSE_PRECOMPILES: IntCounter = register_int_counter!(
+        "refiner_tx_type_pause_precompiles",
+        "Number of transactions of type: pause_precompiles"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_RESUME_PRECOMPILES: IntCounter = register_int_counter!(
+        "refiner_tx_type_resume_precompiles",
+        "Number of transactions of type: resume_precompiles"
+    )
+    .unwrap();
     pub static ref TRANSACTION_TYPE_DEPLOY_CODE: IntCounter = register_int_counter!(
         "refiner_tx_type_deploy_code",
         "Number of transactions of type: deploy_code"
@@ -177,6 +187,12 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::Call => {
             TRANSACTION_TYPE_CALL.inc();
+        }
+        InnerTransactionKind::PausePrecompiles => {
+            TRANSACTION_TYPE_PAUSE_PRECOMPILES.inc();
+        }
+        InnerTransactionKind::ResumePrecompiles => {
+            TRANSACTION_TYPE_RESUME_PRECOMPILES.inc();
         }
         InnerTransactionKind::Deploy => {
             TRANSACTION_TYPE_DEPLOY_CODE.inc();
