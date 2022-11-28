@@ -90,7 +90,7 @@ fn block_hash_migration_batch(
 
     // Collect heights and hashes to migrate in this batch
     while batch.len() < BATCH_SIZE {
-        match iter.next().map(|r| r.unwrap()) {
+        match iter.next().map(Result::unwrap) {
             None => {
                 return_status = MigrationStatus::Complete;
                 break;
