@@ -2,12 +2,13 @@ name: CI
 
 on:
   push:
-    - main
-    - develop
+    branches:
+      - main
+      - develop
   pull_request:
 
 env:
-  RUST_VERSION: nightly-2022-11-14
+  RUST_VERSION: 1.65.0
 
 jobs:
   fmt:
@@ -19,7 +20,7 @@ jobs:
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: $RUST_VERSION
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
           profile: minimal
           override: true
@@ -38,7 +39,7 @@ jobs:
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: $RUST_VERSION
+          toolchain: ${{ env.RUST_VERSION }}
           components: clippy
           profile: minimal
           override: true
@@ -65,7 +66,7 @@ jobs:
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: $RUST_VERSION
+          toolchain: ${{ env.RUST_VERSION }}
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
