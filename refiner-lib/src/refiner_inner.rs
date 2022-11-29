@@ -336,7 +336,7 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
-            let bytes = base64::decode(&args).map_err(RefinerError::FunctionCallBase64Args)?;
+            let bytes = base64::decode(args).map_err(RefinerError::FunctionCallBase64Args)?;
 
             transaction_hash = sha256(bytes.as_slice());
 
@@ -570,7 +570,7 @@ fn fill_result(
 
     match &status {
         ExecutionStatusView::SuccessValue(result) => {
-            let result = base64::decode(&result).map_err(RefinerError::SuccessValueBase64Args)?;
+            let result = base64::decode(result).map_err(RefinerError::SuccessValueBase64Args)?;
 
             if submit_or_call {
                 let result = decode_submit_result(result.as_slice()).ok();

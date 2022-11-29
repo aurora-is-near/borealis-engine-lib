@@ -28,12 +28,8 @@ impl NearStream {
         let mut txs = Default::default();
 
         // Panic if engine can't consume this block
-        aurora_standalone_engine::consume_near_block(
-            near_block,
-            &mut self.context,
-            Some(&mut txs),
-        )
-        .unwrap();
+        aurora_standalone_engine::consume_near_block(near_block, &mut self.context, Some(&mut txs))
+            .unwrap();
 
         near_block
             .shards
@@ -43,8 +39,7 @@ impl NearStream {
                 outcome.receipt.receiver_id.as_bytes() == self.context.engine_account_id.as_bytes()
             })
             .for_each(|outcome| {
-                self.handler
-                    .on_execution_outcome(near_block, outcome, &txs);
+                self.handler.on_execution_outcome(near_block, outcome, &txs);
             });
 
         self.handler.on_block_end(near_block)

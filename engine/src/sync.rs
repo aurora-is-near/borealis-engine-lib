@@ -566,7 +566,7 @@ fn parse_action(
         ..
     } = action
     {
-        let bytes = base64::decode(&args).ok()?;
+        let bytes = base64::decode(args).ok()?;
 
         let transaction_kind = if let Ok(raw_tx_kind) =
             InnerTransactionKind::from_str(method_name.as_str())
@@ -579,6 +579,14 @@ fn parse_action(
                 InnerTransactionKind::Call => {
                     let call_args = parameters::CallArgs::deserialize(&bytes)?;
                     TransactionKind::Call(call_args)
+                }
+                InnerTransactionKind::PausePrecompiles => {
+                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::PausePrecompiles(args)
+                }
+                InnerTransactionKind::ResumePrecompiles => {
+                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::ResumePrecompiles(args)
                 }
                 InnerTransactionKind::Deploy => TransactionKind::Deploy(bytes),
                 InnerTransactionKind::DeployErc20 => {

@@ -1,5 +1,7 @@
 # Aurora Standalone
 
+[![CI](https://github.com/aurora-is-near/borealis-engine-lib/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/aurora-is-near/borealis-engine-lib/actions/workflows/rust.yml)
+
 A collection of Rust crates useful for local ("standalone") deployments of Aurora infrastructure (tooling indexing data about an on-chain Aurora Engine deployment).
 
 ## Refiner Application
