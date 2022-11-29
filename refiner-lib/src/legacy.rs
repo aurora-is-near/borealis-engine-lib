@@ -16,19 +16,19 @@ pub struct ResultLogV1 {
     pub data: Vec<u8>,
 }
 
-impl Into<ResultLog> for ResultLogV1 {
-    fn into(self) -> ResultLog {
+impl From<ResultLogV1> for ResultLog {
+    fn from(result: ResultLogV1) -> Self {
         ResultLog {
             address: Default::default(),
-            topics: self.topics,
-            data: self.data,
+            topics: result.topics,
+            data: result.data,
         }
     }
 }
 
-impl Into<SubmitResult> for SubmitResultLegacyV1 {
-    fn into(self) -> SubmitResult {
-        SubmitResult::new(self.status, self.gas_used, self.logs)
+impl From<SubmitResultLegacyV1> for SubmitResult {
+    fn from(result: SubmitResultLegacyV1) -> Self {
+        SubmitResult::new(result.status, result.gas_used, result.logs)
     }
 }
 
@@ -39,12 +39,12 @@ pub struct SubmitResultLegacyV2 {
     pub logs: Vec<ResultLogV1>,
 }
 
-impl Into<SubmitResult> for SubmitResultLegacyV2 {
-    fn into(self) -> SubmitResult {
+impl From<SubmitResultLegacyV2> for SubmitResult {
+    fn from(result: SubmitResultLegacyV2) -> Self {
         SubmitResult::new(
-            self.status,
-            self.gas_used,
-            self.logs.into_iter().map(Into::into).collect(),
+            result.status,
+            result.gas_used,
+            result.logs.into_iter().map(Into::into).collect(),
         )
     }
 }

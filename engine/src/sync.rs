@@ -566,7 +566,7 @@ fn parse_action(
         ..
     } = action
     {
-        let bytes = base64::decode(&args).ok()?;
+        let bytes = base64::decode(args).ok()?;
 
         let transaction_kind = if let Ok(raw_tx_kind) =
             InnerTransactionKind::from_str(method_name.as_str())
