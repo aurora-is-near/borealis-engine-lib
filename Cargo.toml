@@ -17,16 +17,16 @@ license = "CC0-1.0"
 actix = "0.13.0"
 actix-rt = "2.7.0"
 anyhow = "1"
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "2beee0ed08c874f59eebeca94e2740d11d6f7b78", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "2beee0ed08c874f59eebeca94e2740d11d6f7b78", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "2beee0ed08c874f59eebeca94e2740d11d6f7b78", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "2beee0ed08c874f59eebeca94e2740d11d6f7b78", default-features = false, features = ["std"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false, features = ["std"] }
 base64 = "0.13.0"
 borsh = { version = "0.9.3" }
 byteorder = "1.4.3"
 clap = { version = "4", features = ["derive"] }
 derive_builder = "0.12.0"
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "2beee0ed08c874f59eebeca94e2740d11d6f7b78", default-features = false }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false }
 fixed-hash = "0.8.0"
 futures = "0.3.5"
 hex = "0.4.3"

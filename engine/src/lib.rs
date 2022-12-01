@@ -8,6 +8,7 @@ use std::path::Path;
 pub mod sync;
 #[cfg(test)]
 mod tests;
+pub mod tracing;
 pub mod types;
 
 pub struct EngineContext {
