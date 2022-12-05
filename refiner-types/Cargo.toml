@@ -1,29 +1,29 @@
 [package]
 name = "aurora-refiner-types"
 version = "0.1.0"
-authors = ["Aurora <hello@aurora.dev>"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
 description = "A library containing definitions of data structures relating to NEAR and Aurora blocks."
-homepage = "https://github.com/aurora-is-near/aurora-standalone"
-repository = "https://github.com/aurora-is-near/aurora-standalone"
-license = "CC0-1.0"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 publish = false
 
 [lib]
 crate-type = ["rlib"]
 
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = [ "std", "impl-serde" ] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = [ "std" ] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = [ "std", "impl-serde" ]  }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false,  features = [ "std", "impl-serde" ] }
-derive_builder = "0.10.2"
-fixed-hash = "0.7.0"
-impl-serde = "0.3.2"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
-serde = { version = "1", features = [ "derive" ] }
-sha3 = "0.10.1"
+aurora-engine.workspace = true
+aurora-engine-sdk.workspace = true
+aurora-engine-transactions.workspace = true
+aurora-engine-types.workspace = true
+derive_builder.workspace = true
+fixed-hash.workspace = true
+impl-serde.workspace = true
+near-crypto.workspace = true
+near-primitives.workspace = true
+serde.workspace = true
+sha3.workspace = true
 
 [dev-dependencies]
 
