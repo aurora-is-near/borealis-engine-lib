@@ -1,5 +1,6 @@
 use aurora_engine_types::{types::Address, H256, U256};
 
+pub mod conversion;
 pub mod serialization;
 
 /// EVM tracing format based on https://docs.alchemy.com/reference/what-are-evm-traces
@@ -69,6 +70,7 @@ pub struct AlchemyTraceTemplate<A, R, T> {
     pub action: A,
     pub block_hash: H256,
     pub block_number: u64,
+    pub error: Option<String>,
     pub result: R,
     pub subtraces: u32,
     pub trace_address: Vec<u32>,

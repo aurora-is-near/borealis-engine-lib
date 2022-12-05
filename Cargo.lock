@@ -581,6 +581,7 @@ dependencies = [
  "base64 0.13.1",
  "borsh",
  "engine-standalone-storage",
+ "engine-standalone-tracing",
  "hex",
  "lru 0.8.1",
  "serde",
@@ -2051,6 +2052,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-standalone-tracing"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
+dependencies = [
+ "aurora-engine-types",
+ "evm",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
+ "hex",
+ "serde",
+]
+
+[[package]]
 name = "enum-map"
 version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3224,6 +3239,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4da24a77a3d8a6d4862d95f72e6fdb9c09a643ecdb402d754004a557f2bec75"
 dependencies = [
  "scopeguard",
+ "serde",
 ]
 
 [[package]]
@@ -3234,7 +3250,6 @@ checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg 1.1.0",
  "scopeguard",
- "serde",
 ]
 
 [[package]]
@@ -4818,7 +4833,7 @@ dependencies = [
  "once_cell",
  "paperclip-core",
  "paperclip-macros",
- "parking_lot 0.12.1",
+ "parking_lot 0.10.2",
  "serde_json",
 ]
 
@@ -4832,7 +4847,7 @@ dependencies = [
  "mime",
  "once_cell",
  "paperclip-macros",
- "parking_lot 0.12.1",
+ "parking_lot 0.10.2",
  "pin-project",
  "regex",
  "serde",

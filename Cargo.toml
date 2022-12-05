@@ -27,6 +27,7 @@ byteorder = "1.4.3"
 clap = { version = "4", features = ["derive"] }
 derive_builder = "0.12.0"
 engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false }
+engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "6dd8b6f70019600a2431446b0d259e8528a26716", default-features = false, features = ["impl-serde"] }
 fixed-hash = "0.8.0"
 futures = "0.3.5"
 hex = "0.4.3"

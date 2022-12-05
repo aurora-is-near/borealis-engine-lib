@@ -22,6 +22,7 @@ aurora-refiner-types = { path = "../refiner-types" }
 base64.workspace = true
 borsh.workspace = true
 engine-standalone-storage = { workspace = true, features = ["snappy", "zstd", "zlib", "bzip2"] }
+engine-standalone-tracing.workspace = true
 hex.workspace = true
 lru.workspace = true
 tracing.workspace = true
