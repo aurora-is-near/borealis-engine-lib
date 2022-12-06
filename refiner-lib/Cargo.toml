@@ -1,43 +1,43 @@
 [package]
 name = "aurora-refiner-lib"
 version = "0.1.0"
-authors = ["Aurora <hello@aurora.dev>"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
 description = "A library containing logic for parsing information about Aurora transactions from full NEAR blocks."
-homepage = "https://github.com/aurora-is-near/aurora-standalone"
-repository = "https://github.com/aurora-is-near/aurora-standalone"
-license = "CC0-1.0"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false, features = ["std"] }
+aurora-engine.workspace = true
+aurora-engine-transactions.workspace = true
+aurora-engine-types.workspace = true
+aurora-engine-sdk.workspace = true
 aurora-refiner-types = { path = "../refiner-types" }
 aurora-standalone-engine = { path = "../engine" }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.8.0", default-features = false }
+engine-standalone-storage.workspace = true
 
-base64 = "0.13.0"
-borsh = { version = "0.9.3", default-features = false }
-triehash-ethereum = { git = "https://github.com/openethereum/openethereum" }
-primitive-types = "0.7.2"
-byteorder = "1.4.3"
-derive_builder = "0.10.2"
-hex = "0.4.3"
-keccak-hasher = "0.15.3"
-lazy_static = "1.4.0"
-prometheus = "0.13.0"
-rlp = "0.5.1"
-serde = { version = "1", features = [ "derive" ] }
-sha3 = "0.10.1"
-tracing = "0.1.32"
-fixed-hash = "0.7.0"
-impl-serde = "0.3.2"
-tokio = { version = "1.19.2", features = ["sync"] }
-rocksdb = { version = "0.19.0", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
+base64.workspace = true
+borsh.workspace = true
+triehash-ethereum.workspace = true
+primitive-types.workspace = true
+byteorder.workspace = true
+derive_builder.workspace = true
+hex.workspace = true
+keccak-hasher.workspace = true
+lazy_static.workspace = true
+prometheus.workspace = true
+rlp.workspace = true
+serde.workspace = true
+sha3.workspace = true
+tracing.workspace = true
+fixed-hash.workspace = true
+impl-serde.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+rocksdb.workspace = true
 
 [dev-dependencies]
-serde_cbor = "0.11.2"
-serde_json = "1"
+serde_cbor.workspace = true
+serde_json.workspace = true
