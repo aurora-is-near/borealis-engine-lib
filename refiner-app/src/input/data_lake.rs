@@ -22,7 +22,7 @@ pub fn get_near_data_lake_stream(
 
     tokio::spawn(async move {
         // instantiate the NEAR Lake Framework Stream
-        let (_, mut stream) = near_lake_framework::streamer(opts);
+        let mut stream = near_lake_framework::streamer(opts);
         while let Some(block) = stream.recv().await {
             sender
                 .send(BlockWithMetadata::new(convert(block), ()))
