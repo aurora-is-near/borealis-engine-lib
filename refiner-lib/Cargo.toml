@@ -22,7 +22,6 @@ engine-standalone-storage.workspace = true
 base64.workspace = true
 borsh.workspace = true
 triehash-ethereum.workspace = true
-primitive-types.workspace = true
 byteorder.workspace = true
 derive_builder.workspace = true
 hex.workspace = true

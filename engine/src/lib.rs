@@ -2,6 +2,7 @@ use aurora_engine_types::{account_id::AccountId, H256};
 use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
 use engine_standalone_storage::{error, sync::TransactionIncludedOutcome, Storage};
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::path::Path;
 
 pub mod sync;
@@ -28,7 +29,7 @@ impl EngineContext {
             storage,
             engine_account_id,
             chain_id,
-            data_id_mapping: lru::LruCache::new(1000),
+            data_id_mapping: lru::LruCache::new(NonZeroUsize::new(1000).unwrap()),
         })
     }
 }

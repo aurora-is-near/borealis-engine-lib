@@ -5,6 +5,7 @@ use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 use engine_standalone_storage::sync::TransactionExecutionResult;
 use engine_standalone_storage::Storage;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 /// This test confirms that the engine is able to process `submit` transactions
 /// with empty input (which failed on NEAR) without crashing.
@@ -16,7 +17,7 @@ fn test_empty_submit_input() {
         let file = std::fs::File::open("src/res/block_71771951.json").unwrap();
         serde_json::from_reader(file).unwrap()
     };
-    let mut data_id_mapping = lru::LruCache::new(1000);
+    let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
 
@@ -46,7 +47,7 @@ fn test_batched_transactions() {
         let file = std::fs::File::open("src/res/block_66381607.json").unwrap();
         serde_json::from_reader(file).unwrap()
     };
-    let mut data_id_mapping = lru::LruCache::new(1000);
+    let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
     crate::sync::consume_near_block(
