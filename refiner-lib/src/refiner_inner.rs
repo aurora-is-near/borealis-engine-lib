@@ -21,7 +21,7 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::BorshSerialize;
+use borsh::{BorshSerialize, BorshDeserialize};
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
@@ -380,7 +380,7 @@ fn build_transaction(
                     tx = if eth_tx.to.is_some() {
                         tx.to(eth_tx.to).contract_address(None)
                     } else {
-                        let address = extract_address(&outcome.execution_outcome.outcome.status)?;
+                        let address = extract_address(&outcome.execution_outcome.outcome.status, &raw_tx_kind)?;
                         tx.to(None).contract_address(address)
                     };
 
@@ -450,6 +450,7 @@ fn build_transaction(
                         .tx_type(0xff)
                         .contract_address(extract_address(
                             &outcome.execution_outcome.outcome.status,
+                            &raw_tx_kind
                         )?)
                         .v(0)
                         .r(U256::zero())
@@ -664,15 +665,30 @@ fn fill_tx(
 }
 
 /// Try to extract an address from an execution outcome status.
-fn extract_address(status: &ExecutionStatusView) -> Result<Option<Address>, RefinerError> {
-    if let ExecutionStatusView::SuccessValue(value) = status {
-        base64::decode(value)
-            .map_err(RefinerError::SuccessValueBase64Args)
-            .map(|value| Address::try_from_slice(&value).ok())
+fn extract_address(status: &ExecutionStatusView, tx_kind: &InnerTransactionKind) -> Result<Option<Address>, RefinerError> {
+    if let ExecutionStatusView::SuccessValue(value_str) = status {
+        
+        let value_vec = base64::decode(value_str)
+            .map_err(RefinerError::SuccessValueBase64Args)?;
+
+        let address_vec = match tx_kind {
+            InnerTransactionKind::DeployErc20 => value_vec,
+            InnerTransactionKind::Submit | InnerTransactionKind::Deploy => {
+
+                let submit_result =  SubmitResult::try_from_slice(&value_vec).map_err(|_| RefinerError::FailNearTx)?;
+                match submit_result.status {
+                    aurora_engine::parameters::TransactionStatus::Succeed(submit_result_vec) => submit_result_vec,
+                    _ => return Err(RefinerError::FailNearTx)
+                }
+            }
+            _ => return Ok(None)
+        };
+
+        Address::try_from_slice(&address_vec).map_err(|_| RefinerError::FailNearTx).map(|address| Some(address))    
     } else {
         Err(RefinerError::FailNearTx)
     }
-}
+   }
 
 #[derive(Debug)]
 enum RefinerError {
