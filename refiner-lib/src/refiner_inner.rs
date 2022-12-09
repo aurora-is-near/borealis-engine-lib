@@ -684,7 +684,7 @@ fn extract_address(status: &ExecutionStatusView, tx_kind: &InnerTransactionKind)
             _ => return Ok(None)
         };
 
-        Address::try_from_slice(&address_vec).map_err(|_| RefinerError::FailNearTx).map(|address| Some(address))    
+        Address::try_from_slice(&address_vec).map_err(|_| RefinerError::FailNearTx).map(Some)    
     } else {
         Err(RefinerError::FailNearTx)
     }
