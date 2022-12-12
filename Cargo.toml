@@ -35,7 +35,7 @@ keccak-hasher = "0.15.3"
 lazy_static = "1.4.0"
 lru = "0.8.1"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
-near-indexer = { git = "https://github.com/near/nearcore", rev = "313693c442c3081537b51ebc9044800d590aea6b" }
+near-indexer = { git = "https://github.com/birchmd/nearcore", rev = "9d2c6c979ae25b8fd05559b612c9319f4d9a7bb6" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
 near-lake-framework = "0.3.0"
 prometheus = "0.13.0"
