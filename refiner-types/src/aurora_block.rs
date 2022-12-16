@@ -35,14 +35,14 @@ pub struct AuroraBlock {
     pub miner: Address,
     /// Timestamp where the block was generated
     pub timestamp: u64,
-    /// Gas limit will be always U256::MAX
-    pub gas_limit: U256,
+    /// Gas limit will be always u64::MAX
+    pub gas_limit: u64,
     /// Sum of the gas used for each tx included in the block.
-    pub gas_used: U256,
+    pub gas_used: u64,
     /// Logs bloom of the block. Aggregation of transactions logs bloom.
     pub logs_bloom: Bloom,
     /// Integer the size of this block in bytes.
-    pub size: U256,
+    pub size: u64,
     /// Transaction root using Ethereum rules
     pub transactions_root: H256,
     /// State root: Uses NEAR state root of the block. While this doesn't match Ethereum rules to compute
@@ -108,11 +108,11 @@ pub struct AuroraTransaction {
     /// Target address of the transaction. It will be None in case it is a deploy transaction.
     pub to: Option<Address>,
     /// Nonce of the transaction to keep the order.
-    pub nonce: U256,
+    pub nonce: u64,
     /// Gas price for the transaction. Related to Aurora Gas not NEAR Gas.
     pub gas_price: U256,
     /// Gas limit of the transaction. In the context of Aurora it should be U256::MAX
-    pub gas_limit: U256,
+    pub gas_limit: u64,
     /// Gas used by the transaction
     pub gas_used: u64,
     pub max_priority_fee_per_gas: U256,
