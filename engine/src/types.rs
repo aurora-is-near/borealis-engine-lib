@@ -7,6 +7,10 @@ pub enum InnerTransactionKind {
     Submit,
     #[strum(serialize = "call")]
     Call,
+    #[strum(serialize = "pause_precompiles")]
+    PausePrecompiles,
+    #[strum(serialize = "resume_precompiles")]
+    ResumePrecompiles,
     #[strum(serialize = "deploy_code")]
     Deploy,
     #[strum(serialize = "deploy_erc20_token")]
@@ -58,6 +62,8 @@ impl From<TransactionKind> for InnerTransactionKind {
         match tx {
             TransactionKind::Submit(_) => InnerTransactionKind::Submit,
             TransactionKind::Call(_) => InnerTransactionKind::Call,
+            TransactionKind::PausePrecompiles(_) => InnerTransactionKind::PausePrecompiles,
+            TransactionKind::ResumePrecompiles(_) => InnerTransactionKind::ResumePrecompiles,
             TransactionKind::Deploy(_) => InnerTransactionKind::Deploy,
             TransactionKind::DeployErc20(_) => InnerTransactionKind::DeployErc20,
             TransactionKind::FtOnTransfer(_) => InnerTransactionKind::FtOnTransfer,

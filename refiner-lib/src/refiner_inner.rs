@@ -1,6 +1,6 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
-use crate::utils::{as_h256, keccak256, TxMetadata};
+use crate::utils::{self, as_h256, keccak256, TxMetadata};
 use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
@@ -115,9 +115,9 @@ impl Refiner {
             height,
             miner: near_account_to_evm_address(b""),
             timestamp: next_block.block.header.timestamp,
-            gas_limit: U256::max_value(),
-            size: U256::zero(),
-            gas_used: U256::zero(),
+            gas_limit: u64::MAX,
+            size: 0,
+            gas_used: 0,
             transactions_root: self.empty_merkle_tree_root,
             receipts_root: self.empty_merkle_tree_root,
             transactions: vec![],
@@ -189,7 +189,10 @@ impl Refiner {
 
                             let result_hash = sha256(transaction.output.as_slice());
                             tracing::trace!(target: "transactions", "New transaction: {}", transaction.hash);
-                            self.partial_state.total_gas += transaction.gas_used;
+                            self.partial_state.total_gas = self
+                                .partial_state
+                                .total_gas
+                                .saturating_add(transaction.gas_used);
                             self.partial_state
                                 .bloom_filter
                                 .accrue_bloom(&transaction.logs_bloom);
@@ -262,10 +265,10 @@ impl Refiner {
             height: block.header.height,
             miner: near_account_to_evm_address(block.author.as_bytes()),
             timestamp: block.header.timestamp,
-            gas_limit: U256::max_value(),
+            gas_limit: u64::MAX,
             state_root: self.prev_state_root,
-            size: U256::from(self.partial_state.size),
-            gas_used: U256::from(self.partial_state.total_gas),
+            size: self.partial_state.size,
+            gas_used: self.partial_state.total_gas,
             transactions_root,
             receipts_root,
             transactions: self.partial_state.transactions.drain(..).collect(),
@@ -336,7 +339,7 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
-            let bytes = base64::decode(&args).map_err(RefinerError::FunctionCallBase64Args)?;
+            let bytes = base64::decode(args).map_err(RefinerError::FunctionCallBase64Args)?;
 
             transaction_hash = sha256(bytes.as_slice());
 
@@ -361,11 +364,14 @@ fn build_transaction(
                             .map_err(RefinerError::ParseTransaction)?;
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
+                    let tx_nonce = utils::saturating_cast(eth_tx.nonce);
+                    let tx_gas_limit = utils::saturating_cast(eth_tx.gas_limit);
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)
-                        .nonce(eth_tx.nonce)
-                        .gas_limit(eth_tx.gas_limit)
+                        .to(eth_tx.to)
+                        .nonce(tx_nonce)
+                        .gas_limit(tx_gas_limit)
                         .gas_price(eth_tx.max_fee_per_gas)
                         .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
                         .max_fee_per_gas(eth_tx.max_fee_per_gas)
@@ -410,8 +416,8 @@ fn build_transaction(
 
                         tx = tx
                             .to(Some(address))
-                            .nonce(U256::zero())
-                            .gas_limit(U256::zero())
+                            .nonce(0)
+                            .gas_limit(0)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
                             .value(value.into())
@@ -443,8 +449,8 @@ fn build_transaction(
 
                     tx = tx
                         .to(None)
-                        .nonce(U256::zero())
-                        .gas_limit(U256::from(u64::MAX))
+                        .nonce(0)
+                        .gas_limit(0)
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
                         .value(Wei::zero())
@@ -495,8 +501,8 @@ fn build_transaction(
                 ))
                 .to(Some(near_account_to_evm_address(b"aurora")))
                 .contract_address(None)
-                .nonce(U256::zero())
-                .gas_limit(U256::max_value())
+                .nonce(0)
+                .gas_limit(0)
                 .gas_used(0)
                 .max_priority_fee_per_gas(U256::zero())
                 .max_fee_per_gas(U256::zero())
@@ -611,7 +617,7 @@ fn fill_result(
 
     match &status {
         ExecutionStatusView::SuccessValue(result) => {
-            let result = base64::decode(&result).map_err(RefinerError::SuccessValueBase64Args)?;
+            let result = base64::decode(result).map_err(RefinerError::SuccessValueBase64Args)?;
 
             if submit_or_call {
                 let result = decode_submit_result(result.as_slice()).ok();
@@ -646,8 +652,8 @@ fn fill_tx(
     input: Vec<u8>,
 ) -> AuroraTransactionBuilder {
     tx.to(None)
-        .nonce(U256::zero())
-        .gas_limit(U256::zero())
+        .nonce(0)
+        .gas_limit(0)
         .max_priority_fee_per_gas(U256::zero())
         .max_fee_per_gas(U256::zero())
         .value(Wei::new(U256::zero()))
