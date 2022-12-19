@@ -1,13 +1,14 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{self, as_h256, keccak256, TxMetadata};
+use aurora_engine::engine::create_legacy_address;
 use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
-use aurora_engine_types::types::{Address, Wei, WeiU256};
+use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, AuroraTransactionBuilder, AuroraTransactionBuilderError,
@@ -21,7 +22,7 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
@@ -369,7 +370,6 @@ fn build_transaction(
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)
-                        .to(eth_tx.to)
                         .nonce(tx_nonce)
                         .gas_limit(tx_gas_limit)
                         .gas_price(eth_tx.max_fee_per_gas)
@@ -386,11 +386,9 @@ fn build_transaction(
                     tx = if eth_tx.to.is_some() {
                         tx.to(eth_tx.to).contract_address(None)
                     } else {
-                        let address = extract_address(
-                            &outcome.execution_outcome.outcome.status,
-                            &raw_tx_kind,
-                        )?;
-                        tx.to(None).contract_address(address)
+                        let contract_address =
+                            create_legacy_address(&eth_tx.address, &eth_tx.nonce);
+                        tx.to(None).contract_address(Some(contract_address))
                     };
 
                     fill_result(
@@ -404,18 +402,18 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ));
+                    let from_address =
+                        near_account_to_evm_address(outcome.receipt.predecessor_id.as_bytes());
+                    tx = tx.hash(hash).from(from_address);
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
-                        let (address, value, input) = match call_args {
+                        let (to_address, value, input) = match call_args {
                             CallArgs::V2(args) => (args.contract, args.value, args.input),
                             CallArgs::V1(args) => (args.contract, WeiU256::default(), args.input),
                         };
 
                         tx = tx
-                            .to(Some(address))
+                            .to(Some(to_address))
                             .nonce(0)
                             .gas_limit(0)
                             .max_priority_fee_per_gas(U256::zero())
@@ -443,9 +441,12 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ));
+                    let eth_tx: NormalizedEthTransaction =
+                        EthTransactionKind::try_from(bytes.as_slice())
+                            .and_then(TryFrom::try_from)
+                            .map_err(RefinerError::ParseTransaction)?;
+
+                    tx = tx.hash(hash).from(eth_tx.address);
 
                     tx = tx
                         .to(None)
@@ -457,10 +458,10 @@ fn build_transaction(
                         .input(vec![])
                         .access_list(vec![])
                         .tx_type(0xff)
-                        .contract_address(extract_address(
-                            &outcome.execution_outcome.outcome.status,
-                            &raw_tx_kind,
-                        )?)
+                        .contract_address(Some(create_legacy_address(
+                            &eth_tx.address,
+                            &eth_tx.nonce,
+                        )))
                         .v(0)
                         .r(U256::zero())
                         .s(U256::zero());
@@ -671,37 +672,6 @@ fn fill_tx(
         .v(0)
         .r(U256::zero())
         .s(U256::zero())
-}
-
-/// Try to extract an address from an execution outcome status.
-fn extract_address(
-    status: &ExecutionStatusView,
-    tx_kind: &InnerTransactionKind,
-) -> Result<Option<Address>, RefinerError> {
-    if let ExecutionStatusView::SuccessValue(value_str) = status {
-        let value_vec = base64::decode(value_str).map_err(RefinerError::SuccessValueBase64Args)?;
-
-        let address_vec = match tx_kind {
-            InnerTransactionKind::DeployErc20 => value_vec,
-            InnerTransactionKind::Submit | InnerTransactionKind::Deploy => {
-                let submit_result = SubmitResult::try_from_slice(&value_vec)
-                    .map_err(|_| RefinerError::FailNearTx)?;
-                match submit_result.status {
-                    aurora_engine::parameters::TransactionStatus::Succeed(submit_result_vec) => {
-                        submit_result_vec
-                    }
-                    _ => return Err(RefinerError::FailNearTx),
-                }
-            }
-            _ => return Ok(None),
-        };
-
-        Address::try_from_slice(&address_vec)
-            .map_err(|_| RefinerError::FailNearTx)
-            .map(Some)
-    } else {
-        Err(RefinerError::FailNearTx)
-    }
 }
 
 #[derive(Debug)]
