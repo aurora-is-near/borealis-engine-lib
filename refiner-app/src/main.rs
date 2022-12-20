@@ -69,6 +69,7 @@ async fn main() -> Result<(), tokio::io::Error> {
             aurora_refiner_lib::run_refiner::<_, ()>(
                 config.refiner.chain_id,
                 config.refiner.engine_path,
+                config.refiner.tx_tracker_path,
                 config.refiner.engine_account_id.parse().unwrap(),
                 input_stream,
                 output_stream,

@@ -151,4 +151,7 @@ pub struct NearTransaction {
     pub action_index: usize,
     /// Receipt hash on NEAR
     pub receipt_hash: CryptoHash,
+    /// Transaction hash on NEAR that caused the receipt to be produced
+    /// (potentially indirectly via a number of other receipts).
+    pub transaction_hash: CryptoHash,
 }
