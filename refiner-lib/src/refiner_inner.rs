@@ -402,9 +402,9 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    let from_address =
-                        near_account_to_evm_address(outcome.receipt.predecessor_id.as_bytes());
-                    tx = tx.hash(hash).from(from_address);
+                    tx = tx.hash(hash).from(near_account_to_evm_address(
+                        outcome.receipt.predecessor_id.as_bytes(),
+                    ));
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (to_address, value, input) = match call_args {
@@ -441,12 +441,9 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    let eth_tx: NormalizedEthTransaction =
-                        EthTransactionKind::try_from(bytes.as_slice())
-                            .and_then(TryFrom::try_from)
-                            .map_err(RefinerError::ParseTransaction)?;
-
-                    tx = tx.hash(hash).from(eth_tx.address);
+                    tx = tx.hash(hash).from(near_account_to_evm_address(
+                        outcome.receipt.predecessor_id.as_bytes(),
+                    ));
 
                     tx = tx
                         .to(None)
