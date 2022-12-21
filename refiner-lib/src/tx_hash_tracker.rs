@@ -233,14 +233,14 @@ mod tests {
             CryptoHash::from_base("EkdeeCvozyK5zXZSd3tk2VpakH4kiGfLHCBzfXZVAVvd").unwrap();
         let expected_tx_hash_1 =
             CryptoHash::from_base("uQ6hiGNnVW371JKwnLLQM4iMdBNE7xJqVjPGecbmL4D").unwrap();
-        assert_eq!(tracker.get_tx_hash(&rx_hash_1).unwrap(), expected_tx_hash_1,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_1).unwrap(), expected_tx_hash_1);
 
         tracker.on_block_end(34834053).unwrap();
 
         // Mapping should still be present on restart
         drop(tracker);
         let mut tracker = TxHashTracker::new(db_dir.path(), 34834053).unwrap();
-        assert_eq!(tracker.get_tx_hash(&rx_hash_1).unwrap(), expected_tx_hash_1,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_1).unwrap(), expected_tx_hash_1);
 
         // Try consuming another block
         tracker.consume_near_block(&block_2).unwrap();
@@ -249,7 +249,7 @@ mod tests {
             CryptoHash::from_base("9qNqNxE6LenxsFMFmzf9RdQwH6MqhU7Hfqnq7GoibYK8").unwrap();
         let expected_tx_hash_2 =
             CryptoHash::from_base("DEtAE5d6M8NtBMsCaZVCzjg8C2a5wqduhwVkioseUhT4").unwrap();
-        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2);
 
         tracker.on_block_end(51188689).unwrap();
 
@@ -258,7 +258,7 @@ mod tests {
         let mut tracker = TxHashTracker::new(db_dir.path(), 51188689).unwrap();
         assert_eq!(tracker.get_tx_hash(&rx_hash_1), None,);
         // But the just consumed block is still present
-        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2);
 
         // Consume the next block
         tracker.consume_near_block(&block_3).unwrap();
@@ -267,15 +267,15 @@ mod tests {
         // Therefore, we expect this receipt also should be associated with `expected_tx_hash_2`.
         let rx_hash_3 =
             CryptoHash::from_base("3d43nGKmmbXbCCtt12NAAPLfEoaRo3j31CEKaiQCK3Bt").unwrap();
-        assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2);
 
         tracker.on_block_end(51188690).unwrap();
 
         // And both receipts are still present after restart
         drop(tracker);
         let mut tracker = TxHashTracker::new(db_dir.path(), 51188690).unwrap();
-        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2,);
-        assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2,);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2);
+        assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2);
     }
 
     fn read_block(path: &str) -> NEARBlock {
