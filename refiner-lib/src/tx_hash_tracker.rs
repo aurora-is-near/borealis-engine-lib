@@ -32,11 +32,13 @@ impl TxHashTracker {
             .filter_map(|s| s.chunk.as_ref())
             .flat_map(|c| c.transactions.iter());
 
+        let mut batch = self.inner.start_write_batch();
+
         // Track receipts created from transactions
         for tx in tx_iter {
             let tx_hash = tx.transaction.hash;
             for rx_hash in tx.outcome.execution_outcome.outcome.receipt_ids.iter() {
-                self.inner.record_rx(*rx_hash, tx_hash, block_height)?;
+                batch.record_rx(*rx_hash, tx_hash, block_height);
             }
         }
 
@@ -48,7 +50,7 @@ impl TxHashTracker {
         // Track receipts created from other receipts
         for rx in rx_iter {
             let rx_hash = &rx.receipt.receipt_id;
-            let tx_hash = match self.get_tx_hash(rx_hash) {
+            let tx_hash = match batch.get_tx_hash(rx_hash) {
                 Some(tx_hash) => tx_hash,
                 None => {
                     tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
@@ -56,11 +58,14 @@ impl TxHashTracker {
                 }
             };
             for rx_hash in rx.execution_outcome.outcome.receipt_ids.iter() {
-                self.inner.record_rx(*rx_hash, tx_hash, block_height)?;
+                batch.record_rx(*rx_hash, tx_hash, block_height);
             }
         }
 
-        Ok(())
+        // Need to explicitly extract the `write_batch` field to free up
+        // the borrow `batch` had on `self.inner`.
+        let batch = batch.write_batch;
+        self.inner.commit_write_batch(batch)
     }
 
     pub fn on_block_end(&mut self, block_height: u64) -> anyhow::Result<()> {
@@ -152,16 +157,16 @@ impl TxHashTrackerImpl {
         self.cache.get(rx_hash).copied()
     }
 
-    fn record_rx(
-        &mut self,
-        rx_hash: CryptoHash,
-        tx_hash: CryptoHash,
-        block_height: u64,
-    ) -> anyhow::Result<()> {
-        self.cache.put(rx_hash, tx_hash);
+    fn start_write_batch(&mut self) -> TxHashTrackerWriteBatch {
+        TxHashTrackerWriteBatch {
+            cache: &mut self.cache,
+            write_batch: rocksdb::WriteBatch::default(),
+        }
+    }
 
-        let db_key = [&block_height.to_be_bytes(), rx_hash.as_ref()].concat();
-        self.persistent_storage.put(db_key, tx_hash)?;
+    fn commit_write_batch(&mut self, batch: rocksdb::WriteBatch) -> anyhow::Result<()> {
+        self.persistent_storage.write(batch)?;
+
         Ok(())
     }
 
@@ -175,6 +180,24 @@ impl TxHashTrackerImpl {
         self.persistent_storage.write(batch)?;
 
         Ok(())
+    }
+}
+
+struct TxHashTrackerWriteBatch<'a> {
+    cache: &'a mut lru::LruCache<CryptoHash, CryptoHash>,
+    write_batch: rocksdb::WriteBatch,
+}
+
+impl<'a> TxHashTrackerWriteBatch<'a> {
+    fn get_tx_hash(&mut self, rx_hash: &CryptoHash) -> Option<CryptoHash> {
+        self.cache.get(rx_hash).copied()
+    }
+
+    fn record_rx(&mut self, rx_hash: CryptoHash, tx_hash: CryptoHash, block_height: u64) {
+        self.cache.put(rx_hash, tx_hash);
+
+        let db_key = [&block_height.to_be_bytes(), rx_hash.as_ref()].concat();
+        self.write_batch.put(db_key, tx_hash);
     }
 }
 
