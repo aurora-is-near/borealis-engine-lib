@@ -54,13 +54,11 @@ impl NearStream {
             })
             .for_each(|outcome| {
                 let rx_hash = &outcome.receipt.receipt_id;
-                let near_tx_hash = match self.tx_tracker.get_tx_hash(rx_hash) {
-                    Some(tx_hash) => tx_hash,
-                    None => {
-                        tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
-                        Default::default()
-                    }
-                };
+                let near_tx_hash = self.tx_tracker.get_tx_hash(rx_hash);
+                if near_tx_hash.is_none() {
+                    tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
+                    crate::metrics::UNKNOWN_TX_FOR_RECEIPT.inc();
+                }
                 self.handler
                     .on_execution_outcome(near_block, near_tx_hash, outcome, &txs);
             });

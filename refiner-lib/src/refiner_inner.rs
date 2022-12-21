@@ -141,7 +141,7 @@ impl Refiner {
     pub fn on_execution_outcome(
         &mut self,
         block: &NEARBlock,
-        near_tx_hash: CryptoHash,
+        near_tx_hash: Option<CryptoHash>,
         execution_outcome: &ExecutionOutcomeWithReceipt,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
     ) {
@@ -315,7 +315,7 @@ fn build_transaction(
     action_index: usize,
     action: &ActionView,
     outcome: &ExecutionOutcomeWithReceipt,
-    near_tx_hash: CryptoHash,
+    near_tx_hash: Option<CryptoHash>,
     chain_id: u64,
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
