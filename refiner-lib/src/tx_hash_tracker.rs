@@ -133,10 +133,15 @@ impl TxHashTrackerImpl {
             cache.put(slice_to_crypto_hash(&k[8..])?, slice_to_crypto_hash(&v)?);
         }
 
-        Ok(Self {
+        let mut result = Self {
             cache,
             persistent_storage,
-        })
+        };
+
+        // Prune state on start in case a crash occurred before we had a chance to prune.
+        result.prune_state(start_height.saturating_sub(1))?;
+
+        Ok(result)
     }
 
     /// Uses the LRU cache to get the transaction hash associated with the given receipt hash.
