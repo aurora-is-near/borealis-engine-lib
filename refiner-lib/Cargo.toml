@@ -40,3 +40,4 @@ rocksdb.workspace = true
 [dev-dependencies]
 serde_cbor.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
