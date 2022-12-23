@@ -99,16 +99,21 @@ async fn save_last_block_height<P: AsRef<std::path::Path>>(storage_path: P, bloc
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();
     }
-    let path = path.join(STORE_INFO_FILE);
+    let file_path = path.join(STORE_INFO_FILE);
 
-    let file = tokio::fs::File::create(path).await.unwrap();
+    // Write the data to a height-specific file to avoid clearing the main file
+    let temp_path = path.join(format!(".{block_height}"));
+    let temp_file = tokio::fs::File::create(&temp_path).await.unwrap();
 
     {
-        let mut writer = tokio::io::BufWriter::new(file);
+        let mut writer = tokio::io::BufWriter::new(temp_file);
         let data = serde_json::to_string(&block_height).unwrap();
         writer.write_all(data.as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
     }
+
+    // Move the height-specific file to the main file, thus atomically updating it.
+    tokio::fs::rename(temp_path, file_path).await.unwrap();
 
     tracing::trace!("Last block height {} saved.", block_height);
 }
