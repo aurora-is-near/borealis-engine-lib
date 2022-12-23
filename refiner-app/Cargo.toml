@@ -30,3 +30,6 @@ actix.workspace = true
 
 # NEAR Lake Framework
 near-lake-framework.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

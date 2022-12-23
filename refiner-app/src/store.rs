@@ -88,7 +88,7 @@ pub async fn load_last_block_height<P: AsRef<std::path::Path>>(storage_path: P) 
         let mut file = tokio::fs::File::open(&store_file).await.unwrap();
         let mut buffer = String::new();
         file.read_to_string(&mut buffer).await.unwrap();
-        serde_json::from_str(&buffer).unwrap()
+        Some(buffer.parse().unwrap())
     } else {
         None
     }
@@ -99,16 +99,36 @@ async fn save_last_block_height<P: AsRef<std::path::Path>>(storage_path: P, bloc
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();
     }
-    let path = path.join(STORE_INFO_FILE);
+    let file_path = path.join(STORE_INFO_FILE);
 
-    let file = tokio::fs::File::create(path).await.unwrap();
+    // Write the data to a height-specific file to avoid clearing the main file
+    let temp_path = path.join(format!(".{block_height}"));
+    let temp_file = tokio::fs::File::create(&temp_path).await.unwrap();
 
     {
-        let mut writer = tokio::io::BufWriter::new(file);
-        let data = serde_json::to_string(&block_height).unwrap();
+        let mut writer = tokio::io::BufWriter::new(temp_file);
+        let data = block_height.to_string();
         writer.write_all(data.as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
     }
 
+    // Move the height-specific file to the main file, thus atomically updating it.
+    tokio::fs::rename(temp_path, file_path).await.unwrap();
+
     tracing::trace!("Last block height {} saved.", block_height);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{load_last_block_height, save_last_block_height};
+
+    #[tokio::test]
+    async fn test_save_last_block_height() {
+        const HEIGHT: u64 = 11111;
+        let tmp_dir = tempfile::tempdir().unwrap();
+        save_last_block_height(tmp_dir.path(), HEIGHT).await;
+        let block_height = load_last_block_height(tmp_dir.path()).await;
+
+        assert_eq!(block_height, Some(HEIGHT))
+    }
 }
