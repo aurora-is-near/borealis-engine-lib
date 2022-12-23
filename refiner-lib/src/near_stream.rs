@@ -67,3 +67,69 @@ impl NearStream {
         blocks
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_block_81206675() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let chain_id = 1313161554_u64;
+        crate::storage::init_storage(db_dir.path().into(), "aurora".into(), chain_id);
+        let ctx = EngineContext::new(db_dir.path(), "aurora".parse().unwrap(), chain_id).unwrap();
+        let mut stream = NearStream::new(chain_id, None, ctx);
+        let block: NEARBlock = {
+            let data = std::fs::read_to_string("blocks/block-81206675.json").unwrap();
+            serde_json::from_str(&data).unwrap()
+        };
+
+        let mut aurora_blocks = stream.next_block(&block);
+
+        assert_eq!(aurora_blocks.len(), 1);
+        let aurora_block = aurora_blocks.pop().unwrap();
+
+        assert_eq!(
+            hex::encode(aurora_block.hash),
+            "0a007345d45f931532063ff5bb0d267b5af940e8ca2ccb0cdc81e37664c82ba4"
+        );
+        assert_eq!(
+            hex::encode(aurora_block.transactions_root),
+            "c467fc63b0524d8896f235f1a1af975dcf5f2b5c1353270db9637c4f902d1d5b"
+        );
+        assert_eq!(
+            hex::encode(aurora_block.state_root),
+            "49d90ec7938074f982813e8e0186085bda029c6579ac50c836622860251fd696"
+        );
+
+        let tx_1 = &aurora_block.transactions[0];
+        assert_eq!(
+            hex::encode(tx_1.hash),
+            "172794dc3ee343c1fc7cdf5170e2aa61372a3d947fe042b106286f99454ab6ff"
+        );
+        assert_eq!(
+            hex::encode(tx_1.from.as_bytes()),
+            "c4fe580eabe347a7be55a2976bcd75293b837753"
+        );
+        assert_eq!(
+            hex::encode(tx_1.to.unwrap().as_bytes()),
+            "713e400b032b89db9f68105e501ff13260398490"
+        );
+        assert_eq!(tx_1.logs.len(), 3);
+
+        let tx_2 = &aurora_block.transactions[1];
+        assert_eq!(
+            hex::encode(tx_2.hash),
+            "a341c7b2f7f27f68f5b7bf6c8ca008f9af7e80dc3ee03ced45a28deb61b5bfd4"
+        );
+        assert_eq!(
+            hex::encode(tx_2.from.as_bytes()),
+            "b3072378821cdafac340bf18a0fbf15c72feb83b"
+        );
+        assert_eq!(
+            hex::encode(tx_2.to.unwrap().as_bytes()),
+            "c6e5185438e1730959c1ef3551059a3fec744e90"
+        );
+        assert_eq!(tx_2.logs.len(), 1);
+    }
+}

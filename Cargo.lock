@@ -542,6 +542,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha3",
+ "tempfile",
  "tokio",
  "tracing",
  "triehash-ethereum",
