@@ -141,6 +141,7 @@ impl Refiner {
     pub fn on_execution_outcome(
         &mut self,
         block: &NEARBlock,
+        near_tx_hash: Option<CryptoHash>,
         execution_outcome: &ExecutionOutcomeWithReceipt,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
     ) {
@@ -177,6 +178,7 @@ impl Refiner {
                         index,
                         action,
                         execution_outcome,
+                        near_tx_hash,
                         self.chain_id,
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
@@ -313,6 +315,7 @@ fn build_transaction(
     action_index: usize,
     action: &ActionView,
     outcome: &ExecutionOutcomeWithReceipt,
+    near_tx_hash: Option<CryptoHash>,
     chain_id: u64,
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
@@ -331,6 +334,7 @@ fn build_transaction(
         .near_metadata(NearTransaction {
             action_index,
             receipt_hash: outcome.receipt.receipt_id,
+            transaction_hash: near_tx_hash,
         });
 
     // Hash used to build transactions merkle tree

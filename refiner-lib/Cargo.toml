@@ -19,6 +19,7 @@ aurora-refiner-types = { path = "../refiner-types" }
 aurora-standalone-engine = { path = "../engine" }
 engine-standalone-storage.workspace = true
 
+anyhow.workspace = true
 base64.workspace = true
 borsh.workspace = true
 triehash-ethereum.workspace = true
@@ -27,6 +28,7 @@ derive_builder.workspace = true
 hex.workspace = true
 keccak-hasher.workspace = true
 lazy_static.workspace = true
+lru.workspace = true
 prometheus.workspace = true
 rlp.workspace = true
 serde.workspace = true

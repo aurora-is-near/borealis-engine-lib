@@ -151,4 +151,10 @@ pub struct NearTransaction {
     pub action_index: usize,
     /// Receipt hash on NEAR
     pub receipt_hash: CryptoHash,
+    /// Transaction hash on NEAR that caused the receipt to be produced
+    /// (potentially indirectly via a number of other receipts).
+    /// Field is optional for backwards compatibility, but is
+    /// expected to be set for call newly produced data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_hash: Option<CryptoHash>,
 }

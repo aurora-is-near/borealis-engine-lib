@@ -520,6 +520,7 @@ dependencies = [
 name = "aurora-refiner-lib"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "aurora-engine",
  "aurora-engine-sdk",
  "aurora-engine-transactions",
@@ -536,6 +537,7 @@ dependencies = [
  "impl-serde 0.4.0",
  "keccak-hasher 0.15.3",
  "lazy_static",
+ "lru 0.8.1",
  "prometheus",
  "rlp 0.5.2",
  "rocksdb",

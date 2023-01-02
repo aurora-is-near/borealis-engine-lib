@@ -163,6 +163,11 @@ lazy_static! {
         "Number of blocks processed"
     )
     .unwrap();
+    pub static ref UNKNOWN_TX_FOR_RECEIPT: IntCounter = register_int_counter!(
+        "refiner_unknown_tx_for_receipt",
+        "Number of receipts where the transaction provenance was not known (should be 0)."
+    )
+    .unwrap();
 
     pub static ref TRANSACTION_TYPE_FACTORY_UPDATE: IntCounter = register_int_counter!(
                 "refiner_tx_type_factory_update",
