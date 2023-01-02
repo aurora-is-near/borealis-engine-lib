@@ -100,10 +100,13 @@ mod tests {
     #[test]
     fn test_block_81206675() {
         let db_dir = tempfile::tempdir().unwrap();
+        let engine_path = db_dir.path().join("engine");
+        let tracker_path = db_dir.path().join("tracker");
         let chain_id = 1313161554_u64;
-        crate::storage::init_storage(db_dir.path().into(), "aurora".into(), chain_id);
-        let ctx = EngineContext::new(db_dir.path(), "aurora".parse().unwrap(), chain_id).unwrap();
-        let mut stream = NearStream::new(chain_id, None, ctx);
+        crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
+        let ctx = EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
+        let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
+        let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
         let block: NEARBlock = {
             let data = std::fs::read_to_string("blocks/block-81206675.json").unwrap();
             serde_json::from_str(&data).unwrap()
