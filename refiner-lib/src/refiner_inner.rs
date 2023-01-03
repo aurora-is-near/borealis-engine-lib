@@ -31,6 +31,11 @@ use std::io::Write;
 use std::str::FromStr;
 use triehash_ethereum::ordered_trie_root;
 
+/// The least amount of gas any EVM transaction could spend is 21_000.
+/// This corresponds to `G_transaction` from the Yellow Paper. This is
+/// the amount of gas "paid for every transaction" (see Appendix G of the Yellow Paper).
+const MIN_EVM_GAS: u64 = 21_000;
+
 fn compute_block_hash_preimage(height: BlockHeight, chain_id: u64) -> Vec<u8> {
     let account_id = "aurora";
 
@@ -365,7 +370,7 @@ fn normalize_output(
                     // set the other fields with default values.
                     Some(SubmitResult::new(
                         aurora_engine::parameters::TransactionStatus::Succeed(bytes),
-                        21_000,
+                        MIN_EVM_GAS,
                         Vec::new(),
                     ))
                 }
@@ -377,7 +382,7 @@ fn normalize_output(
             let bytes = result.0.to_vec();
             Some(SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(bytes),
-                21_000,
+                MIN_EVM_GAS,
                 Vec::new(),
             ))
         }
@@ -400,14 +405,14 @@ fn normalize_output(
             },
             TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
-                21_000,
+                MIN_EVM_GAS,
                 Vec::new(),
             ),
             TransactionExecutionResult::Promise(p) => SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(
                     format!("{:?}", p).into_bytes(),
                 ),
-                21_000,
+                MIN_EVM_GAS,
                 Vec::new(),
             ),
         });
@@ -437,7 +442,7 @@ fn normalize_output(
             // if there is no outcome from either source then use a default value
             Ok(SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(Vec::new()),
-                21_000,
+                MIN_EVM_GAS,
                 Vec::new(),
             ))
         }
