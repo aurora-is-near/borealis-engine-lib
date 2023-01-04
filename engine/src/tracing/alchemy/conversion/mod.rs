@@ -9,6 +9,8 @@ use engine_standalone_tracing::types::call_tracer::{CallFrame, CallType};
 use std::collections::VecDeque;
 
 mod sum_trie;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TransactionContext {
