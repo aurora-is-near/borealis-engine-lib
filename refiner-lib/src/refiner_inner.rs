@@ -17,12 +17,12 @@ use aurora_refiner_types::aurora_block::{
 use aurora_refiner_types::bloom::Bloom;
 use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock};
 use aurora_refiner_types::near_primitives::hash::CryptoHash;
-use aurora_refiner_types::near_primitives::types::BlockHeight;
+use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
 use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
@@ -30,6 +30,11 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Write;
 use std::str::FromStr;
 use triehash_ethereum::ordered_trie_root;
+
+/// The least amount of gas any EVM transaction could spend is 21_000.
+/// This corresponds to `G_transaction` from the Yellow Paper. This is
+/// the amount of gas "paid for every transaction" (see Appendix G of the Yellow Paper).
+const MIN_EVM_GAS: u64 = 21_000;
 
 fn compute_block_hash_preimage(height: BlockHeight, chain_id: u64) -> Vec<u8> {
     let account_id = "aurora";
@@ -163,22 +168,37 @@ impl Refiner {
             ReceiptEnumView::Action { actions, .. } => {
                 crate::metrics::TRANSACTIONS.inc();
 
+                let num_actions = actions.len();
+
                 // Create one transaction per action
                 for (index, action) in actions.iter().enumerate() {
                     crate::metrics::TRANSACTIONS_ACTION.inc();
 
+                    let near_metadata = NearTransaction {
+                        action_index: index,
+                        receipt_hash: execution_outcome.receipt.receipt_id,
+                        transaction_hash: near_tx_hash,
+                    };
+
+                    // The execution outcome only applies to the last action in the batch
+                    let status = if index + 1 == num_actions {
+                        Some(&execution_outcome.execution_outcome.outcome.status)
+                    } else {
+                        None
+                    };
+
                     let virtual_receipt_id = build_virtual_receipt_id(
                         &execution_outcome.receipt.receipt_id,
                         index as u32,
-                        actions.len() as u32,
+                        num_actions as u32,
                     );
 
                     match build_transaction(
                         block,
-                        index,
                         action,
-                        execution_outcome,
-                        near_tx_hash,
+                        &execution_outcome.receipt.predecessor_id,
+                        near_metadata,
+                        status,
                         self.chain_id,
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
@@ -309,13 +329,133 @@ struct BuiltTransaction {
     transaction_hash: H256,
 }
 
+/// Given the raw `execution_status` from Near and `engine_outcome` from Borealis Engine,
+/// try to create a single `SubmitResult` instance. This function also checks that the
+/// two raw outcomes match in the case that they are both present.
+fn normalize_output(
+    receipt_id: &CryptoHash,
+    tx_kind: InnerTransactionKind,
+    execution_status: Option<&ExecutionStatusView>,
+    engine_outcome: Option<&TransactionIncludedOutcome>,
+) -> Result<SubmitResult, RefinerError> {
+    let near_output = match execution_status {
+        Some(ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_)) => {
+            // Regardless of anything else, if the transaction failed on Near then we report an error.
+            crate::metrics::FAILING_NEAR_TRANSACTION.inc();
+            tracing::debug!(
+                "Failing NEAR transaction {}: {:?}",
+                receipt_id,
+                execution_status
+            );
+            return Err(RefinerError::FailNearTx);
+        }
+        Some(ExecutionStatusView::SuccessValue(result)) => {
+            let bytes = base64::decode(result).map_err(RefinerError::SuccessValueBase64Args)?;
+            match tx_kind {
+                InnerTransactionKind::Submit
+                | InnerTransactionKind::Call
+                | InnerTransactionKind::Deploy => {
+                    // These transaction kinds should have a `SubmitResult` as an outcome
+                    decode_submit_result(&bytes)
+                        .map_err(|_| {
+                            tracing::warn!(
+                                "Submit Result format unknown for receipt {:?}. (FIX)",
+                                receipt_id
+                            );
+                        })
+                        .ok()
+                }
+                _ => {
+                    // Everything else we'll just use the bytes directly as the output and
+                    // set the other fields with default values.
+                    Some(SubmitResult::new(
+                        aurora_engine::parameters::TransactionStatus::Succeed(bytes),
+                        MIN_EVM_GAS,
+                        Vec::new(),
+                    ))
+                }
+            }
+        }
+        Some(ExecutionStatusView::SuccessReceiptId(result)) => {
+            // No need to check the transaction kind in this case because transactions that
+            // produce a SubmitResult as output do not produce a receipt id.
+            let bytes = result.0.to_vec();
+            Some(SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(bytes),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ))
+        }
+        None => None,
+    };
+
+    let engine_output = engine_outcome
+        .and_then(|x| x.maybe_result.as_ref().ok())
+        .and_then(Option::as_ref)
+        .map(|result| match result {
+            TransactionExecutionResult::Submit(result) => match result {
+                Ok(result) => result.clone(),
+                Err(err) => SubmitResult::new(
+                    aurora_engine::parameters::TransactionStatus::Revert(
+                        format!("{:?}", err.kind).into_bytes(),
+                    ),
+                    err.gas_used,
+                    Vec::new(),
+                ),
+            },
+            TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ),
+            TransactionExecutionResult::Promise(p) => SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(
+                    format!("{:?}", p).into_bytes(),
+                ),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ),
+        });
+
+    match (near_output, engine_output) {
+        (Some(near_output), Some(engine_output)) => {
+            // We have a result from both sources, so we should compare them to
+            // make sure they match. Log a warning and use the Near output if they don't.
+            if near_output != engine_output {
+                tracing::warn!("Mismatch between Near and Engine outputs. The internal Engine instance may not have the correct state.");
+            }
+            Ok(near_output)
+        }
+        (None, Some(output)) => {
+            // No Near outcome to rely on, so we simply have to trust the Borealis Engine
+            // outcome without validation. This case happens for actions in a batch except
+            // for the last one (Near only records the outcome of the last action in a batch).
+            Ok(output)
+        }
+        (Some(output), None) => {
+            // No engine outcome to use, so can only rely on the NEAR output.
+            // This case could arise if the last action in a batch is an aurora-engine call
+            // where the Borealis Engine does not record an outcome (e.g. `ft_on_transfer`).
+            Ok(output)
+        }
+        (None, None) => {
+            // if there is no outcome from either source then use a default value
+            Ok(SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(Vec::new()),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ))
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn build_transaction(
     near_block: &BlockView,
-    action_index: usize,
     action: &ActionView,
-    outcome: &ExecutionOutcomeWithReceipt,
-    near_tx_hash: Option<CryptoHash>,
+    predecessor_id: &AccountId,
+    near_metadata: NearTransaction,
+    execution_status: Option<&ExecutionStatusView>,
     chain_id: u64,
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
@@ -324,6 +464,7 @@ fn build_transaction(
     let mut bloom = Bloom::default();
 
     let hash;
+    let receipt_id = near_metadata.receipt_hash;
 
     let mut tx = AuroraTransactionBuilder::default()
         .block_hash(compute_block_hash(near_block.header.height, chain_id))
@@ -331,11 +472,7 @@ fn build_transaction(
         .chain_id(chain_id)
         .transaction_index(transaction_index)
         .gas_price(U256::zero())
-        .near_metadata(NearTransaction {
-            action_index,
-            receipt_hash: outcome.receipt.receipt_id,
-            transaction_hash: near_tx_hash,
-        });
+        .near_metadata(near_metadata);
 
     // Hash used to build transactions merkle tree
     let mut transaction_hash = H256::zero();
@@ -395,20 +532,19 @@ fn build_transaction(
                         tx.to(None).contract_address(Some(contract_address))
                     };
 
-                    fill_result(
-                        tx,
-                        outcome.receipt.receipt_id,
-                        &outcome.execution_outcome.outcome.status,
-                        true,
-                        &mut bloom,
+                    let result = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
                         txs.get(&hash),
-                    )?
+                    )?;
+                    fill_with_submit_result(tx, result, &mut bloom)
                 }
                 InnerTransactionKind::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ));
+                    tx = tx
+                        .hash(hash)
+                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (to_address, value, input) = match call_args {
@@ -419,7 +555,7 @@ fn build_transaction(
                         tx = tx
                             .to(Some(to_address))
                             .nonce(0)
-                            .gas_limit(0)
+                            .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
                             .value(value.into())
@@ -434,25 +570,24 @@ fn build_transaction(
                         tx = fill_tx(tx, "call", bytes);
                     }
 
-                    fill_result(
-                        tx,
-                        outcome.receipt.receipt_id,
-                        &outcome.execution_outcome.outcome.status,
-                        true,
-                        &mut bloom,
+                    let result = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
                         txs.get(&hash),
-                    )?
+                    )?;
+                    fill_with_submit_result(tx, result, &mut bloom)
                 }
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ));
+                    tx = tx
+                        .hash(hash)
+                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
 
                     tx = tx
                         .to(None)
                         .nonce(0)
-                        .gas_limit(0)
+                        .gas_limit(u64::MAX)
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
                         .value(Wei::zero())
@@ -463,38 +598,33 @@ fn build_transaction(
                         .r(U256::zero())
                         .s(U256::zero());
 
-                    tx = if let InnerTransactionKind::Deploy = raw_tx_kind {
-                        tx.contract_address(Some(extract_address_deploy(
-                            &outcome.execution_outcome.outcome.status,
-                        )?))
-                    } else {
-                        tx.contract_address(Some(extract_address_deploy_erc20(
-                            &outcome.execution_outcome.outcome.status,
-                        )?))
-                    };
-
-                    fill_result(
-                        tx,
-                        outcome.receipt.receipt_id,
-                        &outcome.execution_outcome.outcome.status,
-                        true,
-                        &mut bloom,
+                    let result = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
                         txs.get(&hash),
-                    )?
+                    )?;
+                    let contract_address = match &result.status {
+                        aurora_engine::parameters::TransactionStatus::Succeed(bytes) => {
+                            Address::try_from_slice(bytes).ok()
+                        }
+                        _ => None,
+                    };
+                    tx = tx.contract_address(contract_address);
+                    fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx.hash(hash).from(near_account_to_evm_address(
-                        outcome.receipt.predecessor_id.as_bytes(),
-                    ));
-                    tx = fill_result(
-                        tx,
-                        outcome.receipt.receipt_id,
-                        &outcome.execution_outcome.outcome.status,
-                        false,
-                        &mut bloom,
+                    tx = tx
+                        .hash(hash)
+                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                    let result = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
                         txs.get(&hash),
                     )?;
+                    tx = fill_with_submit_result(tx, result, &mut bloom);
                     fill_tx(tx, method_name, bytes)
                 }
             }
@@ -504,9 +634,7 @@ fn build_transaction(
 
             tx = tx
                 .hash(virtual_receipt_id.0.try_into().unwrap())
-                .from(near_account_to_evm_address(
-                    outcome.receipt.predecessor_id.as_bytes(),
-                ))
+                .from(near_account_to_evm_address(predecessor_id.as_bytes()))
                 .to(Some(near_account_to_evm_address(b"aurora")))
                 .contract_address(None)
                 .nonce(0)
@@ -526,17 +654,17 @@ fn build_transaction(
                 .tx_type(0xfe)
                 .access_list(vec![]);
 
-            match &outcome.execution_outcome.outcome.status {
-                ExecutionStatusView::Unknown => {
+            match execution_status {
+                None | Some(ExecutionStatusView::Unknown) => {
                     tx = tx.output(vec![]).status(false);
                 }
-                ExecutionStatusView::Failure(err) => {
+                Some(ExecutionStatusView::Failure(err)) => {
                     tx = tx.output(err.try_to_vec().unwrap()).status(false);
                 }
-                ExecutionStatusView::SuccessValue(value) => {
+                Some(ExecutionStatusView::SuccessValue(value)) => {
                     tx = tx.output(value.as_bytes().to_vec()).status(true);
                 }
-                ExecutionStatusView::SuccessReceiptId(data) => {
+                Some(ExecutionStatusView::SuccessReceiptId(data)) => {
                     tx = tx.output(data.0.to_vec()).status(true);
                 }
             }
@@ -553,104 +681,22 @@ fn build_transaction(
 
 fn fill_with_submit_result(
     mut tx: AuroraTransactionBuilder,
-    result: Option<SubmitResult>,
+    result: SubmitResult,
     blooms: &mut Bloom,
 ) -> AuroraTransactionBuilder {
-    if let Some(result) = result {
-        for log in result.logs.iter() {
-            blooms.accrue_bloom(&get_log_blooms(log));
-        }
-
-        tx = tx.gas_used(result.gas_used).logs(result.logs);
-        tx = match result.status {
-            aurora_engine::parameters::TransactionStatus::Succeed(output) => {
-                tx.status(true).output(output)
-            }
-            aurora_engine::parameters::TransactionStatus::Revert(output) => {
-                tx.status(false).output(output)
-            }
-            _ => tx.status(false).output(vec![]),
-        };
-    } else {
-        // Filling result with default values
-        tx = tx.gas_used(0).logs(vec![]).status(false).output(vec![]);
-    }
-    tx
-}
-
-fn fill_result(
-    mut tx: AuroraTransactionBuilder,
-    receipt_id: CryptoHash,
-    status: &ExecutionStatusView,
-    submit_or_call: bool,
-    blooms: &mut Bloom,
-    included_outcome: Option<&TransactionIncludedOutcome>,
-) -> Result<AuroraTransactionBuilder, RefinerError> {
-    // If the tx is failing on the NEAR runtime it should be discarded.
-    match &status {
-        ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_) => {
-            crate::metrics::FAILING_NEAR_TRANSACTION.inc();
-            tracing::debug!("Failing NEAR transaction: {:?}", status);
-            return Err(RefinerError::FailNearTx);
-        }
-        _ => {}
+    for log in result.logs.iter() {
+        blooms.accrue_bloom(&get_log_blooms(log));
     }
 
-    if let Some(included_outcome) = included_outcome {
-        if let Ok(execution_result) = included_outcome.maybe_result.as_ref() {
-            if let Some(execution_result) = execution_result.as_ref() {
-                return Ok(match execution_result {
-                    TransactionExecutionResult::Submit(result) => match result {
-                        Ok(result) => fill_with_submit_result(tx, Some(result.clone()), blooms),
-                        Err(err) => tx
-                            .gas_used(err.gas_used)
-                            .logs(vec![])
-                            .status(false)
-                            .output(format!("{:?}", err.kind).as_bytes().to_vec()),
-                    },
-                    TransactionExecutionResult::DeployErc20(address) => tx
-                        .gas_used(0)
-                        .logs(vec![])
-                        .status(true)
-                        .output(address.as_bytes().to_vec()),
-                    TransactionExecutionResult::Promise(promise) => tx
-                        .gas_used(0)
-                        .logs(vec![])
-                        .status(true)
-                        .output(format!("{:?}", promise).as_bytes().to_vec()),
-                });
-            }
+    tx = tx.gas_used(result.gas_used).logs(result.logs);
+    match result.status {
+        aurora_engine::parameters::TransactionStatus::Succeed(output) => {
+            tx.status(true).output(output)
         }
-    }
-
-    match &status {
-        ExecutionStatusView::SuccessValue(result) => {
-            let result = base64::decode(result).map_err(RefinerError::SuccessValueBase64Args)?;
-
-            if submit_or_call {
-                let result = decode_submit_result(result.as_slice()).ok();
-
-                if result.is_none() {
-                    tracing::warn!(
-                        "Submit Result format unknown for receipt {:?}. (FIX)",
-                        receipt_id
-                    );
-                }
-
-                tx = fill_with_submit_result(tx, result, blooms);
-            } else {
-                tx = tx.gas_used(0).logs(vec![]).status(true).output(result);
-            }
-
-            Ok(tx)
+        aurora_engine::parameters::TransactionStatus::Revert(output) => {
+            tx.status(false).output(output)
         }
-        ExecutionStatusView::SuccessReceiptId(result) => Ok(tx
-            .gas_used(0)
-            .logs(vec![])
-            .status(true)
-            .output(result.0.to_vec())),
-        // Handled in the beginning of the function
-        _ => unreachable!(),
+        _ => tx.status(false).output(vec![]),
     }
 }
 
@@ -679,35 +725,6 @@ fn fill_tx(
         .v(0)
         .r(U256::zero())
         .s(U256::zero())
-}
-
-/// Extracts an address from a Deploy transaction execution status
-fn extract_address_deploy(status: &ExecutionStatusView) -> Result<Address, RefinerError> {
-    if let ExecutionStatusView::SuccessValue(value_str) = status {
-        let value_vec = base64::decode(value_str).map_err(RefinerError::SuccessValueBase64Args)?;
-
-        let submit_result =
-            SubmitResult::try_from_slice(&value_vec).map_err(|_| RefinerError::FailNearTx)?;
-
-        if let aurora_engine::parameters::TransactionStatus::Succeed(address_vec) =
-            submit_result.status
-        {
-            return Address::try_from_slice(&address_vec).map_err(|_| RefinerError::FailNearTx);
-        }
-    }
-
-    Err(RefinerError::FailNearTx)
-}
-
-/// Extracts an address from a DeployErc20 transaction execution status
-fn extract_address_deploy_erc20(status: &ExecutionStatusView) -> Result<Address, RefinerError> {
-    if let ExecutionStatusView::SuccessValue(value_str) = status {
-        let address_vec =
-            base64::decode(value_str).map_err(RefinerError::SuccessValueBase64Args)?;
-        Address::try_from_slice(&address_vec).map_err(|_| RefinerError::FailNearTx)
-    } else {
-        Err(RefinerError::FailNearTx)
-    }
 }
 
 #[derive(Debug)]
