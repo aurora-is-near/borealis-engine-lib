@@ -421,7 +421,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "2.8.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -443,7 +443,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -462,7 +462,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "aurora-engine-types",
  "borsh",
@@ -473,7 +473,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -486,7 +486,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "borsh",
  "hex",
@@ -572,6 +572,7 @@ dependencies = [
 name = "aurora-standalone-engine"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "aurora-engine",
  "aurora-engine-sdk",
  "aurora-engine-transactions",
@@ -580,8 +581,10 @@ dependencies = [
  "base64 0.13.1",
  "borsh",
  "engine-standalone-storage",
+ "engine-standalone-tracing",
  "hex",
  "lru 0.8.1",
+ "serde",
  "serde_json",
  "strum 0.24.1",
  "tempfile",
@@ -2031,7 +2034,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=2beee0ed08c874f59eebeca94e2740d11d6f7b78#2beee0ed08c874f59eebeca94e2740d11d6f7b78"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
 dependencies = [
  "aurora-engine",
  "aurora-engine-precompiles",
@@ -2046,6 +2049,20 @@ dependencies = [
  "rocksdb",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "engine-standalone-tracing"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=6dd8b6f70019600a2431446b0d259e8528a26716#6dd8b6f70019600a2431446b0d259e8528a26716"
+dependencies = [
+ "aurora-engine-types",
+ "evm",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
+ "hex",
+ "serde",
 ]
 
 [[package]]
@@ -2209,7 +2226,7 @@ dependencies = [
 [[package]]
 name = "evm"
 version = "0.37.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.3-aurora#ad17d1c242356e25692573a5eea4b50ee80f6de3"
+source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.4-aurora#a7a0fb429d5fd479aecaa51687cad1f818772051"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -2229,7 +2246,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.37.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.3-aurora#ad17d1c242356e25692573a5eea4b50ee80f6de3"
+source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.4-aurora#a7a0fb429d5fd479aecaa51687cad1f818772051"
 dependencies = [
  "parity-scale-codec 3.2.1",
  "primitive-types 0.12.1",
@@ -2240,7 +2257,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.37.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.3-aurora#ad17d1c242356e25692573a5eea4b50ee80f6de3"
+source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.4-aurora#a7a0fb429d5fd479aecaa51687cad1f818772051"
 dependencies = [
  "environmental",
  "evm-core",
@@ -2251,7 +2268,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.37.0"
-source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.3-aurora#ad17d1c242356e25692573a5eea4b50ee80f6de3"
+source = "git+https://github.com/aurora-is-near/sputnikvm.git?tag=v0.37.4-aurora#a7a0fb429d5fd479aecaa51687cad1f818772051"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -3222,6 +3239,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4da24a77a3d8a6d4862d95f72e6fdb9c09a643ecdb402d754004a557f2bec75"
 dependencies = [
  "scopeguard",
+ "serde",
 ]
 
 [[package]]
@@ -3232,7 +3250,6 @@ checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg 1.1.0",
  "scopeguard",
- "serde",
 ]
 
 [[package]]
@@ -4816,7 +4833,7 @@ dependencies = [
  "once_cell",
  "paperclip-core",
  "paperclip-macros",
- "parking_lot 0.12.1",
+ "parking_lot 0.10.2",
  "serde_json",
 ]
 
@@ -4830,7 +4847,7 @@ dependencies = [
  "mime",
  "once_cell",
  "paperclip-macros",
- "parking_lot 0.12.1",
+ "parking_lot 0.10.2",
  "pin-project",
  "regex",
  "serde",

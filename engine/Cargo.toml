@@ -13,6 +13,7 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
+anyhow.workspace = true
 aurora-engine.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
@@ -21,12 +22,14 @@ aurora-refiner-types = { path = "../refiner-types" }
 base64.workspace = true
 borsh.workspace = true
 engine-standalone-storage = { workspace = true, features = ["snappy", "zstd", "zlib", "bzip2"] }
+engine-standalone-tracing.workspace = true
+hex.workspace = true
 lru.workspace = true
 tracing.workspace = true
+serde.workspace = true
 strum.workspace = true
 
 [dev-dependencies]
-hex.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
