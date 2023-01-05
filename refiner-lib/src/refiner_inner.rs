@@ -1,6 +1,6 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
-use crate::utils::{self, as_h256, keccak256, TxMetadata};
+use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::engine::create_legacy_address;
 use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
 use aurora_engine_sdk::sha256;
@@ -506,8 +506,9 @@ fn build_transaction(
                             .map_err(RefinerError::ParseTransaction)?;
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
-                    let tx_nonce = utils::saturating_cast(eth_tx.nonce);
-                    let tx_gas_limit = utils::saturating_cast(eth_tx.gas_limit);
+                    let tx_nonce = aurora_refiner_types::utils::saturating_cast(eth_tx.nonce);
+                    let tx_gas_limit =
+                        aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)

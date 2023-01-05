@@ -565,6 +565,7 @@ dependencies = [
  "near-crypto 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "near-primitives 0.0.0 (git+https://github.com/near/nearcore?tag=1.26.1)",
  "serde",
+ "serde_json",
  "sha3",
 ]
 

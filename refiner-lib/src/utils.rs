@@ -5,8 +5,6 @@ use rlp::{DecoderError, Rlp};
 use sha3::Digest;
 use std::convert::TryFrom;
 
-const U64_MAX: U256 = U256([u64::MAX, 0, 0, 0]);
-
 pub fn keccak256(input: &[u8]) -> H256 {
     let mut hasher = sha3::Keccak256::default();
     hasher.update(input);
@@ -17,15 +15,6 @@ pub fn as_h256(data: &[u8]) -> H256 {
     let buffer = &mut [0u8; 32];
     buffer.copy_from_slice(data);
     H256::from(buffer)
-}
-
-/// Cast a U256 value down to u64; if the value is too large then return u64::MAX.
-pub fn saturating_cast(x: U256) -> u64 {
-    if x < U64_MAX {
-        x.as_u64()
-    } else {
-        u64::MAX
-    }
 }
 
 pub struct TxMetadata {

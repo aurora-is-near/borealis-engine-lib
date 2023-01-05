@@ -1,3 +1,4 @@
+use crate::utils::u64_hex_serde;
 use aurora_engine::parameters::ResultLog;
 use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::types::{Address, Wei};
@@ -36,12 +37,15 @@ pub struct AuroraBlock {
     /// Timestamp where the block was generated
     pub timestamp: u64,
     /// Gas limit will be always u64::MAX
+    #[serde(with = "u64_hex_serde")]
     pub gas_limit: u64,
     /// Sum of the gas used for each tx included in the block.
+    #[serde(with = "u64_hex_serde")]
     pub gas_used: u64,
     /// Logs bloom of the block. Aggregation of transactions logs bloom.
     pub logs_bloom: Bloom,
     /// Integer the size of this block in bytes.
+    #[serde(with = "u64_hex_serde")]
     pub size: u64,
     /// Transaction root using Ethereum rules
     pub transactions_root: H256,
@@ -108,10 +112,12 @@ pub struct AuroraTransaction {
     /// Target address of the transaction. It will be None in case it is a deploy transaction.
     pub to: Option<Address>,
     /// Nonce of the transaction to keep the order.
+    #[serde(with = "u64_hex_serde")]
     pub nonce: u64,
     /// Gas price for the transaction. Related to Aurora Gas not NEAR Gas.
     pub gas_price: U256,
     /// Gas limit of the transaction. In the context of Aurora it should be U256::MAX
+    #[serde(with = "u64_hex_serde")]
     pub gas_limit: u64,
     /// Gas used by the transaction
     pub gas_used: u64,
@@ -157,4 +163,43 @@ pub struct NearTransaction {
     /// expected to be set for call newly produced data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_hash: Option<CryptoHash>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AuroraBlock;
+
+    #[test]
+    fn test_aurora_block_deserialization() {
+        let serialized_block = std::fs::read_to_string("src/res/aurora_70077007.json").unwrap();
+        let given_block_json: serde_json::Value = serde_json::from_str(&serialized_block).unwrap();
+
+        let block: AuroraBlock = serde_json::from_str(&serialized_block).unwrap();
+        let computed_block_json = {
+            let mut tmp = serde_json::to_value(block).unwrap();
+            // The gas limit field used to be equal to `U256::MAX`, however we now represent that
+            // field as a u64, so it is automatically coerced down to u64::MAX when deserializing.
+            // Therefore we expect the value now to be `0xffffffffffffffff`, but it used to be
+            // `0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`, so we change it back
+            // to be able to compare with the original given block.
+            assert_eq!(
+                tmp.as_object()
+                    .unwrap()
+                    .get("gas_limit")
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+                "0xffffffffffffffff"
+            );
+            tmp.as_object_mut().unwrap().insert(
+                "gas_limit".into(),
+                serde_json::Value::String(
+                    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".into(),
+                ),
+            );
+            tmp
+        };
+
+        assert_eq!(computed_block_json, given_block_json);
+    }
 }
