@@ -12,12 +12,12 @@ mod sum_trie;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct TransactionContext {
-    block_hash: H256,
-    block_number: u64,
-    transaction_hash: H256,
-    transaction_position: u32,
+    pub block_hash: H256,
+    pub block_number: u64,
+    pub transaction_hash: H256,
+    pub transaction_position: u32,
 }
 
 pub fn from_call_frame(ctx: TransactionContext, trace: CallFrame) -> Vec<AlchemyTrace> {
