@@ -1,15 +1,9 @@
 //! Useful tools to convert between equivalent types
 
 use aurora_engine_types::{H256, U256};
+pub use aurora_refiner_types::utils::keccak256;
 use rlp::{DecoderError, Rlp};
-use sha3::Digest;
 use std::convert::TryFrom;
-
-pub fn keccak256(input: &[u8]) -> H256 {
-    let mut hasher = sha3::Keccak256::default();
-    hasher.update(input);
-    H256(hasher.finalize().into())
-}
 
 pub fn as_h256(data: &[u8]) -> H256 {
     let buffer = &mut [0u8; 32];
