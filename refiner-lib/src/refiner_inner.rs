@@ -8,7 +8,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
-use aurora_engine_types::types::{Address, Wei, WeiU256};
+use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, AuroraTransactionBuilder, AuroraTransactionBuilderError,
@@ -511,8 +511,8 @@ fn build_transaction(
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
                     let tx_nonce = aurora_refiner_types::utils::saturating_cast(eth_tx.nonce);
-                    let tx_gas_limit =
-                        aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
+                    let tx_gas_limit = aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
+
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)
@@ -599,6 +599,7 @@ fn build_transaction(
                         transaction_index.try_into().unwrap(),
                         &[],
                         |io| aurora_engine::engine::get_nonce(&io, &from_address)).result;
+                    let contract_address = create_legacy_address(&from_address, &nonce);
 
                     tx = tx
                         .hash(hash)
@@ -614,6 +615,7 @@ fn build_transaction(
                         .input(vec![])
                         .access_list(vec![])
                         .tx_type(0xff)
+                        .contract_address(Some(contract_address))
                         .v(0)
                         .r(U256::zero())
                         .s(U256::zero());
@@ -624,13 +626,7 @@ fn build_transaction(
                         execution_status,
                         txs.get(&hash),
                     )?;
-                    let contract_address = match &result.status {
-                        aurora_engine::parameters::TransactionStatus::Succeed(bytes) => {
-                            Address::try_from_slice(bytes).ok()
-                        }
-                        _ => None,
-                    };
-                    tx = tx.contract_address(contract_address);
+
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {
