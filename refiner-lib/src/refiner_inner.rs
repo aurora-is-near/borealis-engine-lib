@@ -24,6 +24,7 @@ use aurora_refiner_types::near_primitives::views::{
 use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
+use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
@@ -149,6 +150,7 @@ impl Refiner {
         near_tx_hash: Option<CryptoHash>,
         execution_outcome: &ExecutionOutcomeWithReceipt,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
+        storage: &Storage,
     ) {
         let NEARBlock { block, .. } = &block;
 
@@ -203,6 +205,7 @@ impl Refiner {
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
                         txs,
+                        storage,
                     ) {
                         Ok(tx) => {
                             let BuiltTransaction {
@@ -460,6 +463,7 @@ fn build_transaction(
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
     txs: &HashMap<H256, TransactionIncludedOutcome>,
+    storage: &Storage,
 ) -> Result<BuiltTransaction, RefinerError> {
     let mut bloom = Bloom::default();
 
@@ -543,9 +547,11 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+
                     tx = tx
                         .hash(hash)
-                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                        .from(from_address);
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (to_address, value, input) = match call_args {
@@ -553,9 +559,15 @@ fn build_transaction(
                             CallArgs::V1(args) => (args.contract, WeiU256::default(), args.input),
                         };
 
+                        let nonce = storage.with_engine_access(
+                            near_block.header.height, 
+                            transaction_index.try_into().unwrap(),
+                            &[],
+                            |io| aurora_engine::engine::get_nonce(&io, &from_address)).result;
+
                         tx = tx
                             .to(Some(to_address))
-                            .nonce(0)
+                            .nonce(nonce.try_into().unwrap())
                             .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
@@ -581,13 +593,20 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                    let nonce = storage.with_engine_access(
+                        near_block.header.height, 
+                        transaction_index.try_into().unwrap(),
+                        &[],
+                        |io| aurora_engine::engine::get_nonce(&io, &from_address)).result;
+
                     tx = tx
                         .hash(hash)
-                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                        .from(from_address);
 
                     tx = tx
                         .to(None)
-                        .nonce(0)
+                        .nonce(nonce.try_into().unwrap())
                         .gas_limit(u64::MAX)
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())

@@ -60,7 +60,7 @@ impl NearStream {
                     crate::metrics::UNKNOWN_TX_FOR_RECEIPT.inc();
                 }
                 self.handler
-                    .on_execution_outcome(near_block, near_tx_hash, outcome, &txs);
+                    .on_execution_outcome(near_block, near_tx_hash, outcome, &txs, &self.context.storage);
             });
 
         let aurora_block = self.handler.on_block_end(near_block);
