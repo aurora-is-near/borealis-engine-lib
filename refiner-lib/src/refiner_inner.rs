@@ -24,8 +24,8 @@ use aurora_refiner_types::near_primitives::views::{
 use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
-use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
+use engine_standalone_storage::Storage;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
@@ -511,7 +511,8 @@ fn build_transaction(
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
                     let tx_nonce = aurora_refiner_types::utils::saturating_cast(eth_tx.nonce);
-                    let tx_gas_limit = aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
+                    let tx_gas_limit =
+                        aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
 
                     tx = tx
                         .hash(hash)
@@ -549,9 +550,7 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.try_into().unwrap();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
-                    tx = tx
-                        .hash(hash)
-                        .from(from_address);
+                    tx = tx.hash(hash).from(from_address);
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (to_address, value, input) = match call_args {
@@ -559,11 +558,14 @@ fn build_transaction(
                             CallArgs::V1(args) => (args.contract, WeiU256::default(), args.input),
                         };
 
-                        let nonce = storage.with_engine_access(
-                            near_block.header.height, 
-                            transaction_index.try_into().unwrap(),
-                            &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address)).result;
+                        let nonce = storage
+                            .with_engine_access(
+                                near_block.header.height,
+                                transaction_index.try_into().unwrap(),
+                                &[],
+                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            )
+                            .result;
 
                         tx = tx
                             .to(Some(to_address))
@@ -594,16 +596,17 @@ fn build_transaction(
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
-                    let nonce = storage.with_engine_access(
-                        near_block.header.height, 
-                        transaction_index.try_into().unwrap(),
-                        &[],
-                        |io| aurora_engine::engine::get_nonce(&io, &from_address)).result;
+                    let nonce = storage
+                        .with_engine_access(
+                            near_block.header.height,
+                            transaction_index.try_into().unwrap(),
+                            &[],
+                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                        )
+                        .result;
                     let contract_address = create_legacy_address(&from_address, &nonce);
 
-                    tx = tx
-                        .hash(hash)
-                        .from(from_address);
+                    tx = tx.hash(hash).from(from_address);
 
                     tx = tx
                         .to(None)
