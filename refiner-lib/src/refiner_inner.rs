@@ -510,15 +510,14 @@ fn build_transaction(
                             .map_err(RefinerError::ParseTransaction)?;
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
-                    let tx_nonce = aurora_refiner_types::utils::saturating_cast(eth_tx.nonce);
-                    let tx_gas_limit =
-                        aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
 
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)
-                        .nonce(tx_nonce)
-                        .gas_limit(tx_gas_limit)
+                        .nonce(aurora_refiner_types::utils::saturating_cast(eth_tx.nonce))
+                        .gas_limit(aurora_refiner_types::utils::saturating_cast(
+                            eth_tx.gas_limit,
+                        ))
                         .gas_price(eth_tx.max_fee_per_gas)
                         .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
                         .max_fee_per_gas(eth_tx.max_fee_per_gas)
@@ -569,7 +568,7 @@ fn build_transaction(
 
                         tx = tx
                             .to(Some(to_address))
-                            .nonce(nonce.try_into().unwrap())
+                            .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                             .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
@@ -610,7 +609,7 @@ fn build_transaction(
 
                     tx = tx
                         .to(None)
-                        .nonce(nonce.try_into().unwrap())
+                        .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                         .gas_limit(u64::MAX)
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
