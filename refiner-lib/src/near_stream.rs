@@ -197,17 +197,13 @@ mod tests {
             let data = std::fs::read_to_string("tests/res/block-82654651.json").unwrap();
             serde_json::from_str(&data).unwrap()
         };
-        let target_receipt_id = "H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7";
         let expected_nonce = 12773;
 
         // run and assert
         let aurora_block = stream.next_block(&block).pop().unwrap();
 
-        let target_aurora_tx = aurora_block
-            .transactions
-            .iter()
-            .find(|tx| tx.near_metadata.receipt_hash.to_string() == target_receipt_id)
-            .unwrap();
+        assert_eq!(aurora_block.transactions.len(), 1);
+        let target_aurora_tx = aurora_block.transactions.first().unwrap();
 
         assert_eq!(target_aurora_tx.nonce, expected_nonce);
     }
