@@ -8,7 +8,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
-use aurora_engine_types::types::{Address, Wei, WeiU256};
+use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, AuroraTransactionBuilder, AuroraTransactionBuilderError,
@@ -25,6 +25,7 @@ use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::BorshSerialize;
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
+use engine_standalone_storage::Storage;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
@@ -149,6 +150,7 @@ impl Refiner {
         near_tx_hash: Option<CryptoHash>,
         execution_outcome: &ExecutionOutcomeWithReceipt,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
+        storage: &Storage,
     ) {
         let NEARBlock { block, .. } = &block;
 
@@ -203,6 +205,7 @@ impl Refiner {
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
                         txs,
+                        storage,
                     ) {
                         Ok(tx) => {
                             let BuiltTransaction {
@@ -460,6 +463,7 @@ fn build_transaction(
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
     txs: &HashMap<H256, TransactionIncludedOutcome>,
+    storage: &Storage,
 ) -> Result<BuiltTransaction, RefinerError> {
     let mut bloom = Bloom::default();
 
@@ -506,14 +510,14 @@ fn build_transaction(
                             .map_err(RefinerError::ParseTransaction)?;
 
                     hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
-                    let tx_nonce = aurora_refiner_types::utils::saturating_cast(eth_tx.nonce);
-                    let tx_gas_limit =
-                        aurora_refiner_types::utils::saturating_cast(eth_tx.gas_limit);
+
                     tx = tx
                         .hash(hash)
                         .from(eth_tx.address)
-                        .nonce(tx_nonce)
-                        .gas_limit(tx_gas_limit)
+                        .nonce(aurora_refiner_types::utils::saturating_cast(eth_tx.nonce))
+                        .gas_limit(aurora_refiner_types::utils::saturating_cast(
+                            eth_tx.gas_limit,
+                        ))
                         .gas_price(eth_tx.max_fee_per_gas)
                         .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
                         .max_fee_per_gas(eth_tx.max_fee_per_gas)
@@ -543,9 +547,9 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx
-                        .hash(hash)
-                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+
+                    tx = tx.hash(hash).from(from_address);
 
                     if let Some(call_args) = CallArgs::deserialize(&bytes) {
                         let (to_address, value, input) = match call_args {
@@ -553,9 +557,18 @@ fn build_transaction(
                             CallArgs::V1(args) => (args.contract, WeiU256::default(), args.input),
                         };
 
+                        let nonce = storage
+                            .with_engine_access(
+                                near_block.header.height,
+                                transaction_index.try_into().unwrap_or(u16::MAX),
+                                &[],
+                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            )
+                            .result;
+
                         tx = tx
                             .to(Some(to_address))
-                            .nonce(0)
+                            .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                             .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
@@ -581,13 +594,22 @@ fn build_transaction(
                 }
                 InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
-                    tx = tx
-                        .hash(hash)
-                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                    let nonce = storage
+                        .with_engine_access(
+                            near_block.header.height,
+                            transaction_index.try_into().unwrap_or(u16::MAX),
+                            &[],
+                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                        )
+                        .result;
+                    let contract_address = create_legacy_address(&from_address, &nonce);
+
+                    tx = tx.hash(hash).from(from_address);
 
                     tx = tx
                         .to(None)
-                        .nonce(0)
+                        .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                         .gas_limit(u64::MAX)
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
@@ -595,6 +617,7 @@ fn build_transaction(
                         .input(vec![])
                         .access_list(vec![])
                         .tx_type(0xff)
+                        .contract_address(Some(contract_address))
                         .v(0)
                         .r(U256::zero())
                         .s(U256::zero());
@@ -605,13 +628,7 @@ fn build_transaction(
                         execution_status,
                         txs.get(&hash),
                     )?;
-                    let contract_address = match &result.status {
-                        aurora_engine::parameters::TransactionStatus::Succeed(bytes) => {
-                            Address::try_from_slice(bytes).ok()
-                        }
-                        _ => None,
-                    };
-                    tx = tx.contract_address(contract_address);
+
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {

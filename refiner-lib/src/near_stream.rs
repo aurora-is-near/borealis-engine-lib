@@ -59,8 +59,13 @@ impl NearStream {
                     tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
                     crate::metrics::UNKNOWN_TX_FOR_RECEIPT.inc();
                 }
-                self.handler
-                    .on_execution_outcome(near_block, near_tx_hash, outcome, &txs);
+                self.handler.on_execution_outcome(
+                    near_block,
+                    near_tx_hash,
+                    outcome,
+                    &txs,
+                    &self.context.storage,
+                );
             });
 
         let aurora_block = self.handler.on_block_end(near_block);
@@ -95,6 +100,8 @@ impl NearStream {
 
 #[cfg(test)]
 mod tests {
+    use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
+
     use super::*;
 
     #[test]
@@ -108,7 +115,7 @@ mod tests {
         let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
         let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
         let block: NEARBlock = {
-            let data = std::fs::read_to_string("blocks/block-81206675.json").unwrap();
+            let data = std::fs::read_to_string("tests/res/block-81206675.json").unwrap();
             serde_json::from_str(&data).unwrap()
         };
 
@@ -159,5 +166,45 @@ mod tests {
             "c6e5185438e1730959c1ef3551059a3fec744e90"
         );
         assert_eq!(tx_2.logs.len(), 1);
+    }
+
+    #[test]
+    fn test_block_82654651_nonce() {
+        // load state snapshot and main objects
+        let db_dir = tempfile::tempdir().unwrap();
+        let engine_path = db_dir.path().join("engine");
+        let tracker_path = db_dir.path().join("tracker");
+        let chain_id = 1313161554_u64;
+
+        crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
+        let mut ctx =
+            EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
+
+        let json_snapshot: JsonSnapshot = {
+            let json_snapshot_data = std::fs::read_to_string(
+                "tests/res/sate_H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7.json",
+            )
+            .unwrap();
+            serde_json::from_str(&json_snapshot_data).unwrap()
+        };
+        initialize_engine_state(&mut ctx.storage, json_snapshot).unwrap();
+
+        let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
+        let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
+
+        // parameters of the test
+        let block: NEARBlock = {
+            let data = std::fs::read_to_string("tests/res/block-82654651.json").unwrap();
+            serde_json::from_str(&data).unwrap()
+        };
+        let expected_nonce = 12773;
+
+        // run and assert
+        let aurora_block = stream.next_block(&block).pop().unwrap();
+
+        assert_eq!(aurora_block.transactions.len(), 1);
+        let target_aurora_tx = aurora_block.transactions.first().unwrap();
+
+        assert_eq!(target_aurora_tx.nonce, expected_nonce);
     }
 }
