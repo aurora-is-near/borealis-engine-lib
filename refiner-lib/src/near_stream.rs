@@ -115,7 +115,7 @@ mod tests {
         let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
         let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
         let block: NEARBlock = {
-            let data = std::fs::read_to_string("blocks/block-81206675.json").unwrap();
+            let data = std::fs::read_to_string("tests/res/block-81206675.json").unwrap();
             serde_json::from_str(&data).unwrap()
         };
 
@@ -182,7 +182,7 @@ mod tests {
 
         let json_snapshot: JsonSnapshot = {
             let json_snapshot_data = std::fs::read_to_string(
-                "blocks/sate_H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7.json",
+                "tests/res/sate_H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7.json",
             )
             .unwrap();
             serde_json::from_str(&json_snapshot_data).unwrap()
@@ -194,7 +194,7 @@ mod tests {
 
         // parameters of the test
         let block: NEARBlock = {
-            let data = std::fs::read_to_string("blocks/block-82654651.json").unwrap();
+            let data = std::fs::read_to_string("tests/res/block-82654651.json").unwrap();
             serde_json::from_str(&data).unwrap()
         };
         let target_receipt_id = "H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7";

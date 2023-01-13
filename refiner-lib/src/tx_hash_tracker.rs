@@ -222,9 +222,9 @@ mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let mut tracker = TxHashTracker::new(db_dir.path(), 0).unwrap();
 
-        let block_1 = read_block("blocks/block-34834053.json");
-        let block_2 = read_block("blocks/block-51188689.json");
-        let block_3 = read_block("blocks/block-51188690.json");
+        let block_1 = read_block("tests/res/block-34834053.json");
+        let block_2 = read_block("tests/res/block-51188689.json");
+        let block_3 = read_block("tests/res/block-51188690.json");
 
         tracker.consume_near_block(&block_1).unwrap();
 
