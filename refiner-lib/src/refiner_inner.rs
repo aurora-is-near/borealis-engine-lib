@@ -560,7 +560,7 @@ fn build_transaction(
                         let nonce = storage
                             .with_engine_access(
                                 near_block.header.height,
-                                transaction_index.try_into().unwrap(),
+                                transaction_index.try_into().unwrap_or(u16::MAX),
                                 &[],
                                 |io| aurora_engine::engine::get_nonce(&io, &from_address),
                             )
@@ -598,7 +598,7 @@ fn build_transaction(
                     let nonce = storage
                         .with_engine_access(
                             near_block.header.height,
-                            transaction_index.try_into().unwrap(),
+                            transaction_index.try_into().unwrap_or(u16::MAX),
                             &[],
                             |io| aurora_engine::engine::get_nonce(&io, &from_address),
                         )
