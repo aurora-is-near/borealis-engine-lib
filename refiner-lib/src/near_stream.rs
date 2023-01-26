@@ -207,4 +207,27 @@ mod tests {
 
         assert_eq!(target_aurora_tx.nonce, expected_nonce);
     }
+
+    #[test]
+    fn test_block_70834061_skip_block() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let engine_path = db_dir.path().join("engine");
+        let tracker_path = db_dir.path().join("tracker");
+        let chain_id = 1313161554_u64;
+        crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
+        let ctx = EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
+        let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
+        let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
+
+        // near skip block; it skipped 70834060, so the previous one is 70834059
+        let near_skip_block: NEARBlock = {
+            let data = std::fs::read_to_string("tests/res/block-70834061.json").unwrap();
+            serde_json::from_str(&data).unwrap()
+        };
+
+        // run and assert
+        let aurora_blocks = stream.next_block(&near_skip_block);
+
+        assert_eq!(aurora_blocks.len(), 2);
+    }
 }
