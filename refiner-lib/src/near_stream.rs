@@ -100,7 +100,9 @@ impl NearStream {
 
 #[cfg(test)]
 mod tests {
+    use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
+    use std::matches;
 
     use super::*;
 
@@ -219,15 +221,39 @@ mod tests {
         let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
         let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
 
-        // near skip block; it skipped 70834060, so the previous one is 70834059
+        // near block 70834059
+        let near_block: NEARBlock = {
+            let data = std::fs::read_to_string("tests/res/block-70834059.json").unwrap();
+            serde_json::from_str(&data).unwrap()
+        };
+
+        let aurora_blocks = stream.next_block(&near_block);
+
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 70834059);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // near skip block 70834061; 70834060 does not exist
         let near_skip_block: NEARBlock = {
             let data = std::fs::read_to_string("tests/res/block-70834061.json").unwrap();
             serde_json::from_str(&data).unwrap()
         };
 
-        // run and assert
         let aurora_blocks = stream.next_block(&near_skip_block);
 
         assert_eq!(aurora_blocks.len(), 2);
+        assert_eq!(aurora_blocks[0].height, 70834060); // dummy skip aurora block
+        assert_eq!(aurora_blocks[1].height, 70834061);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::SkipBlock
+        ));
+        assert!(matches!(
+            aurora_blocks[1].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
     }
 }
