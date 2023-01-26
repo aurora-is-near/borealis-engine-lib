@@ -256,4 +256,31 @@ mod tests {
             NearBlock::ExistingBlock(..)
         ));
     }
+
+    #[test]
+    fn test_block_34834052_block_before_aurora_genesis() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let engine_path = db_dir.path().join("engine");
+        let tracker_path = db_dir.path().join("tracker");
+        let chain_id = 1313161554_u64;
+        crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
+        let ctx = EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
+        let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
+        let mut stream = NearStream::new(chain_id, None, ctx, tx_tracker);
+
+        // near block 34834052; aurora block genesis is 34834053
+        let near_block: NEARBlock = {
+            let data = std::fs::read_to_string("tests/res/block-34834052.json").unwrap();
+            serde_json::from_str(&data).unwrap()
+        };
+
+        let aurora_blocks = stream.next_block(&near_block);
+
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 34834052);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+    }
 }
