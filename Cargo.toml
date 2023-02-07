@@ -37,7 +37,7 @@ keccak-hasher = "0.15.3"
 lazy_static = "1.4.0"
 lru = "0.8.1"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
-near-indexer = { git = "https://github.com/birchmd/nearcore", rev = "9d2c6c979ae25b8fd05559b612c9319f4d9a7bb6" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "1.31.0"  }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "1.26.1" }
 near-lake-framework = "0.3.0"
 prometheus = "0.13.0"
@@ -54,4 +54,3 @@ tokio-stream = "0.1"
 tracing = "0.1.32"
 tracing-subscriber = "0.3"
 triehash-ethereum = { git = "https://github.com/openethereum/openethereum" }
-
