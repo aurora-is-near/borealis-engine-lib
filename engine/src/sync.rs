@@ -529,6 +529,8 @@ fn parse_actions(
     if num_actions == 1 {
         parse_action(&actions[0], promise_data)
             .map(|(tx, n)| ParsedActions::Single(Box::new(tx), n))
+    } else if num_actions == 0 {
+        None
     } else {
         let last_index = num_actions - 1;
         let aurora_batch_elements: Vec<_> = actions
