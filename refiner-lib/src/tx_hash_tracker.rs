@@ -82,6 +82,7 @@ impl TxHashTracker {
 struct TxHashTrackerImpl {
     cache: lru::LruCache<CryptoHash, CryptoHash>,
     persistent_storage: rocksdb::DB,
+    last_prune_height: u64,
 }
 
 /// At 64 bytes per entry (two 32-byte hashes), this caps the memory footprint of the tracker
@@ -103,6 +104,13 @@ const CACHE_SIZE: usize = 1_000_000;
 /// With 72 bytes per entry (two 32-byte hashes plus one 8-byte height), this will cap the
 /// storage used by this DB at under 4 GB.
 const PERSISTENT_HISTORY_SIZE: u64 = 432_000;
+
+/// Range delete operations are cheap to write (they are essentially one tombstone key in the DB),
+/// however they are expsensive to resolve during compaction. We cannot write one pruning
+/// operation per block and keep reasonable performance of the DB when compation happens.
+/// Therefore, we will only prune old data once every `PRUNE_FREQUENCY` blocks. This means the
+/// DB may grow a little larger than `PERSISTENT_HISTORY_SIZE` sometimes.
+const PRUNE_FREQUENCY: u64 = 50_000;
 
 impl TxHashTrackerImpl {
     fn new<P: AsRef<Path>>(storage_path: P, start_height: u64) -> anyhow::Result<Self> {
@@ -136,6 +144,7 @@ impl TxHashTrackerImpl {
         let mut result = Self {
             cache,
             persistent_storage,
+            last_prune_height: 0,
         };
 
         // Prune state on start in case a crash occurred before we had a chance to prune.
@@ -178,11 +187,20 @@ impl TxHashTrackerImpl {
     fn prune_state(&mut self, completed_block_height: u64) -> anyhow::Result<()> {
         let prune_height = completed_block_height.saturating_sub(PERSISTENT_HISTORY_SIZE);
 
-        let start_key = vec![0u8; 40];
+        if prune_height.saturating_sub(self.last_prune_height) < PRUNE_FREQUENCY {
+            return Ok(());
+        }
+
+        let start_key = [
+            self.last_prune_height.to_be_bytes().as_slice(),
+            &[0x00_u8; 32],
+        ]
+        .concat();
         let end_key = [prune_height.to_be_bytes().as_slice(), &[0xff_u8; 32]].concat();
         let mut batch = rocksdb::WriteBatch::default();
         batch.delete_range(start_key, end_key);
         self.persistent_storage.write(batch)?;
+        self.last_prune_height = prune_height;
 
         Ok(())
     }
