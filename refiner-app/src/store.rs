@@ -88,7 +88,7 @@ pub async fn load_last_block_height<P: AsRef<std::path::Path>>(storage_path: P) 
         let mut file = tokio::fs::File::open(&store_file).await.unwrap();
         let mut buffer = String::new();
         file.read_to_string(&mut buffer).await.unwrap();
-        Some(buffer.parse().unwrap())
+        Some(buffer.trim().parse().unwrap())
     } else {
         None
     }
