@@ -14,7 +14,8 @@ pub struct Refiner {
     pub chain_id: u64,
     pub engine_path: String,
     pub engine_account_id: String,
-    pub tx_tracker_path: String,
+    #[serde(default)]
+    pub tx_tracker_path: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

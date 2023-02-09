@@ -3,7 +3,10 @@ mod config;
 mod conversion;
 mod input;
 mod store;
-use std::path::PathBuf;
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use cli::Cli;
@@ -65,11 +68,17 @@ async fn main() -> Result<(), tokio::io::Error> {
                 config.refiner.chain_id,
             );
 
+            let engine_path = Path::new(&config.refiner.engine_path);
+            let tx_tracker_path = match config.refiner.tx_tracker_path.as_ref() {
+                Some(path) => Cow::Borrowed(Path::new(path)),
+                None => Cow::Owned(engine_path.join("tx_tracker")),
+            };
+
             // Run Refiner
-            aurora_refiner_lib::run_refiner::<_, ()>(
+            aurora_refiner_lib::run_refiner::<&Path, ()>(
                 config.refiner.chain_id,
-                config.refiner.engine_path,
-                config.refiner.tx_tracker_path,
+                engine_path,
+                tx_tracker_path.as_ref(),
                 config.refiner.engine_account_id.parse().unwrap(),
                 input_stream,
                 output_stream,
