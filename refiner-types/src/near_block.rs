@@ -5,25 +5,28 @@ use near_primitives::serialize::{u128_dec_format, u64_dec_format};
 use near_primitives::types::{
     AccountId, Balance, BlockHeight, Gas, NumBlocks, ProtocolVersion, ShardId, StateRoot,
 };
+use near_primitives::views;
 use near_primitives::views::validator_stake_view::ValidatorStakeView;
-use near_primitives::{types, views};
+use near_primitives::views::{
+    StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
+};
 use serde::{Deserialize, Serialize};
 
 /// Resulting struct represents block with chunks
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NEARBlock {
     pub block: BlockView,
     pub shards: Vec<Shard>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockView {
     pub author: AccountId,
     pub header: IndexerBlockHeaderView,
 }
 
-impl From<near_primitives::views::BlockView> for BlockView {
-    fn from(view: near_primitives::views::BlockView) -> Self {
+impl From<views::BlockView> for BlockView {
+    fn from(view: views::BlockView) -> Self {
         BlockView {
             author: view.author,
             header: view.header.into(),
@@ -31,7 +34,7 @@ impl From<near_primitives::views::BlockView> for BlockView {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IndexerBlockHeaderView {
     pub height: BlockHeight,
     pub prev_height: Option<BlockHeight>,
@@ -69,9 +72,9 @@ pub struct IndexerBlockHeaderView {
     pub latest_protocol_version: ProtocolVersion,
 }
 
-impl From<near_primitives::views::BlockHeaderView> for IndexerBlockHeaderView {
-    fn from(header: near_primitives::views::BlockHeaderView) -> Self {
-        let near_primitives::views::BlockHeaderView {
+impl From<views::BlockHeaderView> for IndexerBlockHeaderView {
+    fn from(header: views::BlockHeaderView) -> Self {
+        let views::BlockHeaderView {
             height,
             prev_height,
             epoch_id,
@@ -161,9 +164,9 @@ pub struct ChunkHeaderView {
     pub signature: Signature,
 }
 
-impl From<near_primitives::views::ChunkHeaderView> for ChunkHeaderView {
-    fn from(view: near_primitives::views::ChunkHeaderView) -> Self {
-        let near_primitives::views::ChunkHeaderView {
+impl From<views::ChunkHeaderView> for ChunkHeaderView {
+    fn from(view: views::ChunkHeaderView) -> Self {
+        let views::ChunkHeaderView {
             chunk_hash,
             prev_block_hash,
             outcome_root,
@@ -207,15 +210,124 @@ impl From<near_primitives::views::ChunkHeaderView> for ChunkHeaderView {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Shard {
-    pub shard_id: types::ShardId,
+    pub shard_id: ShardId,
     pub chunk: Option<ChunkView>,
     pub receipt_execution_outcomes: Vec<ExecutionOutcomeWithReceipt>,
     pub state_changes: views::StateChangesView,
 }
 
+impl Clone for Shard {
+    fn clone(&self) -> Self {
+        Self {
+            shard_id: self.shard_id,
+            chunk: self.chunk.clone(),
+            receipt_execution_outcomes: self.receipt_execution_outcomes.clone(),
+            state_changes: self
+                .state_changes
+                .iter()
+                .map(|v: &StateChangeWithCauseView| StateChangeWithCauseView {
+                    cause: match &v.cause {
+                        StateChangeCauseView::NotWritableToDisk => {
+                            StateChangeCauseView::NotWritableToDisk
+                        }
+                        StateChangeCauseView::InitialState => StateChangeCauseView::InitialState,
+                        StateChangeCauseView::TransactionProcessing { tx_hash } => {
+                            StateChangeCauseView::TransactionProcessing { tx_hash: *tx_hash }
+                        }
+                        StateChangeCauseView::ActionReceiptProcessingStarted { receipt_hash } => {
+                            StateChangeCauseView::ActionReceiptProcessingStarted {
+                                receipt_hash: *receipt_hash,
+                            }
+                        }
+                        StateChangeCauseView::ActionReceiptGasReward { receipt_hash } => {
+                            StateChangeCauseView::ActionReceiptGasReward {
+                                receipt_hash: *receipt_hash,
+                            }
+                        }
+                        StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
+                            StateChangeCauseView::ReceiptProcessing {
+                                receipt_hash: *receipt_hash,
+                            }
+                        }
+                        StateChangeCauseView::PostponedReceipt { receipt_hash } => {
+                            StateChangeCauseView::PostponedReceipt {
+                                receipt_hash: *receipt_hash,
+                            }
+                        }
+                        StateChangeCauseView::UpdatedDelayedReceipts => {
+                            StateChangeCauseView::UpdatedDelayedReceipts
+                        }
+                        StateChangeCauseView::ValidatorAccountsUpdate => {
+                            StateChangeCauseView::ValidatorAccountsUpdate
+                        }
+                        StateChangeCauseView::Migration => StateChangeCauseView::Migration,
+                        StateChangeCauseView::Resharding => StateChangeCauseView::Resharding,
+                    },
+                    value: match &v.value {
+                        StateChangeValueView::AccountUpdate {
+                            account_id,
+                            account,
+                        } => StateChangeValueView::AccountUpdate {
+                            account_id: account_id.clone(),
+                            account: account.clone(),
+                        },
+                        StateChangeValueView::AccountDeletion { account_id } => {
+                            StateChangeValueView::AccountDeletion {
+                                account_id: account_id.clone(),
+                            }
+                        }
+                        StateChangeValueView::AccessKeyUpdate {
+                            account_id,
+                            public_key,
+                            access_key,
+                        } => StateChangeValueView::AccessKeyUpdate {
+                            account_id: account_id.clone(),
+                            public_key: public_key.clone(),
+                            access_key: access_key.clone(),
+                        },
+                        StateChangeValueView::AccessKeyDeletion {
+                            account_id,
+                            public_key,
+                        } => StateChangeValueView::AccessKeyDeletion {
+                            account_id: account_id.clone(),
+                            public_key: public_key.clone(),
+                        },
+                        StateChangeValueView::DataUpdate {
+                            account_id,
+                            key,
+                            value,
+                        } => StateChangeValueView::DataUpdate {
+                            account_id: account_id.clone(),
+                            key: key.clone(),
+                            value: value.clone(),
+                        },
+                        StateChangeValueView::DataDeletion { account_id, key } => {
+                            StateChangeValueView::DataDeletion {
+                                account_id: account_id.clone(),
+                                key: key.clone(),
+                            }
+                        }
+                        StateChangeValueView::ContractCodeUpdate { account_id, code } => {
+                            StateChangeValueView::ContractCodeUpdate {
+                                account_id: account_id.clone(),
+                                code: code.clone(),
+                            }
+                        }
+                        StateChangeValueView::ContractCodeDeletion { account_id } => {
+                            StateChangeValueView::ContractCodeDeletion {
+                                account_id: account_id.clone(),
+                            }
+                        }
+                    },
+                })
+                .collect(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChunkView {
-    pub author: types::AccountId,
+    pub author: AccountId,
     pub header: ChunkHeaderView,
     pub transactions: Vec<TransactionWithOutcome>,
     pub receipts: Vec<views::ReceiptView>,
