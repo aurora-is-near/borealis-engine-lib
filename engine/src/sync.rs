@@ -97,9 +97,7 @@ pub fn consume_near_block(
             let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
                 near_primitives::views::ExecutionStatusView::Unknown => return None,
                 near_primitives::views::ExecutionStatusView::Failure(_) => return None,
-                near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => {
-                    Some(base64::decode(bytes).ok()?)
-                }
+                near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => Some(bytes),
                 near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
             };
 
@@ -568,7 +566,7 @@ fn parse_action(
         ..
     } = action
     {
-        let bytes = base64::decode(args).ok()?;
+        let bytes = args.clone();
 
         let transaction_kind = if let Ok(raw_tx_kind) =
             InnerTransactionKind::from_str(method_name.as_str())

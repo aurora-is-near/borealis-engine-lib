@@ -233,7 +233,7 @@ fn slice_to_crypto_hash(slice: &[u8]) -> anyhow::Result<CryptoHash> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_refiner_types::near_primitives::serialize::BaseDecode;
+    use std::str::FromStr;
 
     #[test]
     fn test_transaction_hash_tracker() {
@@ -248,9 +248,9 @@ mod tests {
 
         // Receipt <-> Transaction mapping should be present after consuming a block
         let rx_hash_1 =
-            CryptoHash::from_base("EkdeeCvozyK5zXZSd3tk2VpakH4kiGfLHCBzfXZVAVvd").unwrap();
+            CryptoHash::from_str("EkdeeCvozyK5zXZSd3tk2VpakH4kiGfLHCBzfXZVAVvd").unwrap();
         let expected_tx_hash_1 =
-            CryptoHash::from_base("uQ6hiGNnVW371JKwnLLQM4iMdBNE7xJqVjPGecbmL4D").unwrap();
+            CryptoHash::from_str("uQ6hiGNnVW371JKwnLLQM4iMdBNE7xJqVjPGecbmL4D").unwrap();
         assert_eq!(tracker.get_tx_hash(&rx_hash_1).unwrap(), expected_tx_hash_1);
 
         tracker.on_block_end(34834053).unwrap();
@@ -264,9 +264,9 @@ mod tests {
         tracker.consume_near_block(&block_2).unwrap();
 
         let rx_hash_2 =
-            CryptoHash::from_base("9qNqNxE6LenxsFMFmzf9RdQwH6MqhU7Hfqnq7GoibYK8").unwrap();
+            CryptoHash::from_str("9qNqNxE6LenxsFMFmzf9RdQwH6MqhU7Hfqnq7GoibYK8").unwrap();
         let expected_tx_hash_2 =
-            CryptoHash::from_base("DEtAE5d6M8NtBMsCaZVCzjg8C2a5wqduhwVkioseUhT4").unwrap();
+            CryptoHash::from_str("DEtAE5d6M8NtBMsCaZVCzjg8C2a5wqduhwVkioseUhT4").unwrap();
         assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2);
 
         tracker.on_block_end(51188689).unwrap();
@@ -284,7 +284,7 @@ mod tests {
         // This receipt comes from receipt `rx_hash_2`, which in turn came from transaction `expected_tx_hash_2`.
         // Therefore, we expect this receipt also should be associated with `expected_tx_hash_2`.
         let rx_hash_3 =
-            CryptoHash::from_base("3d43nGKmmbXbCCtt12NAAPLfEoaRo3j31CEKaiQCK3Bt").unwrap();
+            CryptoHash::from_str("3d43nGKmmbXbCCtt12NAAPLfEoaRo3j31CEKaiQCK3Bt").unwrap();
         assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2);
 
         tracker.on_block_end(51188690).unwrap();

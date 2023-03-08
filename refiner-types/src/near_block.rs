@@ -1,7 +1,7 @@
 use near_crypto::Signature;
 use near_primitives::challenge::ChallengesResult;
 use near_primitives::hash::CryptoHash;
-use near_primitives::serialize::{u128_dec_format, u64_dec_format};
+use near_primitives::serialize::dec_format;
 use near_primitives::types::{
     AccountId, Balance, BlockHeight, Gas, NumBlocks, ProtocolVersion, ShardId, StateRoot,
 };
@@ -51,15 +51,15 @@ pub struct IndexerBlockHeaderView {
     pub challenges_root: CryptoHash,
     /// Legacy json number. Should not be used.
     pub timestamp: u64,
-    #[serde(with = "u64_dec_format")]
+    #[serde(with = "dec_format")]
     pub timestamp_nanosec: u64,
     pub random_value: CryptoHash,
     pub validator_proposals: Vec<ValidatorStakeView>,
     pub chunk_mask: Vec<bool>,
-    #[serde(with = "u128_dec_format")]
+    #[serde(with = "dec_format")]
     pub gas_price: Balance,
     pub block_ordinal: Option<NumBlocks>,
-    #[serde(with = "u128_dec_format")]
+    #[serde(with = "dec_format")]
     pub total_supply: Balance,
     pub challenges_result: ChallengesResult,
     pub last_final_block: CryptoHash,
@@ -156,7 +156,7 @@ pub struct ChunkHeaderView {
     pub gas_used: Gas,
     pub gas_limit: Gas,
     pub validator_reward: Balance,
-    #[serde(with = "u128_dec_format")]
+    #[serde(with = "dec_format")]
     pub balance_burnt: Balance,
     pub outgoing_receipts_root: CryptoHash,
     pub tx_root: CryptoHash,

@@ -353,7 +353,7 @@ fn normalize_output(
             return Err(RefinerError::FailNearTx);
         }
         Some(ExecutionStatusView::SuccessValue(result)) => {
-            let bytes = base64::decode(result).map_err(RefinerError::SuccessValueBase64Args)?;
+            let bytes = result.clone();
             match tx_kind {
                 InnerTransactionKind::Submit
                 | InnerTransactionKind::Call
@@ -485,7 +485,7 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
-            let bytes = base64::decode(args).map_err(RefinerError::FunctionCallBase64Args)?;
+            let bytes = args.clone();
 
             transaction_hash = sha256(bytes.as_slice());
 
@@ -680,7 +680,7 @@ fn build_transaction(
                     tx = tx.output(err.try_to_vec().unwrap()).status(false);
                 }
                 Some(ExecutionStatusView::SuccessValue(value)) => {
-                    tx = tx.output(value.as_bytes().to_vec()).status(true);
+                    tx = tx.output(value.clone()).status(true);
                 }
                 Some(ExecutionStatusView::SuccessReceiptId(data)) => {
                     tx = tx.output(data.0.to_vec()).status(true);
@@ -753,10 +753,6 @@ enum RefinerError {
     ParseTransaction(ParseTransactionError),
     /// Failed to parse metadata from Ethereum Transaction
     ParseMetadata(rlp::DecoderError),
-    /// Error decoding Function Call arguments
-    FunctionCallBase64Args(base64::DecodeError),
-    /// Error decoding Success Value from Receipt
-    SuccessValueBase64Args(base64::DecodeError),
     /// NEAR transaction failed
     FailNearTx,
 }
