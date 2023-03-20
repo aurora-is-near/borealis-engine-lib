@@ -43,11 +43,11 @@ lazy_static! {
         "Number of transactions of type: submit"
     )
     .unwrap();
-pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = register_int_counter!(
-    "refiner_tx_type_submit_with_args",
-    "Number of transactions of type: submit_with_args"
-)
-.unwrap();
+    pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = register_int_counter!(
+        "refiner_tx_type_submit_with_args",
+        "Number of transactions of type: submit_with_args"
+    )
+    .unwrap();
     pub static ref TRANSACTION_TYPE_CALL: IntCounter = register_int_counter!(
         "refiner_tx_type_call",
         "Number of transactions of type: call"
@@ -63,11 +63,11 @@ pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = register_int_coun
         "Number of transactions of type: resume_precompiles"
     )
     .unwrap();
-pub static ref TRANSACTION_TYPE_SET_OWNER: IntCounter = register_int_counter!(
-    "refiner_tx_type_set_owner",
-    "Number of transactions of type: set_owner"
-)
-.unwrap();
+    pub static ref TRANSACTION_TYPE_SET_OWNER: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_owner",
+        "Number of transactions of type: set_owner"
+    )
+    .unwrap();
     pub static ref TRANSACTION_TYPE_DEPLOY_CODE: IntCounter = register_int_counter!(
         "refiner_tx_type_deploy_code",
         "Number of transactions of type: deploy_code"
