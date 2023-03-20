@@ -53,6 +53,10 @@ pub enum InnerTransactionKind {
     FactoryUpdateAddressVersion,
     #[strum(serialize = "factory_set_wnear_address")]
     FactorySetWNearAddress,
+    #[strum(serialize = "set_owner")]
+    SetOwner,
+    #[strum(serialize = "submit_with_args")]
+    SubmitWithArgs,
     Unknown,
 }
 
@@ -89,6 +93,8 @@ impl From<TransactionKind> for InnerTransactionKind {
             TransactionKind::FactorySetWNearAddress(_) => {
                 InnerTransactionKind::FactorySetWNearAddress
             }
+            TransactionKind::SetOwner(_) => InnerTransactionKind::SetOwner,
+            TransactionKind::SubmitWithArgs(_) => InnerTransactionKind::SubmitWithArgs,
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
     }

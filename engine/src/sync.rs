@@ -576,6 +576,10 @@ fn parse_action(
                     let eth_tx = EthTransactionKind::try_from(bytes.as_slice()).ok()?;
                     TransactionKind::Submit(eth_tx)
                 }
+                InnerTransactionKind::SubmitWithArgs => {
+                    let args = parameters::SubmitArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SubmitWithArgs(args)
+                }
                 InnerTransactionKind::Call => {
                     let call_args = parameters::CallArgs::deserialize(&bytes)?;
                     TransactionKind::Call(call_args)
@@ -588,6 +592,10 @@ fn parse_action(
                     let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::ResumePrecompiles(args)
                 }
+                InnerTransactionKind::SetOwner => {
+                    let args = parameters::SetOwnerArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetOwner(args)
+                }
                 InnerTransactionKind::Deploy => TransactionKind::Deploy(bytes),
                 InnerTransactionKind::DeployErc20 => {
                     let deploy_args =
@@ -595,16 +603,16 @@ fn parse_action(
                     TransactionKind::DeployErc20(deploy_args)
                 }
                 InnerTransactionKind::FtOnTransfer => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let transfer_args =
-                        parameters::NEP141FtOnTransferArgs::try_from(json_args).ok()?;
+                    let transfer_args: parameters::NEP141FtOnTransferArgs =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+
                     TransactionKind::FtOnTransfer(transfer_args)
                 }
                 InnerTransactionKind::Deposit => TransactionKind::Deposit(bytes),
                 InnerTransactionKind::FtTransferCall => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let transfer_args =
-                        parameters::TransferCallCallArgs::try_from(json_args).ok()?;
+                    let transfer_args: parameters::TransferCallCallArgs =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+
                     TransactionKind::FtTransferCall(transfer_args)
                 }
                 InnerTransactionKind::FinishDeposit => {
@@ -622,8 +630,9 @@ fn parse_action(
                     TransactionKind::ResolveTransfer(args, promise_result)
                 }
                 InnerTransactionKind::FtTransfer => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let args = parameters::TransferCallArgs::try_from(json_args).ok()?;
+                    let args: parameters::TransferCallArgs =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+
                     TransactionKind::FtTransfer(args)
                 }
                 InnerTransactionKind::Withdraw => {
@@ -633,18 +642,25 @@ fn parse_action(
                     TransactionKind::Withdraw(args)
                 }
                 InnerTransactionKind::StorageDeposit => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let args = parameters::StorageDepositCallArgs::from(json_args);
+                    let args: parameters::StorageDepositCallArgs =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+
                     TransactionKind::StorageDeposit(args)
                 }
                 InnerTransactionKind::StorageUnregister => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let force = json_args.bool("force").ok();
+                    let json_args: serde_json::Value =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+                    let force = json_args
+                        .as_object()
+                        .and_then(|x| x.get("force"))
+                        .and_then(|x| x.as_bool());
+
                     TransactionKind::StorageUnregister(force)
                 }
                 InnerTransactionKind::StorageWithdraw => {
-                    let json_args = aurora_engine::json::parse_json(bytes.as_slice())?;
-                    let args = parameters::StorageWithdrawCallArgs::from(json_args);
+                    let args: parameters::StorageWithdrawCallArgs =
+                        serde_json::from_slice(bytes.as_slice()).ok()?;
+
                     TransactionKind::StorageWithdraw(args)
                 }
                 InnerTransactionKind::SetPausedFlags => {

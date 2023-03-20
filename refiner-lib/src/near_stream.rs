@@ -107,6 +107,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_block_120572296() {
+        // The testnet block at height 120572296 contains a `DelegateAction` action.
+        // See https://github.com/near/NEPs/blob/master/neps/nep-0366.md for details.
+
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+        let block = read_block("tests/res/testnet-block-120572296.json");
+
+        let mut aurora_blocks = stream.next_block(&block);
+
+        assert_eq!(aurora_blocks.len(), 1);
+        let aurora_block = aurora_blocks.pop().unwrap();
+        assert!(aurora_block.transactions.is_empty());
+    }
+
+    #[test]
     fn test_block_84423722() {
         // The block at hight 84423722 contains a transaction with zero actions.
         // The refiner should be able to process such a block without crashing.
