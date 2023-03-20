@@ -291,7 +291,7 @@ mod tests {
             crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
             let engine_context =
                 EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
-            let tx_tracker = TxHashTracker::new(&tracker_path, 0).unwrap();
+            let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
             Self {
                 chain_id,
                 engine_context,
