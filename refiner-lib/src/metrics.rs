@@ -43,6 +43,11 @@ lazy_static! {
         "Number of transactions of type: submit"
     )
     .unwrap();
+    pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = register_int_counter!(
+        "refiner_tx_type_submit_with_args",
+        "Number of transactions of type: submit_with_args"
+    )
+    .unwrap();
     pub static ref TRANSACTION_TYPE_CALL: IntCounter = register_int_counter!(
         "refiner_tx_type_call",
         "Number of transactions of type: call"
@@ -56,6 +61,11 @@ lazy_static! {
     pub static ref TRANSACTION_TYPE_RESUME_PRECOMPILES: IntCounter = register_int_counter!(
         "refiner_tx_type_resume_precompiles",
         "Number of transactions of type: resume_precompiles"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_SET_OWNER: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_owner",
+        "Number of transactions of type: set_owner"
     )
     .unwrap();
     pub static ref TRANSACTION_TYPE_DEPLOY_CODE: IntCounter = register_int_counter!(
@@ -190,6 +200,9 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         InnerTransactionKind::Submit => {
             TRANSACTION_TYPE_SUBMIT.inc();
         }
+        InnerTransactionKind::SubmitWithArgs => {
+            TRANSACTION_TYPE_SUBMIT_WITH_ARGS.inc();
+        }
         InnerTransactionKind::Call => {
             TRANSACTION_TYPE_CALL.inc();
         }
@@ -198,6 +211,9 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::ResumePrecompiles => {
             TRANSACTION_TYPE_RESUME_PRECOMPILES.inc();
+        }
+        InnerTransactionKind::SetOwner => {
+            TRANSACTION_TYPE_SET_OWNER.inc();
         }
         InnerTransactionKind::Deploy => {
             TRANSACTION_TYPE_DEPLOY_CODE.inc();

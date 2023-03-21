@@ -2,7 +2,7 @@ use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::engine::create_legacy_address;
-use aurora_engine::parameters::{CallArgs, ResultLog, SubmitResult};
+use aurora_engine::parameters::{CallArgs, ResultLog, SubmitArgs, SubmitResult};
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
@@ -22,7 +22,7 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use engine_standalone_storage::Storage;
@@ -357,7 +357,8 @@ fn normalize_output(
             match tx_kind {
                 InnerTransactionKind::Submit
                 | InnerTransactionKind::Call
-                | InnerTransactionKind::Deploy => {
+                | InnerTransactionKind::Deploy
+                | InnerTransactionKind::SubmitWithArgs => {
                     // These transaction kinds should have a `SubmitResult` as an outcome
                     decode_submit_result(&bytes)
                         .map_err(|_| {
@@ -500,6 +501,71 @@ fn build_transaction(
             }
 
             tx = match raw_tx_kind {
+                InnerTransactionKind::SubmitWithArgs => {
+                    match SubmitArgs::try_from_slice(&bytes) {
+                        Ok(args) => {
+                            let bytes = args.tx_data;
+
+                            let tx_metadata = TxMetadata::try_from(bytes.as_slice())
+                                .map_err(RefinerError::ParseMetadata)?;
+
+                            let mut eth_tx: NormalizedEthTransaction =
+                                EthTransactionKind::try_from(bytes.as_slice())
+                                    .and_then(TryFrom::try_from)
+                                    .map_err(RefinerError::ParseTransaction)?;
+
+                            if let Some(gas_price) = args.max_gas_price {
+                                let gas_price: U256 = gas_price.into();
+                                eth_tx.max_fee_per_gas = eth_tx.max_fee_per_gas.min(gas_price);
+                                eth_tx.max_priority_fee_per_gas =
+                                    eth_tx.max_priority_fee_per_gas.min(gas_price);
+                            }
+
+                            hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
+
+                            tx = tx
+                                .hash(hash)
+                                .from(eth_tx.address)
+                                .nonce(aurora_refiner_types::utils::saturating_cast(eth_tx.nonce))
+                                .gas_limit(aurora_refiner_types::utils::saturating_cast(
+                                    eth_tx.gas_limit,
+                                ))
+                                .gas_price(eth_tx.max_fee_per_gas)
+                                .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
+                                .max_fee_per_gas(eth_tx.max_fee_per_gas)
+                                .value(eth_tx.value)
+                                .input(eth_tx.data)
+                                .access_list(eth_tx.access_list)
+                                .tx_type(tx_metadata.tx_type)
+                                .v(tx_metadata.v)
+                                .r(tx_metadata.r)
+                                .s(tx_metadata.s);
+
+                            tx = if eth_tx.to.is_some() {
+                                tx.to(eth_tx.to).contract_address(None)
+                            } else {
+                                let contract_address =
+                                    create_legacy_address(&eth_tx.address, &eth_tx.nonce);
+                                tx.to(None).contract_address(Some(contract_address))
+                            };
+                        }
+                        Err(_) => {
+                            hash = virtual_receipt_id.0.try_into().unwrap();
+                            let from_address =
+                                near_account_to_evm_address(predecessor_id.as_bytes());
+                            tx = tx.hash(hash).from(from_address);
+                            tx = fill_tx(tx, "submit_with_args", bytes);
+                        }
+                    };
+
+                    let result = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
+                        txs.get(&hash),
+                    )?;
+                    fill_with_submit_result(tx, result, &mut bloom)
+                }
                 InnerTransactionKind::Submit => {
                     let tx_metadata = TxMetadata::try_from(bytes.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
