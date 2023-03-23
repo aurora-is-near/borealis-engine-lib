@@ -1,6 +1,6 @@
 [package]
 name = "aurora-standalone-engine"
-version = "0.17.2"
+version = "0.18.1"
 authors.workspace = true
 edition.workspace = true
 description = "A library for interacting with the Aurora Engine deployed locally (standalone), as opposed to on-chain as a NEAR smart contract."
