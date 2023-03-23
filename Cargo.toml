@@ -36,9 +36,9 @@ itertools = "0.10.3"
 keccak-hasher = "0.15.3"
 lazy_static = "1.4.0"
 lru = "0.8.1"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "1.32.0-rc.1" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "1.32.0-rc.1"  }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "1.32.0-rc.1" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "1.32.0" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "1.32.0"  }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "1.32.0" }
 near-lake-framework = "0.3.0"
 prometheus = "0.13.0"
 rlp = "0.5.1"
