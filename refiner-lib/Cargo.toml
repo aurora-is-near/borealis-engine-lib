@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner-lib"
-version = "0.18.2"
+version = "0.18.3"
 authors.workspace = true
 edition.workspace = true
 description = "A library containing logic for parsing information about Aurora transactions from full NEAR blocks."
