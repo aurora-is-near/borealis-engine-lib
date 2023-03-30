@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner-lib"
-version = "0.18.3"
+version = "0.18.4"
 authors.workspace = true
 edition.workspace = true
 description = "A library containing logic for parsing information about Aurora transactions from full NEAR blocks."
@@ -26,7 +26,6 @@ triehash-ethereum.workspace = true
 byteorder.workspace = true
 derive_builder.workspace = true
 hex.workspace = true
-keccak-hasher.workspace = true
 lazy_static.workspace = true
 lru.workspace = true
 prometheus.workspace = true
@@ -40,6 +39,5 @@ tokio = { workspace = true, features = ["sync"] }
 rocksdb.workspace = true
 
 [dev-dependencies]
-serde_cbor.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
