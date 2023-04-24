@@ -102,7 +102,7 @@ impl NearStream {
 mod tests {
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
-    use std::matches;
+    use std::{collections::HashSet, matches};
 
     use super::*;
 
@@ -121,6 +121,22 @@ mod tests {
         assert_eq!(aurora_blocks.len(), 1);
         let aurora_block = aurora_blocks.pop().unwrap();
         assert!(aurora_block.transactions.is_empty());
+    }
+
+    #[test]
+    fn test_block_89402026() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+        let block = read_block("tests/res/block-89402026.json");
+
+        let mut aurora_blocks = stream.next_block(&block);
+        assert_eq!(aurora_blocks.len(), 1);
+        let aurora_block = aurora_blocks.pop().unwrap();
+
+        let tx_count = aurora_block.transactions.len();
+        let unique_txs: HashSet<_> = aurora_block.transactions.iter().map(|tx| tx.hash).collect();
+        assert_eq!(tx_count, unique_txs.len());
     }
 
     #[test]
