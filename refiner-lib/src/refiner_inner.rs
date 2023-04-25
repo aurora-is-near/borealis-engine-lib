@@ -170,6 +170,16 @@ impl Refiner {
             ReceiptEnumView::Action { actions, .. } => {
                 crate::metrics::TRANSACTIONS.inc();
 
+                // Receipts with multiple actions are atomic; they either entirely succeed or
+                // there no state changes from any action. If the execution outcome is
+                // a failure then we can skip the receipt (regardless of how many actions it has)
+                if let ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_) =
+                    &execution_outcome.execution_outcome.outcome.status
+                {
+                    tracing::trace!(target: "transactions", "Failing NEAR Transaction at block: {}", block.header.hash);
+                    return;
+                }
+
                 let num_actions = actions.len();
 
                 // Create one transaction per action
