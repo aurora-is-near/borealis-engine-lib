@@ -57,6 +57,10 @@ pub enum InnerTransactionKind {
     SetOwner,
     #[strum(serialize = "submit_with_args")]
     SubmitWithArgs,
+    #[strum(serialize = "set_upgrade_delay_blocks")]
+    SetUpgradeDelayBlocks,
+    #[strum(serialize = "fund_xcc_sub_account")]
+    FundXccSubAccound,
     Unknown,
 }
 
@@ -95,6 +99,8 @@ impl From<TransactionKind> for InnerTransactionKind {
             }
             TransactionKind::SetOwner(_) => InnerTransactionKind::SetOwner,
             TransactionKind::SubmitWithArgs(_) => InnerTransactionKind::SubmitWithArgs,
+            TransactionKind::SetUpgradeDelayBlocks(_) => InnerTransactionKind::SetUpgradeDelayBlocks,
+            TransactionKind::FundXccSubAccound(_) => InnerTransactionKind::FundXccSubAccound,
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
     }

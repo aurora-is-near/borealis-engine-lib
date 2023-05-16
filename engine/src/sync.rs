@@ -706,6 +706,15 @@ fn parse_action(
                     let address = Address::try_from_slice(&bytes).ok()?;
                     TransactionKind::FactorySetWNearAddress(address)
                 }
+                InnerTransactionKind::SetUpgradeDelayBlocks => {
+                    let args = aurora_engine::parameters::SetUpgradeDelayBlocksArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetUpgradeDelayBlocks(args)
+                }
+                InnerTransactionKind::FundXccSubAccound => {
+                    let args = aurora_engine::xcc::FundXccArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::FundXccSubAccound(args)
+
+                }
                 InnerTransactionKind::Unknown => {
                     warn!("Unknown method name: {}", method_name);
                     return None;

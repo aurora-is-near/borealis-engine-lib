@@ -158,6 +158,16 @@ lazy_static! {
         "Number of transactions of type: new_engine"
     )
     .unwrap();
+    pub static ref TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_upgrade_delay_blocks",
+        "Number of transactions of type: set_upgrade_delay_blocks"
+    )
+    .unwrap();
+    pub static ref TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT: IntCounter = register_int_counter!(
+        "refiner_tx_type_fund_xcc_sub_account",
+        "Number of transactions of type: fund_xcc_sub_account"
+    )
+    .unwrap();
     pub static ref TRANSACTION_TYPE_UNKNOWN: IntCounter = register_int_counter!(
         "refiner_tx_type_unknown",
         "Number of transactions of type: unknown"
@@ -277,6 +287,12 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::FactorySetWNearAddress => {
             TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS.inc();
+        }
+        InnerTransactionKind::SetUpgradeDelayBlocks => {
+            TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS.inc();
+        }
+        InnerTransactionKind::FundXccSubAccound => {
+            TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT.inc();
         }
         InnerTransactionKind::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();
