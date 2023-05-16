@@ -99,7 +99,9 @@ impl From<TransactionKind> for InnerTransactionKind {
             }
             TransactionKind::SetOwner(_) => InnerTransactionKind::SetOwner,
             TransactionKind::SubmitWithArgs(_) => InnerTransactionKind::SubmitWithArgs,
-            TransactionKind::SetUpgradeDelayBlocks(_) => InnerTransactionKind::SetUpgradeDelayBlocks,
+            TransactionKind::SetUpgradeDelayBlocks(_) => {
+                InnerTransactionKind::SetUpgradeDelayBlocks
+            }
             TransactionKind::FundXccSubAccound(_) => InnerTransactionKind::FundXccSubAccound,
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
