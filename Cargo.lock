@@ -595,7 +595,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner"
-version = "0.19.3"
+version = "0.20.0"
 dependencies = [
  "actix",
  "actix-rt",
@@ -617,7 +617,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-lib"
-version = "0.19.3"
+version = "0.20.0"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-types"
-version = "0.19.3"
+version = "0.20.0"
 dependencies = [
  "aurora-engine",
  "aurora-engine-sdk",
@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-standalone-engine"
-version = "0.19.3"
+version = "0.20.0"
 dependencies = [
  "anyhow",
  "aurora-engine",
