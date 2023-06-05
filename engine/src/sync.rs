@@ -1,4 +1,5 @@
 use aurora_engine::parameters;
+use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
 use aurora_engine_transactions::EthTransactionKind;
 use aurora_engine_types::{account_id::AccountId, types::Address, H256};
@@ -24,7 +25,7 @@ use tracing::{debug, warn};
 
 use crate::types::InnerTransactionKind;
 
-pub fn consume_near_block(
+pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
     message: &aurora_refiner_types::near_block::NEARBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
@@ -32,7 +33,8 @@ pub fn consume_near_block(
     chain_id: [u8; 32],
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), engine_standalone_storage::Error> {
-    let block_hash = add_block_data_from_near_block(storage, message, chain_id, engine_account_id)?;
+    let block_hash =
+        add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
 
     // Capture data receipts (for using in promises)
     message
@@ -209,7 +211,7 @@ pub fn consume_near_block(
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
         debug!("Processing receipt {:?}", receipt_id);
-        let tx_outcome = t.process(storage)?;
+        let tx_outcome = t.process::<M>(storage)?;
         let computed_result = match &tx_outcome {
             TransactionBatchOutcome::Single(tx_outcome) => tx_outcome
                 .maybe_result
@@ -313,7 +315,7 @@ fn to_vec<T: AsRef<[u8]>>(t: T) -> Vec<u8> {
     t.as_ref().to_vec()
 }
 
-fn add_block_data_from_near_block(
+fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
     message: &aurora_refiner_types::near_block::NEARBlock,
     chain_id: [u8; 32],
@@ -332,7 +334,7 @@ fn add_block_data_from_near_block(
     };
 
     debug!("Consuming block {}", block_message.height);
-    sync::consume_message(storage, Message::Block(block_message))?;
+    sync::consume_message::<M>(storage, Message::Block(block_message))?;
 
     Ok(block_hash)
 }
@@ -370,13 +372,13 @@ impl TransactionBatch {
         }
     }
 
-    fn process(
+    fn process<M: ModExpAlgorithm>(
         self,
         storage: &mut Storage,
     ) -> Result<TransactionBatchOutcome, engine_standalone_storage::Error> {
         match self {
             Self::Single(tx) => {
-                match sync::consume_message(storage, Message::Transaction(Box::new(tx)))? {
+                match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
                     ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Ok(TransactionBatchOutcome::Single(tx_outcome))
@@ -393,7 +395,7 @@ impl TransactionBatch {
             } => {
                 let mut non_last_outcomes = Vec::with_capacity(non_last_actions.len());
                 for tx in non_last_actions {
-                    match sync::consume_message(storage, Message::Transaction(Box::new(tx)))? {
+                    match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
                         ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                             debug!("COMPLETED {:?}", tx_outcome.hash);
                             non_last_outcomes.push(*tx_outcome);
@@ -406,7 +408,10 @@ impl TransactionBatch {
                 let last_outcome = match last_action {
                     None => None,
                     Some(tx) => {
-                        match sync::consume_message(storage, Message::Transaction(Box::new(tx)))? {
+                        match sync::consume_message::<M>(
+                            storage,
+                            Message::Transaction(Box::new(tx)),
+                        )? {
                             ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                                 debug!("COMPLETED {:?}", tx_outcome.hash);
                                 Some(tx_outcome)

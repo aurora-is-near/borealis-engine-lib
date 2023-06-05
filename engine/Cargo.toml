@@ -15,6 +15,7 @@ crate-type = ["rlib"]
 [dependencies]
 anyhow.workspace = true
 aurora-engine.workspace = true
+aurora-engine-modexp.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
 aurora-engine-sdk.workspace = true

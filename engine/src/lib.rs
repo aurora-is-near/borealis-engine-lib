@@ -1,3 +1,4 @@
+use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_types::{account_id::AccountId, H256};
 use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
 use engine_standalone_storage::{error, sync::TransactionIncludedOutcome, Storage};
@@ -35,12 +36,12 @@ impl EngineContext {
     }
 }
 
-pub fn consume_near_block(
+pub fn consume_near_block<M: ModExpAlgorithm>(
     block: &NEARBlock,
     context: &mut EngineContext,
     outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), error::Error> {
-    sync::consume_near_block(
+    sync::consume_near_block::<M>(
         &mut context.storage,
         block,
         &mut context.data_id_mapping,
