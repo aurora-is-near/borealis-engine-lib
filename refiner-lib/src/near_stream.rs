@@ -1,6 +1,7 @@
 use crate::metrics::{PROCESSED_BLOCKS, SKIP_BLOCKS};
 use crate::refiner_inner::Refiner;
 use crate::tx_hash_tracker::TxHashTracker;
+use aurora_engine_modexp::AuroraModExp;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
 use aurora_standalone_engine::EngineContext;
@@ -36,9 +37,14 @@ impl NearStream {
 
         let mut txs = Default::default();
 
-        // Panic if engine can't consume this block
-        aurora_standalone_engine::consume_near_block(near_block, &mut self.context, Some(&mut txs))
-            .unwrap();
+        // Can specify a concrete modexp algorithm here because only transactions
+        // that executed successfully on-chain are executed again here.
+        aurora_standalone_engine::consume_near_block::<AuroraModExp>(
+            near_block,
+            &mut self.context,
+            Some(&mut txs),
+        )
+        .unwrap(); // Panic if engine can't consume this block
 
         // Panic if transaction hash tracker cannot consume the block
         self.tx_tracker

@@ -1,4 +1,5 @@
 use aurora_engine::parameters::TransactionStatus;
+use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::{account_id::AccountId, H256};
 use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
@@ -21,7 +22,7 @@ fn test_empty_submit_input() {
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
 
-    crate::sync::consume_near_block(
+    crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
         &block,
         &mut data_id_mapping,
@@ -50,7 +51,7 @@ fn test_batched_transactions() {
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
-    crate::sync::consume_near_block(
+    crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
         &block,
         &mut data_id_mapping,
