@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod conversion;
 mod input;
+mod socket;
 mod store;
 use std::{
     borrow::Cow,

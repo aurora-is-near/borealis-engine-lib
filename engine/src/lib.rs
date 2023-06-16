@@ -6,14 +6,17 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
+pub mod gas;
 pub mod sync;
 #[cfg(test)]
 mod tests;
 pub mod tracing;
 pub mod types;
 
+pub type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
+
 pub struct EngineContext {
-    pub storage: Storage,
+    pub storage: SharedStorage,
     pub engine_account_id: AccountId,
     chain_id: [u8; 32],
     data_id_mapping: lru::LruCache<CryptoHash, Option<Vec<u8>>>,
@@ -26,6 +29,7 @@ impl EngineContext {
         chain_id: u64,
     ) -> Result<Self, error::Error> {
         let storage = Storage::open(storage_path)?;
+        let storage = std::sync::Arc::new(tokio::sync::RwLock::new(storage));
         let chain_id = aurora_engine_types::types::u256_to_arr(&(chain_id.into()));
         Ok(Self {
             storage,
@@ -36,13 +40,14 @@ impl EngineContext {
     }
 }
 
-pub fn consume_near_block<M: ModExpAlgorithm>(
+pub async fn consume_near_block<M: ModExpAlgorithm>(
     block: &NEARBlock,
     context: &mut EngineContext,
     outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), error::Error> {
+    let mut storage = context.storage.as_ref().write().await;
     sync::consume_near_block::<M>(
-        &mut context.storage,
+        &mut storage,
         block,
         &mut context.data_id_mapping,
         &context.engine_account_id,

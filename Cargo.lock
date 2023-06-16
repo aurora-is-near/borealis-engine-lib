@@ -599,7 +599,10 @@ dependencies = [
  "actix-rt",
  "aurora-refiner-lib",
  "aurora-refiner-types",
+ "aurora-standalone-engine",
  "clap 4.3.0",
+ "engine-standalone-storage",
+ "engine-standalone-tracing",
  "futures",
  "itertools",
  "near-indexer",
@@ -686,6 +689,7 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
+ "tokio",
  "tracing",
 ]
 

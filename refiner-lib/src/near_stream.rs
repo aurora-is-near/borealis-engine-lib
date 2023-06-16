@@ -32,7 +32,7 @@ impl NearStream {
         }
     }
 
-    fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
+    async fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
         self.handler.on_block_start(near_block);
 
         let mut txs = Default::default();
@@ -44,6 +44,7 @@ impl NearStream {
             &mut self.context,
             Some(&mut txs),
         )
+        .await
         .unwrap(); // Panic if engine can't consume this block
 
         // Panic if transaction hash tracker cannot consume the block
@@ -51,6 +52,7 @@ impl NearStream {
             .consume_near_block(near_block)
             .expect("Transaction tracker consume_near_block error");
 
+        let storage = self.context.storage.as_ref().write().await;
         near_block
             .shards
             .iter()
@@ -70,7 +72,7 @@ impl NearStream {
                     near_tx_hash,
                     outcome,
                     &txs,
-                    &self.context.storage,
+                    &storage,
                 );
             });
 
@@ -81,7 +83,7 @@ impl NearStream {
         aurora_block
     }
 
-    pub fn next_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
+    pub async fn next_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
         let mut blocks = vec![];
 
         let height = near_block.block.header.height;
@@ -96,7 +98,7 @@ impl NearStream {
         }
 
         self.last_block_height = Some(height);
-        let block = self.handle_block(near_block);
+        let block = self.handle_block(near_block).await;
         blocks.push(block);
         PROCESSED_BLOCKS.inc();
 
@@ -112,8 +114,8 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_block_120572296() {
+    #[tokio::test]
+    async fn test_block_120572296() {
         // The testnet block at height 120572296 contains a `DelegateAction` action.
         // See https://github.com/near/NEPs/blob/master/neps/nep-0366.md for details.
 
@@ -122,21 +124,21 @@ mod tests {
         let mut stream = ctx.create_stream();
         let block = read_block("tests/res/testnet-block-120572296.json");
 
-        let mut aurora_blocks = stream.next_block(&block);
+        let mut aurora_blocks = stream.next_block(&block).await;
 
         assert_eq!(aurora_blocks.len(), 1);
         let aurora_block = aurora_blocks.pop().unwrap();
         assert!(aurora_block.transactions.is_empty());
     }
 
-    #[test]
-    fn test_block_89402026() {
+    #[tokio::test]
+    async fn test_block_89402026() {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
         let block = read_block("tests/res/block-89402026.json");
 
-        let mut aurora_blocks = stream.next_block(&block);
+        let mut aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
         let aurora_block = aurora_blocks.pop().unwrap();
 
@@ -145,8 +147,8 @@ mod tests {
         assert_eq!(tx_count, unique_txs.len());
     }
 
-    #[test]
-    fn test_block_84423722() {
+    #[tokio::test]
+    async fn test_block_84423722() {
         // The block at hight 84423722 contains a transaction with zero actions.
         // The refiner should be able to process such a block without crashing.
 
@@ -155,21 +157,21 @@ mod tests {
         let mut stream = ctx.create_stream();
         let block = read_block("tests/res/block-84423722.json");
 
-        let mut aurora_blocks = stream.next_block(&block);
+        let mut aurora_blocks = stream.next_block(&block).await;
 
         assert_eq!(aurora_blocks.len(), 1);
         let aurora_block = aurora_blocks.pop().unwrap();
         assert!(aurora_block.transactions.is_empty());
     }
 
-    #[test]
-    fn test_block_81206675() {
+    #[tokio::test]
+    async fn test_block_81206675() {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
         let block = read_block("tests/res/block-81206675.json");
 
-        let mut aurora_blocks = stream.next_block(&block);
+        let mut aurora_blocks = stream.next_block(&block).await;
 
         assert_eq!(aurora_blocks.len(), 1);
         let aurora_block = aurora_blocks.pop().unwrap();
@@ -218,12 +220,13 @@ mod tests {
         assert_eq!(tx_2.logs.len(), 1);
     }
 
-    #[test]
-    fn test_block_82654651_nonce() {
+    #[tokio::test]
+    async fn test_block_82654651_nonce() {
         // load state snapshot and main objects
         let db_dir = tempfile::tempdir().unwrap();
         let mut ctx = TestContext::new(&db_dir);
-        ctx.init_with_snapshot("tests/res/sate_H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7.json");
+        ctx.init_with_snapshot("tests/res/sate_H7Bfh9qCzWbJW9acao8B2jFMTrkfc31toczmTcMv7hY7.json")
+            .await;
         let mut stream = ctx.create_stream();
 
         // parameters of the test
@@ -231,7 +234,7 @@ mod tests {
         let expected_nonce = 12773;
 
         // run and assert
-        let aurora_block = stream.next_block(&block).pop().unwrap();
+        let aurora_block = stream.next_block(&block).await.pop().unwrap();
 
         assert_eq!(aurora_block.transactions.len(), 1);
         let target_aurora_tx = aurora_block.transactions.first().unwrap();
@@ -239,8 +242,8 @@ mod tests {
         assert_eq!(target_aurora_tx.nonce, expected_nonce);
     }
 
-    #[test]
-    fn test_block_70834061_skip_block() {
+    #[tokio::test]
+    async fn test_block_70834061_skip_block() {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
@@ -248,7 +251,7 @@ mod tests {
         // near block 70834059
         let near_block = read_block("tests/res/block-70834059.json");
 
-        let aurora_blocks = stream.next_block(&near_block);
+        let aurora_blocks = stream.next_block(&near_block).await;
 
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 70834059);
@@ -260,7 +263,7 @@ mod tests {
         // near skip block 70834061; 70834060 does not exist
         let near_skip_block = read_block("tests/res/block-70834061.json");
 
-        let aurora_blocks = stream.next_block(&near_skip_block);
+        let aurora_blocks = stream.next_block(&near_skip_block).await;
 
         assert_eq!(aurora_blocks.len(), 2);
         assert_eq!(aurora_blocks[0].height, 70834060); // dummy skip aurora block
@@ -275,8 +278,8 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_block_34834052_block_before_aurora_genesis() {
+    #[tokio::test]
+    async fn test_block_34834052_block_before_aurora_genesis() {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
@@ -284,7 +287,7 @@ mod tests {
         // near block 34834052; aurora block genesis is 34834053
         let near_block = read_block("tests/res/block-34834052.json");
 
-        let aurora_blocks = stream.next_block(&near_block);
+        let aurora_blocks = stream.next_block(&near_block).await;
 
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 34834052);
@@ -321,12 +324,13 @@ mod tests {
             }
         }
 
-        fn init_with_snapshot(&mut self, snapshot_path: &str) {
+        async fn init_with_snapshot(&mut self, snapshot_path: &str) {
             let json_snapshot: JsonSnapshot = {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
             };
-            initialize_engine_state(&mut self.engine_context.storage, json_snapshot).unwrap();
+            let mut storage = self.engine_context.storage.as_ref().write().await;
+            initialize_engine_state(&mut storage, json_snapshot).unwrap();
         }
 
         fn create_stream(self) -> NearStream {
