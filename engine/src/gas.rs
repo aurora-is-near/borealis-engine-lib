@@ -1,7 +1,8 @@
 use aurora_engine::{
-    engine::{EngineError, EngineErrorKind},
+    engine::{Engine, EngineError, EngineErrorKind},
     parameters::SubmitResult,
 };
+use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_sdk::io::IO;
 use aurora_engine_transactions::NormalizedEthTransaction;
 use aurora_engine_types::{
@@ -472,13 +473,14 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
     aurora_engine::state::get_state(&io)
         .map_err(|_| StateOrEngineError::StateMissing)
         .and_then(|engine_state| {
-            let mut engine = aurora_engine::engine::Engine::new_with_state(
-                engine_state,
-                from,
-                env.current_account_id.clone(),
-                io,
-                &env,
-            );
+            let mut engine: Engine<_, _, AuroraModExp> =
+                aurora_engine::engine::Engine::new_with_state(
+                    engine_state,
+                    from,
+                    env.current_account_id.clone(),
+                    io,
+                    &env,
+                );
             let result = match to {
                 Some(to) => engine
                     .call(&from, &to, value, data, gas_limit, Vec::new(), &mut handler)
