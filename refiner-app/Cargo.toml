@@ -28,8 +28,6 @@ futures.workspace = true
 itertools.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
 tokio-stream.workspace = true
-actix-rt.workspace = true
-actix.workspace = true
 
 # NEAR Lake Framework
 near-lake-framework.workspace = true

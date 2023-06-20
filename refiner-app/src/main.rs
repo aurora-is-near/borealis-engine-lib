@@ -25,7 +25,7 @@ fn setup_logs() {
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 }
 
-#[actix::main]
+#[tokio::main]
 async fn main() -> Result<(), tokio::io::Error> {
     setup_logs();
 

@@ -1,7 +1,5 @@
 use std::path::Path;
 
-use actix_rt::net::{UnixListener, UnixStream};
-use actix_rt::Arbiter;
 use aurora_standalone_engine::{
     gas::{estimate_gas, EthCallRequest},
     tracing::lib::{trace_transaction, DebugTraceTransactionRequest},
@@ -9,25 +7,24 @@ use aurora_standalone_engine::{
 use engine_standalone_storage::Storage;
 use engine_standalone_tracing::types::call_tracer::SerializableCallFrame;
 use serde_json::json;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, Interest};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, Interest},
+    net::{UnixListener, UnixStream},
+};
 
 type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
 pub async fn start_socket_server(storage: SharedStorage, path: &Path) {
     let sock = UnixListener::bind(path).unwrap();
-    let arbiter = Arbiter::new();
 
     loop {
         if let Ok((mut stream, _)) = sock.accept().await {
             let storage = storage.clone();
-            arbiter.spawn(async move {
+            tokio::task::spawn(async move {
                 handle_conn(storage, &mut stream).await;
             });
         }
     }
-
-    // arbiter.stop();
-    // arbiter.join().unwrap();
 }
 
 async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
@@ -203,7 +200,7 @@ mod tests {
 
     use futures::future::{BoxFuture, FutureExt};
     use std::sync::Arc;
-    use tokio::sync::Mutex;
+    use tokio::sync::{Mutex, RwLock};
 
     async fn test_handler<F>(f: F)
     where
@@ -211,8 +208,8 @@ mod tests {
     {
         let db_dir = tempfile::tempdir().unwrap().path().join("storage");
         let storage = Storage::open(db_dir)
-            .map(tokio::sync::RwLock::new)
-            .map(std::sync::Arc::new)
+            .map(RwLock::new)
+            .map(Arc::new)
             .unwrap();
         let (first, mut second) = UnixStream::pair().unwrap();
         let first = Arc::new(Mutex::new(first));
