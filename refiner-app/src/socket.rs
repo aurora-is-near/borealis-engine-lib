@@ -15,7 +15,7 @@ use tokio::{
 type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
 pub async fn start_socket_server(storage: SharedStorage, path: &Path) {
-    let sock = UnixListener::bind(path).unwrap();
+    let sock = UnixListener::bind(path).expect("failed to open socket");
 
     loop {
         if let Ok((mut stream, _)) = sock.accept().await {

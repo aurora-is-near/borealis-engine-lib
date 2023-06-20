@@ -75,17 +75,33 @@ async fn main() -> Result<(), tokio::io::Error> {
                 None => Cow::Owned(engine_path.join("tx_tracker")),
             };
 
-            // Run Refiner
-            aurora_refiner_lib::run_refiner::<&Path, ()>(
-                config.refiner.chain_id,
+            let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                tx_tracker_path.as_ref(),
                 config.refiner.engine_account_id.parse().unwrap(),
-                input_stream,
-                output_stream,
-                last_block,
+                config.refiner.chain_id,
             )
-            .await;
+            .unwrap();
+
+            let socket_storage = ctx.storage.clone();
+
+            tokio::join!(
+                // Run socket server
+                async {
+                    if let Some(socket_config) = config.socket_server {
+                        socket::start_socket_server(socket_storage, Path::new(&socket_config.path))
+                            .await
+                    }
+                },
+                // Run Refiner
+                aurora_refiner_lib::run_refiner::<&Path, ()>(
+                    ctx,
+                    config.refiner.chain_id,
+                    tx_tracker_path.as_ref(),
+                    input_stream,
+                    output_stream,
+                    last_block,
+                ),
+            );
         }
     }
 
