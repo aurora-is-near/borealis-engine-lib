@@ -15,17 +15,28 @@ use tokio::{
 
 type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
-pub async fn start_socket_server(storage: SharedStorage, path: &Path) {
+pub async fn start_socket_server(
+    storage: SharedStorage,
+    path: &Path,
+    stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
+) {
     let sock = UnixListener::bind(path).expect("failed to open socket");
 
     loop {
-        if let Ok((mut stream, _)) = sock.accept().await {
-            let storage = storage.clone();
-            tokio::task::spawn(async move {
-                handle_conn(storage, &mut stream).await;
-            });
+        tokio::select! {
+            _ = stop_signal.recv() => {
+                break
+            },
+            Ok((mut stream, _)) = sock.accept() => {
+                let storage = storage.clone();
+                tokio::task::spawn(async move {
+                    handle_conn(storage, &mut stream).await;
+                });
+            }
         }
     }
+
+    std::fs::remove_file(path).expect("failed to remove socket file");
 }
 
 async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
@@ -45,8 +56,33 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
             }
             Ok(data) if data.is_empty() => break,
             Ok(data) => {
-                let req: serde_json::Value = match serde_json::from_slice(&data) {
-                    Ok(v) => v,
+                match serde_json::from_slice::<serde_json::Value>(&data) {
+                    Ok(req) => {
+                        let mut res = serde_json::Map::new();
+                        res.insert(
+                            "id".into(),
+                            req.get("id").cloned().unwrap_or(serde_json::Value::Null),
+                        );
+                        res.insert(
+                            "jsonrpc".into(),
+                            req.get("jsonrpc")
+                                .cloned()
+                                .unwrap_or(serde_json::Value::Null),
+                        );
+
+                        match handle_msg(storage.clone(), req).await {
+                            Ok(v) => res.insert("result".into(), v),
+                            Err(e) => res.insert(
+                                "error".into(),
+                                serde_json::to_value(e).unwrap_or_default(),
+                            ),
+                        };
+
+                        let res_body = serde_json::to_vec(&res).unwrap_or_default();
+                        if let Err(e) = wrapped_write(stream, &res_body).await {
+                            eprintln!("error writing to stream: {:?}", e);
+                        }
+                    }
                     Err(e) => {
                         let res = json!({
                             "id": serde_json::Value::Null,
@@ -61,32 +97,8 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                         if let Err(e) = wrapped_write(stream, &res_body).await {
                             eprintln!("error writing to stream: {:?}", e);
                         }
-                        continue;
                     }
                 };
-                let mut res = serde_json::Map::new();
-                res.insert(
-                    "id".into(),
-                    req.get("id").cloned().unwrap_or(serde_json::Value::Null),
-                );
-                res.insert(
-                    "jsonrpc".into(),
-                    req.get("jsonrpc")
-                        .cloned()
-                        .unwrap_or(serde_json::Value::Null),
-                );
-
-                match handle_msg(storage.clone(), req).await {
-                    Ok(v) => res.insert("result".into(), v),
-                    Err(e) => {
-                        res.insert("error".into(), serde_json::to_value(e).unwrap_or_default())
-                    }
-                };
-
-                let res_body = serde_json::to_vec(&res).unwrap_or_default();
-                if let Err(e) = wrapped_write(stream, &res_body).await {
-                    eprintln!("error writing to stream: {:?}", e);
-                }
             }
         };
     }
@@ -198,31 +210,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_stream_open_and_close() {
-        let db_dir = tempfile::tempdir().unwrap().path().join("storage");
-        let storage = Storage::open(db_dir)
-            .map(tokio::sync::RwLock::new)
-            .map(std::sync::Arc::new)
-            .unwrap();
-        let (mut first, mut second) = UnixStream::pair().unwrap();
-        let handler = tokio::task::spawn(async move { handle_conn(storage, &mut second).await });
-        let client = tokio::task::spawn(async move {
-            first.shutdown().await.unwrap();
-            let mut data = vec![0; 10];
-            let res = first.read(&mut data).await.unwrap();
-            assert_eq!(0, res);
-        });
-
-        tokio::try_join!(handler, client).unwrap();
+        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        tokio::try_join!(
+            tokio::task::spawn(async move {
+                client.shutdown().await.unwrap();
+                let mut data = vec![0; 1];
+                let res = client.read(&mut data).await.unwrap();
+                assert_eq!(0, res);
+            }),
+            tokio::task::spawn(async move {
+                handle_conn(init_storage(), &mut handler).await;
+            })
+        )
+        .unwrap();
     }
-
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
 
     fn init_storage() -> SharedStorage {
         let db_dir = tempfile::tempdir().unwrap().path().join("storage");
         Storage::open(db_dir)
-            .map(RwLock::new)
-            .map(Arc::new)
+            .map(tokio::sync::RwLock::new)
+            .map(std::sync::Arc::new)
             .unwrap()
     }
 

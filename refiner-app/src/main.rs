@@ -84,12 +84,27 @@ async fn main() -> Result<(), tokio::io::Error> {
 
             let socket_storage = ctx.storage.clone();
 
+            // create a broadcast channel for sending a stop signal
+            let (tx, mut rx1) = tokio::sync::broadcast::channel(1);
+            let mut rx2 = tx.subscribe();
+
             tokio::join!(
+                // listen to ctrl-c for shutdown
+                async {
+                    tokio::signal::ctrl_c()
+                        .await
+                        .expect("failed to listen for event");
+                    tx.send(()).expect("failed to propagate stop signal");
+                },
                 // Run socket server
                 async {
                     if let Some(socket_config) = config.socket_server {
-                        socket::start_socket_server(socket_storage, Path::new(&socket_config.path))
-                            .await
+                        socket::start_socket_server(
+                            socket_storage,
+                            Path::new(&socket_config.path),
+                            &mut rx1,
+                        )
+                        .await
                     }
                 },
                 // Run Refiner
@@ -100,6 +115,7 @@ async fn main() -> Result<(), tokio::io::Error> {
                     input_stream,
                     output_stream,
                     last_block,
+                    &mut rx2,
                 ),
             );
         }

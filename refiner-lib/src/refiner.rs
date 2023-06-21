@@ -25,23 +25,34 @@ pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
     mut input: tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, M>>,
     output: tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, M>>,
     last_block: Option<u64>,
+    stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
     let tx_tracker =
         tx_hash_tracker::TxHashTracker::new(tx_storage_path, last_block.unwrap_or_default())
             .expect("Failed to start transaction tracker");
     let mut stream = NearStream::new(chain_id, last_block, ctx, tx_tracker);
 
-    while let Some(message) = input.recv().await {
-        let BlockWithMetadata { block, metadata } = message;
-        for block in stream.next_block(&block).await {
-            // Unwrapping here, since it is better to crash the refiner than to make progress missing blocks.
-            output
-                .send(BlockWithMetadata::new(block, metadata.clone()))
-                .await
-                .map_err(|_| ())
-                .expect("Failed to send output message");
+    loop {
+        tokio::select! {
+            _ = stop_signal.recv() => {
+                break
+            }
+            maybe_message = input.recv() => {
+                if let Some(message) = maybe_message {
+                    let BlockWithMetadata { block, metadata } = message;
+                    for block in stream.next_block(&block).await {
+                        // Unwrapping here, since it is better to crash the refiner than to make progress missing blocks.
+                        output
+                            .send(BlockWithMetadata::new(block, metadata.clone()))
+                            .await
+                            .map_err(|_| ())
+                            .expect("Failed to send output message");
+                    }
+                } else {
+                    tracing::warn!("Refiner input stream was closed.");
+                    break
+                }
+            }
         }
     }
-
-    tracing::warn!("Input stream was closed.")
 }
