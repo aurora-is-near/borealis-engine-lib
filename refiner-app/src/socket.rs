@@ -1,3 +1,4 @@
+use std::io;
 use std::path::Path;
 
 use aurora_standalone_engine::{
@@ -8,7 +9,7 @@ use engine_standalone_storage::Storage;
 use engine_standalone_tracing::types::call_tracer::SerializableCallFrame;
 use serde_json::json;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, Interest},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, Interest},
     net::{UnixListener, UnixStream},
 };
 
@@ -36,17 +37,15 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
             return;
         }
     };
-    let mut data = vec![0; 1024];
     loop {
-        match stream.read(&mut data).await {
+        match wrapped_read(stream).await {
             Err(e) => {
                 eprintln!("error reading from stream: {:?}", e);
                 break;
             }
-            Ok(0) => break,
-            Ok(n) => {
-                let msg = data.get(0..n).unwrap_or_default();
-                let req: serde_json::Value = match serde_json::from_slice(msg) {
+            Ok(data) if data.is_empty() => break,
+            Ok(data) => {
+                let req: serde_json::Value = match serde_json::from_slice(&data) {
                     Ok(v) => v,
                     Err(e) => {
                         let res = json!({
@@ -59,7 +58,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                             }
                         });
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
-                        if let Err(e) = stream.write(&res_body).await {
+                        if let Err(e) = wrapped_write(stream, &res_body).await {
                             eprintln!("error writing to stream: {:?}", e);
                         }
                         continue;
@@ -85,11 +84,11 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                 };
 
                 let res_body = serde_json::to_vec(&res).unwrap_or_default();
-                if let Err(e) = stream.write(&res_body).await {
+                if let Err(e) = wrapped_write(stream, &res_body).await {
                     eprintln!("error writing to stream: {:?}", e);
                 }
             }
-        }
+        };
     }
     let _ = stream.shutdown().await;
 }
@@ -175,6 +174,24 @@ struct JsonRpcError<T> {
     data: Option<T>,
 }
 
+/// Reads 4 bytes that indicate length of message and then the following message data.
+pub async fn wrapped_read<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Vec<u8>> {
+    let payload_len = reader.read_u32_le().await? as usize;
+    let mut payload = vec![0; payload_len];
+    reader.read_exact(&mut payload).await?;
+    Ok(payload)
+}
+
+/// Writes 4 bytes to indicate length of message followed by the message data.
+pub async fn wrapped_write<W: AsyncWrite + Unpin>(
+    writer: &mut W,
+    payload: &[u8],
+) -> io::Result<()> {
+    let payload_len = payload.len();
+    writer.write_u32_le(payload_len as u32).await?;
+    writer.write_all(payload).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,95 +215,87 @@ mod tests {
         tokio::try_join!(handler, client).unwrap();
     }
 
-    use futures::future::{BoxFuture, FutureExt};
     use std::sync::Arc;
-    use tokio::sync::{Mutex, RwLock};
+    use tokio::sync::RwLock;
 
-    async fn test_handler<F>(f: F)
-    where
-        F: Fn(Arc<Mutex<UnixStream>>) -> BoxFuture<'static, ()> + Send + Sync + 'static,
-    {
+    fn init_storage() -> SharedStorage {
         let db_dir = tempfile::tempdir().unwrap().path().join("storage");
-        let storage = Storage::open(db_dir)
+        Storage::open(db_dir)
             .map(RwLock::new)
             .map(Arc::new)
-            .unwrap();
-        let (first, mut second) = UnixStream::pair().unwrap();
-        let first = Arc::new(Mutex::new(first));
-        let client = tokio::task::spawn(async move {
-            f(first.clone()).await;
-        });
-        let handler = tokio::task::spawn(async move { handle_conn(storage, &mut second).await });
-        tokio::try_join!(client, handler).unwrap();
+            .unwrap()
     }
 
     #[tokio::test]
     async fn test_parse_error() {
-        let f = |stream: Arc<Mutex<UnixStream>>| {
-            async move {
-                let mut stream = stream.lock().await;
-                stream.writable().await.unwrap();
+        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        tokio::try_join!(
+            tokio::task::spawn(async move {
+                client.writable().await.unwrap();
 
-                let wrote = stream.write(b"foobar").await.unwrap();
-                assert_eq!(6, wrote);
+                wrapped_write(&mut client, b"foobar").await.unwrap();
 
-                stream.readable().await.unwrap();
+                client.readable().await.unwrap();
 
-                let mut data = vec![0; 1024];
-                let read = stream.read(&mut data).await.unwrap();
-                assert_eq!(118, read);
+                let data = wrapped_read(&mut client).await.unwrap();
+                assert_eq!(118, data.len());
 
-                let res: serde_json::Value = serde_json::from_slice(&data[0..read]).unwrap();
+                let res: serde_json::Value = serde_json::from_slice(&data).unwrap();
                 let want = json!({ "error": { "code": -32700, "data": "expected ident at line 1 column 2", "message": "Parse error" }, "id": null, "jsonrpc":"2.0" });
                 assert_eq!(want, res);
 
-                stream.shutdown().await.unwrap();
+                client.shutdown().await.unwrap();
+                let data = wrapped_read(&mut client).await;
+                assert_eq!(std::io::ErrorKind::UnexpectedEof, data.unwrap_err().kind());
+            }),
 
-                let read = stream.read(&mut data).await.unwrap();
-                assert_eq!(0, read);
-            }.boxed()
-        };
-        test_handler(f).await;
+            tokio::task::spawn(async move {
+                handle_conn(init_storage(), &mut handler).await;
+            })
+        ).unwrap();
     }
 
     #[tokio::test]
     async fn test_trace_transaction() {
-        let f = |stream: Arc<Mutex<UnixStream>>| {
-            async move {
-                let mut stream = stream.lock().await;
-                stream.writable().await.unwrap();
+        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        tokio::try_join!(
+            tokio::task::spawn(async move {
+                client.writable().await.unwrap();
 
                 // invalid params
                 let req = json!({ "method": "debug_traceTransaction", "id": 1, "jsonrpc": "2.0" });
                 let req_body = serde_json::to_vec(&req).unwrap();
-                let wrote = stream.write(&req_body).await.unwrap();
-                assert_eq!(58, wrote);
+                wrapped_write(&mut client, &req_body).await.unwrap();
 
-                stream.readable().await.unwrap();
+                client.readable().await.unwrap();
 
-                let mut data = vec![0; 1024];
-                let read = stream.read(&mut data).await.unwrap();
-                assert_eq!(75, read);
+                let data = wrapped_read(&mut client).await.unwrap();
+                assert_eq!(75, data.len());
 
-                let res: serde_json::Value = serde_json::from_slice(&data[0..read]).unwrap();
+                let res: serde_json::Value = serde_json::from_slice(&data).unwrap();
                 let want = json!({ "error": { "code": -32602, "message": "Invalid params" }, "id": 1, "jsonrpc": "2.0" });
                 assert_eq!(want, res);
 
                 // not found transaction
                 let req = json!({ "method": "debug_traceTransaction", "params": ["0x2059dd53ecac9827faad14d364f9e04b1d5fe5b506e3acc886eff7a6f88a696a"], "id": 1, "jsonrpc": "2.0" });
                 let req_body = serde_json::to_vec(&req).unwrap();
-                let wrote = stream.write(&req_body).await.unwrap();
-                assert_eq!(138, wrote);
+                wrapped_write(&mut client, &req_body).await.unwrap();
 
-                let mut data = vec![0; 1024];
-                let read = stream.read(&mut data).await.unwrap();
-                assert_eq!(75, read);
+                let data = wrapped_read(&mut client).await.unwrap();
+                assert_eq!(75, data.len());
 
-                let res: serde_json::Value = serde_json::from_slice(&data[0..read]).unwrap();
+                let res: serde_json::Value = serde_json::from_slice(&data).unwrap();
                 let want = json!({ "error": { "code": -32603, "message": "Internal error" }, "id": 1, "jsonrpc": "2.0" });
                 assert_eq!(want, res);
-            }.boxed()
-        };
-        test_handler(f).await;
+
+                client.shutdown().await.unwrap();
+                let data = wrapped_read(&mut client).await;
+                assert_eq!(std::io::ErrorKind::UnexpectedEof, data.unwrap_err().kind());
+            }),
+
+            tokio::task::spawn(async move {
+                handle_conn(init_storage(), &mut handler).await;
+            })
+        ).unwrap();
     }
 }
