@@ -40,16 +40,15 @@ pub async fn start_socket_server(
 }
 
 async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
-    match stream.ready(Interest::READABLE | Interest::WRITABLE).await {
-        Ok(r) if r.is_writable() && r.is_readable() => (),
-        r => {
-            let _ = stream.shutdown().await;
-            eprintln!("faulty stream: {:?}", r);
-            return;
-        }
-    };
     loop {
+        match stream.ready(Interest::READABLE | Interest::WRITABLE).await {
+            Ok(r) if r.is_readable() && r.is_writable() => (),
+            _ => continue,
+        }
         match wrapped_read(stream).await {
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                continue;
+            }
             Err(e) => {
                 eprintln!("error reading from stream: {:?}", e);
                 break;
