@@ -80,8 +80,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
 
         let diff = expected_diffs.entry(receipt_id).or_default();
         match expected_value {
-            Some(value) => diff.modify(to_vec(key), to_vec(value)),
-            None => diff.delete(to_vec(key)),
+            Some(value) => diff.modify(key.to_vec(), value.to_vec()),
+            None => diff.delete(key.to_vec()),
         }
     }
 
@@ -309,10 +309,6 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     }
 
     Ok(())
-}
-
-fn to_vec<T: AsRef<[u8]>>(t: T) -> Vec<u8> {
-    t.as_ref().to_vec()
 }
 
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
@@ -571,7 +567,7 @@ fn parse_action(
         ..
     } = action
     {
-        let bytes = args.clone();
+        let bytes = args.to_vec();
 
         let transaction_kind = if let Ok(raw_tx_kind) =
             InnerTransactionKind::from_str(method_name.as_str())

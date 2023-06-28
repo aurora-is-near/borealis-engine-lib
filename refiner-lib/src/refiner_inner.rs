@@ -496,7 +496,7 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
-            let bytes = args.clone();
+            let bytes = args.to_vec();
 
             transaction_hash = sha256(bytes.as_slice());
 
