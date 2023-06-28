@@ -9,7 +9,7 @@ use engine_standalone_storage::Storage;
 use engine_standalone_tracing::types::call_tracer::SerializableCallFrame;
 use serde_json::json;
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, Interest},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::{UnixListener, UnixStream},
 };
 
@@ -41,9 +41,8 @@ pub async fn start_socket_server(
 
 async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
     loop {
-        match stream.ready(Interest::READABLE | Interest::WRITABLE).await {
-            Ok(r) if r.is_readable() && r.is_writable() => (),
-            _ => continue,
+        if stream.readable().await.is_err() || stream.writable().await.is_err() {
+            continue;
         }
         match wrapped_read(stream).await {
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {

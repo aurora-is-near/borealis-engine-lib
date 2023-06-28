@@ -605,7 +605,7 @@ dependencies = [
  "aurora-refiner-lib",
  "aurora-refiner-types",
  "aurora-standalone-engine",
- "clap 4.3.0",
+ "clap",
  "engine-standalone-storage",
  "engine-standalone-tracing",
  "futures",
