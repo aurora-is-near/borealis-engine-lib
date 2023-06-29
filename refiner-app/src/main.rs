@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod conversion;
 mod input;
+mod socket;
 mod store;
 use std::{
     borrow::Cow,
@@ -24,7 +25,7 @@ fn setup_logs() {
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 }
 
-#[actix::main]
+#[tokio::main]
 async fn main() -> Result<(), tokio::io::Error> {
     setup_logs();
 
@@ -74,17 +75,49 @@ async fn main() -> Result<(), tokio::io::Error> {
                 None => Cow::Owned(engine_path.join("tx_tracker")),
             };
 
-            // Run Refiner
-            aurora_refiner_lib::run_refiner::<&Path, ()>(
-                config.refiner.chain_id,
+            let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                tx_tracker_path.as_ref(),
                 config.refiner.engine_account_id.parse().unwrap(),
-                input_stream,
-                output_stream,
-                last_block,
+                config.refiner.chain_id,
             )
-            .await;
+            .unwrap();
+
+            let socket_storage = ctx.storage.clone();
+
+            // create a broadcast channel for sending a stop signal
+            let (tx, mut rx1) = tokio::sync::broadcast::channel(1);
+            let mut rx2 = tx.subscribe();
+
+            tokio::join!(
+                // listen to ctrl-c for shutdown
+                async {
+                    tokio::signal::ctrl_c()
+                        .await
+                        .expect("failed to listen for event");
+                    tx.send(()).expect("failed to propagate stop signal");
+                },
+                // Run socket server
+                async {
+                    if let Some(socket_config) = config.socket_server {
+                        socket::start_socket_server(
+                            socket_storage,
+                            Path::new(&socket_config.path),
+                            &mut rx1,
+                        )
+                        .await
+                    }
+                },
+                // Run Refiner
+                aurora_refiner_lib::run_refiner::<&Path, ()>(
+                    ctx,
+                    config.refiner.chain_id,
+                    tx_tracker_path.as_ref(),
+                    input_stream,
+                    output_stream,
+                    last_block,
+                    &mut rx2,
+                ),
+            );
         }
     }
 

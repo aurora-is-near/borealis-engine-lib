@@ -602,11 +602,12 @@ dependencies = [
 name = "aurora-refiner"
 version = "0.22.0"
 dependencies = [
- "actix",
- "actix-rt",
  "aurora-refiner-lib",
  "aurora-refiner-types",
+ "aurora-standalone-engine",
  "clap",
+ "engine-standalone-storage",
+ "engine-standalone-tracing",
  "futures",
  "itertools",
  "near-indexer",
@@ -693,6 +694,7 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
+ "tokio",
  "tracing",
 ]
 

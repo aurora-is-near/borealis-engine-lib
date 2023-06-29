@@ -13,6 +13,9 @@ publish = false
 near-indexer.workspace = true
 aurora-refiner-lib = { path = "../refiner-lib" }
 aurora-refiner-types = { path = "../refiner-types" }
+aurora-standalone-engine = { path = "../engine" }
+engine-standalone-storage.workspace = true
+engine-standalone-tracing.workspace = true
 
 serde_json.workspace = true
 serde.workspace = true
@@ -25,8 +28,6 @@ futures.workspace = true
 itertools.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
 tokio-stream.workspace = true
-actix-rt.workspace = true
-actix.workspace = true
 
 # NEAR Lake Framework
 near-lake-framework.workspace = true

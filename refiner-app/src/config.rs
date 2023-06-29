@@ -7,6 +7,7 @@ pub struct Config {
     pub refiner: Refiner,
     pub output_storage: OutputStoreConfig,
     pub input_mode: InputMode,
+    pub socket_server: Option<SocketServer>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -31,6 +32,11 @@ pub struct DataLakeConfig {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct NearcoreConfig {
+    pub path: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct SocketServer {
     pub path: String,
 }
 
