@@ -4,10 +4,8 @@ mod conversion;
 mod input;
 mod socket;
 mod store;
-use std::{
-    borrow::Cow,
-    path::{Path, PathBuf},
-};
+use anyhow::anyhow;
+use std::{borrow::Cow, fs, path::Path};
 
 use clap::Parser;
 use cli::Cli;
@@ -26,7 +24,7 @@ fn setup_logs() {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), tokio::io::Error> {
+async fn main() -> anyhow::Result<()> {
     setup_logs();
 
     let args: Cli = Cli::parse();
@@ -63,13 +61,18 @@ async fn main() -> Result<(), tokio::io::Error> {
             let output_stream = get_output_stream(total, config.output_storage.clone());
 
             // Init storage
+            let engine_path = Path::new(&config.refiner.engine_path);
+
+            fs::create_dir_all(engine_path).map_err(|v| {
+                anyhow!("Unable to create or open directory {engine_path:?}, reason: {v}")
+            })?;
+
             aurora_refiner_lib::storage::init_storage(
-                PathBuf::from(&config.refiner.engine_path),
+                engine_path.to_path_buf(),
                 config.refiner.engine_account_id.parse().unwrap(),
                 config.refiner.chain_id,
             );
 
-            let engine_path = Path::new(&config.refiner.engine_path);
             let tx_tracker_path = match config.refiner.tx_tracker_path.as_ref() {
                 Some(path) => Cow::Borrowed(Path::new(path)),
                 None => Cow::Owned(engine_path.join("tx_tracker")),

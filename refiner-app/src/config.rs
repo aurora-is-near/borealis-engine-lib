@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::path::PathBuf;
 
 use crate::store::OutputStoreConfig;
 
@@ -13,10 +14,10 @@ pub struct Config {
 #[derive(Deserialize, Clone, Debug)]
 pub struct Refiner {
     pub chain_id: u64,
-    pub engine_path: String,
+    pub engine_path: PathBuf,
     pub engine_account_id: String,
     #[serde(default)]
-    pub tx_tracker_path: Option<String>,
+    pub tx_tracker_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -32,12 +33,12 @@ pub struct DataLakeConfig {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct NearcoreConfig {
-    pub path: String,
+    pub path: PathBuf,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct SocketServer {
-    pub path: String,
+    pub path: PathBuf,
 }
 
 #[derive(Deserialize, Clone, Debug)]
