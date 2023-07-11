@@ -5,6 +5,7 @@ members = [
     "refiner-types",
     "refiner-app",
 ]
+resolver = "2"
 
 [workspace.package]
 authors = ["Aurora <hello@aurora.dev>"]
