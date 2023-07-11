@@ -11,6 +11,7 @@ publish = false
 
 [dependencies]
 near-indexer.workspace = true
+aurora-engine-types.workspace = true
 aurora-refiner-lib = { path = "../refiner-lib" }
 aurora-refiner-types = { path = "../refiner-types" }
 aurora-standalone-engine = { path = "../engine" }

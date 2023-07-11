@@ -603,6 +603,7 @@ name = "aurora-refiner"
 version = "0.22.0"
 dependencies = [
  "anyhow",
+ "aurora-engine-types",
  "aurora-refiner-lib",
  "aurora-refiner-types",
  "aurora-standalone-engine",

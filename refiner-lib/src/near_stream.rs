@@ -108,6 +108,7 @@ impl NearStream {
 
 #[cfg(test)]
 mod tests {
+    use aurora_engine_types::account_id::AccountId;
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches};
@@ -313,9 +314,9 @@ mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             let chain_id = 1313161554_u64;
-            crate::storage::init_storage(engine_path.clone(), "aurora".into(), chain_id);
-            let engine_context =
-                EngineContext::new(&engine_path, "aurora".parse().unwrap(), chain_id).unwrap();
+            let account_id: AccountId = "aurora".parse().unwrap();
+            crate::storage::init_storage(engine_path.clone(), account_id.clone(), chain_id);
+            let engine_context = EngineContext::new(&engine_path, account_id, chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
             Self {
                 chain_id,

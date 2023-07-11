@@ -31,9 +31,9 @@ async fn main() -> anyhow::Result<()> {
 
     let config_path = args.config_path.as_deref().unwrap_or("default_config.json");
     let config: config::Config = {
-        let file = std::fs::File::open(config_path).unwrap();
+        let file = fs::File::open(config_path)?;
         let reader = std::io::BufReader::new(file);
-        serde_json::from_reader(reader).unwrap()
+        serde_json::from_reader(reader).map_err(|e| anyhow!("Cannot parse config, reason: {e}"))?
     };
 
     match args.command {
@@ -69,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
             aurora_refiner_lib::storage::init_storage(
                 engine_path.to_path_buf(),
-                config.refiner.engine_account_id.parse().unwrap(),
+                config.refiner.engine_account_id.clone().into(),
                 config.refiner.chain_id,
             );
 
@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                config.refiner.engine_account_id.parse().unwrap(),
+                config.refiner.engine_account_id.into(),
                 config.refiner.chain_id,
             )
             .unwrap();
