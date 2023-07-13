@@ -17,7 +17,8 @@ pub struct Config {
 pub struct Refiner {
     pub chain_id: u64,
     pub engine_path: PathBuf,
-    pub engine_account_id: ValidatedAccountId,
+    #[serde(deserialize_with = "deserialize_account_id_with_descriptive_error_message")]
+    pub engine_account_id: AccountId,
     #[serde(default)]
     pub tx_tracker_path: Option<PathBuf>,
 }
@@ -49,25 +50,14 @@ pub enum Network {
     Testnet,
 }
 
-#[derive(Clone, Debug)]
-pub struct ValidatedAccountId(AccountId);
-
-impl From<ValidatedAccountId> for AccountId {
-    fn from(value: ValidatedAccountId) -> Self {
-        value.0
-    }
-}
-
-impl<'de> Deserialize<'de> for ValidatedAccountId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let account_id = AccountId::deserialize(deserializer)
-            .map_err(|v| Error::custom(format!("invalid Near account ID, error code: {v}")))?;
-
-        Ok(ValidatedAccountId(account_id))
-    }
+fn deserialize_account_id_with_descriptive_error_message<'de, D>(
+    deserializer: D,
+) -> Result<AccountId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    AccountId::deserialize(deserializer)
+        .map_err(|v| Error::custom(format!("invalid Near account ID, error code: {v}")))
 }
 
 #[cfg(test)]
@@ -76,21 +66,34 @@ mod tests {
 
     #[test]
     fn test_invalid_near_account_id_does_not_pass_deserialization() {
-        let error =
-            serde_json::from_str::<ValidatedAccountId>("\"invalid id because it contains spaces\"")
-                .unwrap_err();
+        let error = serde_json::from_str::<Refiner>(
+            r#"{
+            "chain_id": 0,
+            "engine_path": "test",
+            "engine_account_id": "invalid id because it contains spaces"
+        }"#,
+        )
+        .unwrap_err();
 
         let actual_error = format!("{error}");
-        let expected_error = "invalid Near account ID, error code: ERR_ACCOUNT_ID_TO_INVALID";
+        let expected_error =
+            "invalid Near account ID, error code: ERR_ACCOUNT_ID_TO_INVALID at line 5 column 9";
 
         assert_eq!(actual_error, expected_error);
     }
 
     #[test]
     fn test_near_account_id_passes_deserialization() {
-        let account_id = serde_json::from_str::<ValidatedAccountId>("\"some_near_id\"").unwrap();
+        let refiner = serde_json::from_str::<Refiner>(
+            r#"{
+            "chain_id": 0,
+            "engine_path": "test",
+            "engine_account_id": "some_near_id"
+        }"#,
+        )
+        .unwrap();
 
-        let actual_near_account_id = account_id.0.to_string();
+        let actual_near_account_id = refiner.engine_account_id.to_string();
         let expected_near_account_id = "some_near_id";
 
         assert_eq!(actual_near_account_id, expected_near_account_id);

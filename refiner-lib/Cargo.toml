@@ -36,7 +36,7 @@ sha3.workspace = true
 tracing.workspace = true
 fixed-hash.workspace = true
 impl-serde.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "macros"] }
 rocksdb.workspace = true
 
 [dev-dependencies]

@@ -69,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
             aurora_refiner_lib::storage::init_storage(
                 engine_path.to_path_buf(),
-                config.refiner.engine_account_id.clone().into(),
+                config.refiner.engine_account_id.clone(),
                 config.refiner.chain_id,
             );
 
@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                config.refiner.engine_account_id.into(),
+                config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
             .unwrap();
