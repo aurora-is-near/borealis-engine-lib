@@ -190,19 +190,44 @@ lazy_static! {
     .unwrap();
 
     pub static ref TRANSACTION_TYPE_FACTORY_UPDATE: IntCounter = register_int_counter!(
-                "refiner_tx_type_factory_update",
-                        "Number of transactions of type: factory_update"
-                            ).unwrap();
+        "refiner_tx_type_factory_update",
+        "Number of transactions of type: factory_update"
+    ).unwrap();
 
-        pub static ref TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION: IntCounter = register_int_counter!(
-                    "refiner_tx_type_factory_update_address_version",
-                            "Number of transactions of type: factory_update_address_version"
-                                ).unwrap();
+    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION: IntCounter = register_int_counter!(
+        "refiner_tx_type_factory_update_address_version",
+        "Number of transactions of type: factory_update_address_version"
+    ).unwrap();
 
-            pub static ref TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS: IntCounter = register_int_counter!(
-                        "refiner_tx_type_factory_set_wnear_address",
-                                "Number of transactions of type: factory_set_wnear_address"
-                                    ).unwrap();
+    pub static ref TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS: IntCounter = register_int_counter!(
+        "refiner_tx_type_factory_set_wnear_address",
+        "Number of transactions of type: factory_set_wnear_address"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_PAUSE_CONTRACT: IntCounter = register_int_counter!(
+        "refiner_tx_type_pause_contract",
+        "Number of transactions of type: pause_contract"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_RESUME_CONTRACT: IntCounter = register_int_counter!(
+        "refiner_tx_type_resume_contract",
+        "Number of transactions of type: resume_contract"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_KEY_MANAGER: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_key_manager",
+        "Number of transactions of type: set_key_manager"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_ADD_RELAYER_KEY: IntCounter = register_int_counter!(
+        "refiner_tx_type_add_relayer_key",
+        "Number of transactions of type: add_relayer_key"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_REMOVE_RELAYER_KEY: IntCounter = register_int_counter!(
+        "refiner_tx_type_remove_relayer_key",
+        "Number of transactions of type: remove_relayer_key"
+    ).unwrap();
 }
 
 pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
@@ -293,6 +318,19 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::FundXccSubAccound => {
             TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT.inc();
+        }
+        InnerTransactionKind::PauseContract => {
+            TRANSACTION_TYPE_PAUSE_CONTRACT.inc();
+        }
+        InnerTransactionKind::ResumeContract => TRANSACTION_TYPE_RESUME_CONTRACT.inc(),
+        InnerTransactionKind::SetKeyManager => {
+            TRANSACTION_TYPE_SET_KEY_MANAGER.inc();
+        }
+        InnerTransactionKind::AddRelayerKey => {
+            TRANSACTION_TYPE_ADD_RELAYER_KEY.inc();
+        }
+        InnerTransactionKind::RemoveRelayerKey => {
+            TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
         }
         InnerTransactionKind::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();

@@ -61,6 +61,16 @@ pub enum InnerTransactionKind {
     SetUpgradeDelayBlocks,
     #[strum(serialize = "fund_xcc_sub_account")]
     FundXccSubAccound,
+    #[strum(serialize = "pause_contract")]
+    PauseContract,
+    #[strum(serialize = "resume_contract")]
+    ResumeContract,
+    #[strum(serialize = "set_key_manager")]
+    SetKeyManager,
+    #[strum(serialize = "add_relayer_key")]
+    AddRelayerKey,
+    #[strum(serialize = "remove_relayer_key")]
+    RemoveRelayerKey,
     Unknown,
 }
 
@@ -103,6 +113,11 @@ impl From<TransactionKind> for InnerTransactionKind {
                 InnerTransactionKind::SetUpgradeDelayBlocks
             }
             TransactionKind::FundXccSubAccound(_) => InnerTransactionKind::FundXccSubAccound,
+            TransactionKind::PauseContract => InnerTransactionKind::PauseContract,
+            TransactionKind::ResumeContract => InnerTransactionKind::ResumeContract,
+            TransactionKind::SetKeyManager(_) => InnerTransactionKind::SetKeyManager,
+            TransactionKind::AddRelayerKey(_) => InnerTransactionKind::AddRelayerKey,
+            TransactionKind::RemoveRelayerKey(_) => InnerTransactionKind::RemoveRelayerKey,
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
     }
