@@ -719,6 +719,26 @@ fn parse_action(
                     let args = aurora_engine::xcc::FundXccArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::FundXccSubAccound(args)
                 }
+
+                InnerTransactionKind::PauseContract => TransactionKind::PauseContract,
+                InnerTransactionKind::ResumeContract => TransactionKind::ResumeContract,
+                InnerTransactionKind::SetKeyManager => {
+                    let args =
+                        aurora_engine::parameters::RelayerKeyManagerArgs::try_from_slice(&bytes)
+                            .ok()?;
+                    TransactionKind::SetKeyManager(args)
+                }
+                InnerTransactionKind::AddRelayerKey => {
+                    let args =
+                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::AddRelayerKey(args)
+                }
+                InnerTransactionKind::RemoveRelayerKey => {
+                    let args =
+                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::RemoveRelayerKey(args)
+                }
+
                 InnerTransactionKind::Unknown => {
                     warn!("Unknown method name: {}", method_name);
                     return None;
