@@ -8,6 +8,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
+use aurora_engine_types::account_id::AccountId;
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -17,7 +18,7 @@ use aurora_refiner_types::aurora_block::{
 use aurora_refiner_types::bloom::Bloom;
 use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock};
 use aurora_refiner_types::near_primitives::hash::CryptoHash;
-use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
+use aurora_refiner_types::near_primitives::types::BlockHeight;
 use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
@@ -60,7 +61,10 @@ struct TxExtraData {
 }
 
 pub struct Refiner {
+    /// Chain where this block belongs to
     chain_id: u64,
+    /// Account id of the engine contract on the chain
+    engine_account_id: AccountId,
     /// Constant value of an empty merkle tree root
     empty_merkle_tree_root: H256,
     /// Last prev_state_root known (useful to compute state roots on skip blocks)
@@ -95,9 +99,10 @@ pub struct RefinerItem {
 }
 
 impl Refiner {
-    pub fn new(chain_id: u64) -> Self {
+    pub fn new(chain_id: u64, engine_account_id: AccountId) -> Self {
         Self {
             chain_id,
+            engine_account_id,
             empty_merkle_tree_root: H256::from(
                 TryInto::<&[u8; 32]>::try_into(
                     &hex::decode(
@@ -117,6 +122,7 @@ impl Refiner {
     pub fn on_block_skip(&mut self, height: u64, next_block: &NEARBlock) -> AuroraBlock {
         AuroraBlock {
             chain_id: self.chain_id,
+            engine_account_id: self.engine_account_id.clone(),
             hash: compute_block_hash(height, self.chain_id),
             parent_hash: compute_block_hash(height - 1, self.chain_id),
             height,
@@ -208,7 +214,7 @@ impl Refiner {
                     match build_transaction(
                         block,
                         action,
-                        &execution_outcome.receipt.predecessor_id,
+                        &execution_outcome.receipt.predecessor_id.as_bytes().try_into().unwrap(),
                         near_metadata,
                         status,
                         self.chain_id,
@@ -269,7 +275,7 @@ impl Refiner {
         let near_header = NearBlockHeader {
             near_hash: block.header.hash,
             near_parent_hash: block.header.prev_hash,
-            author: block.author.clone(),
+            author: block.author.as_bytes().try_into().unwrap(),
         };
 
         // Build transactions root
@@ -296,6 +302,7 @@ impl Refiner {
 
         let aurora_block = AuroraBlock {
             chain_id: self.chain_id,
+            engine_account_id: self.engine_account_id.clone(),
             hash: compute_block_hash(block.header.height, self.chain_id),
             parent_hash: compute_block_hash(block.header.height - 1, self.chain_id),
             height: block.header.height,

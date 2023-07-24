@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                config.refiner.engine_account_id,
+                config.refiner.engine_account_id.clone(),
                 config.refiner.chain_id,
             )
             .unwrap();
@@ -114,6 +114,7 @@ async fn main() -> anyhow::Result<()> {
                 aurora_refiner_lib::run_refiner::<&Path, ()>(
                     ctx,
                     config.refiner.chain_id,
+                    config.refiner.engine_account_id,
                     tx_tracker_path.as_ref(),
                     input_stream,
                     output_stream,

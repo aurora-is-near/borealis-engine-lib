@@ -1,11 +1,11 @@
 use crate::utils::u64_hex_serde;
 use aurora_engine::parameters::ResultLog;
 use aurora_engine_transactions::eip_2930::AccessTuple;
+use aurora_engine_types::account_id::AccountId;
 use aurora_engine_types::types::{Address, Wei};
 use aurora_engine_types::{H256, U256};
 use derive_builder::Builder;
 use near_primitives::hash::CryptoHash;
-use near_primitives::types::AccountId;
 use serde::{Deserialize, Serialize};
 
 use crate::bloom::Bloom;
@@ -25,6 +25,8 @@ use crate::bloom::Bloom;
 pub struct AuroraBlock {
     /// Chain where this block belongs to
     pub chain_id: u64,
+    /// Account id of the engine contract on the chain
+    pub engine_account_id: AccountId,
     /// Hash of the block
     pub hash: H256,
     /// Hash of the parent block. It is guaranteed that heights from consecutive blocks will be

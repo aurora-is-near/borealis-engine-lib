@@ -1,6 +1,7 @@
 use crate::metrics::{PROCESSED_BLOCKS, SKIP_BLOCKS};
 use crate::refiner_inner::Refiner;
 use crate::tx_hash_tracker::TxHashTracker;
+use aurora_engine_types::account_id::AccountId;
 use aurora_engine_modexp::AuroraModExp;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
@@ -20,13 +21,14 @@ pub struct NearStream {
 impl NearStream {
     pub fn new(
         chain_id: u64,
+        engine_account_id: AccountId,
         last_block_height: Option<u64>,
         context: EngineContext,
         tx_tracker: TxHashTracker,
     ) -> Self {
         Self {
             last_block_height,
-            handler: Refiner::new(chain_id),
+            handler: Refiner::new(chain_id, engine_account_id),
             context,
             tx_tracker,
         }
@@ -305,6 +307,7 @@ mod tests {
 
     struct TestContext {
         chain_id: u64,
+        engine_account_id: AccountId,
         engine_context: EngineContext,
         tx_tracker: TxHashTracker,
     }
@@ -314,12 +317,13 @@ mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             let chain_id = 1313161554_u64;
-            let account_id: AccountId = "aurora".parse().unwrap();
-            crate::storage::init_storage(engine_path.clone(), account_id.clone(), chain_id);
-            let engine_context = EngineContext::new(&engine_path, account_id, chain_id).unwrap();
+            let engine_account_id: AccountId = "aurora".parse().unwrap();
+            crate::storage::init_storage(engine_path.clone(), engine_account_id.clone(), chain_id);
+            let engine_context = EngineContext::new(&engine_path, engine_account_id.clone(), chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
             Self {
                 chain_id,
+                engine_account_id,
                 engine_context,
                 tx_tracker,
             }
@@ -335,7 +339,7 @@ mod tests {
         }
 
         fn create_stream(self) -> NearStream {
-            NearStream::new(self.chain_id, None, self.engine_context, self.tx_tracker)
+            NearStream::new(self.chain_id, self.engine_account_id, None, self.engine_context, self.tx_tracker)
         }
     }
 }
