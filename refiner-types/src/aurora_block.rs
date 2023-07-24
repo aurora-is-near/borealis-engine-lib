@@ -165,6 +165,10 @@ pub struct NearTransaction {
     /// expected to be set for call newly produced data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_hash: Option<CryptoHash>,
+    /// Method name called on the Aurora engine contract on NEAR.
+    /// Filed is Some if and only if NEAR action is a function call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method_name: Option<String>,
 }
 
 #[cfg(test)]

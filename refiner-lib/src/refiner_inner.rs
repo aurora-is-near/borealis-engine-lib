@@ -196,6 +196,7 @@ impl Refiner {
                         action_index: index,
                         receipt_hash: execution_outcome.receipt.receipt_id,
                         transaction_hash: near_tx_hash,
+                        method_name: None, // default initial value
                     };
 
                     // The execution outcome only applies to the last action in the batch
@@ -475,7 +476,7 @@ fn build_transaction(
     near_block: &BlockView,
     action: &ActionView,
     predecessor_id: &AccountId,
-    near_metadata: NearTransaction,
+    mut near_metadata: NearTransaction,
     execution_status: Option<&ExecutionStatusView>,
     chain_id: u64,
     transaction_index: u32,
@@ -493,8 +494,7 @@ fn build_transaction(
         .block_height(near_block.header.height)
         .chain_id(chain_id)
         .transaction_index(transaction_index)
-        .gas_price(U256::zero())
-        .near_metadata(near_metadata);
+        .gas_price(U256::zero());
 
     // Hash used to build transactions merkle tree
     let mut transaction_hash = H256::zero();
@@ -503,6 +503,9 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
+            near_metadata.method_name = Some(method_name.clone());
+            tx = tx.near_metadata(near_metadata);
+
             let bytes = args.to_vec();
 
             transaction_hash = sha256(bytes.as_slice());
@@ -571,7 +574,7 @@ fn build_transaction(
                             let from_address =
                                 near_account_to_evm_address(predecessor_id.as_bytes());
                             tx = tx.hash(hash).from(from_address);
-                            tx = fill_tx(tx, "submit_with_args", bytes);
+                            tx = fill_tx(tx, bytes);
                         }
                     };
 
@@ -664,7 +667,7 @@ fn build_transaction(
                             .r(U256::zero())
                             .s(U256::zero());
                     } else {
-                        tx = fill_tx(tx, "call", bytes);
+                        tx = fill_tx(tx, bytes);
                     }
 
                     let result = normalize_output(
@@ -726,7 +729,7 @@ fn build_transaction(
                         txs.get(&hash),
                     )?;
                     tx = fill_with_submit_result(tx, result, &mut bloom);
-                    fill_tx(tx, method_name, bytes)
+                    fill_tx(tx, bytes)
                 }
             }
         }
@@ -737,6 +740,7 @@ fn build_transaction(
                 .hash(virtual_receipt_id.0.try_into().unwrap())
                 .from(near_account_to_evm_address(predecessor_id.as_bytes()))
                 .to(Some(near_account_to_evm_address(b"aurora")))
+                .near_metadata(near_metadata)
                 .contract_address(None)
                 .nonce(0)
                 .gas_limit(0)
@@ -803,7 +807,6 @@ fn fill_with_submit_result(
 
 fn fill_tx(
     tx: AuroraTransactionBuilder,
-    method_name: &str,
     input: Vec<u8>,
 ) -> AuroraTransactionBuilder {
     tx.to(None)
@@ -812,14 +815,7 @@ fn fill_tx(
         .max_priority_fee_per_gas(U256::zero())
         .max_fee_per_gas(U256::zero())
         .value(Wei::new(U256::zero()))
-        .input(
-            vec![
-                method_name.to_string().as_bytes().to_vec(),
-                b":".to_vec(),
-                input,
-            ]
-            .concat(),
-        )
+        .input(input)
         .access_list(vec![])
         .tx_type(0xff)
         .contract_address(None)
