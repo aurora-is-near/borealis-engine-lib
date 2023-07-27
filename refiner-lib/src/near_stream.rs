@@ -1,8 +1,8 @@
 use crate::metrics::{PROCESSED_BLOCKS, SKIP_BLOCKS};
 use crate::refiner_inner::Refiner;
 use crate::tx_hash_tracker::TxHashTracker;
-use aurora_engine_types::account_id::AccountId;
 use aurora_engine_modexp::AuroraModExp;
+use aurora_engine_types::account_id::AccountId;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
 use aurora_standalone_engine::EngineContext;
@@ -319,7 +319,8 @@ mod tests {
             let chain_id = 1313161554_u64;
             let engine_account_id: AccountId = "aurora".parse().unwrap();
             crate::storage::init_storage(engine_path.clone(), engine_account_id.clone(), chain_id);
-            let engine_context = EngineContext::new(&engine_path, engine_account_id.clone(), chain_id).unwrap();
+            let engine_context =
+                EngineContext::new(&engine_path, engine_account_id.clone(), chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
             Self {
                 chain_id,
@@ -339,7 +340,13 @@ mod tests {
         }
 
         fn create_stream(self) -> NearStream {
-            NearStream::new(self.chain_id, self.engine_account_id, None, self.engine_context, self.tx_tracker)
+            NearStream::new(
+                self.chain_id,
+                self.engine_account_id,
+                None,
+                self.engine_context,
+                self.tx_tracker,
+            )
         }
     }
 }

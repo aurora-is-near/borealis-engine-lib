@@ -215,7 +215,12 @@ impl Refiner {
                     match build_transaction(
                         block,
                         action,
-                        &execution_outcome.receipt.predecessor_id.as_bytes().try_into().unwrap(),
+                        &execution_outcome
+                            .receipt
+                            .predecessor_id
+                            .as_bytes()
+                            .try_into()
+                            .unwrap(),
                         near_metadata,
                         status,
                         self.chain_id,
@@ -805,10 +810,7 @@ fn fill_with_submit_result(
     }
 }
 
-fn fill_tx(
-    tx: AuroraTransactionBuilder,
-    input: Vec<u8>,
-) -> AuroraTransactionBuilder {
+fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBuilder {
     tx.to(None)
         .nonce(0)
         .gas_limit(0)

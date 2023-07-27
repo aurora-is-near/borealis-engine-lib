@@ -19,6 +19,7 @@ impl<B: Debug, M: Debug + Clone> BlockWithMetadata<B, M> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
     ctx: EngineContext,
     chain_id: u64,
