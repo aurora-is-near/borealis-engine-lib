@@ -6,7 +6,7 @@
     },
     "input_mode": {
         "Nearcore": {
-            "path": "nearcore"
+            "path": "node1"
         }
     },
     "output_storage": {
