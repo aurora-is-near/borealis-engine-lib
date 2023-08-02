@@ -67,6 +67,11 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
+      - name: Install rust wasm32-unknown-unknown
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: wasm32-unknown-unknown
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
