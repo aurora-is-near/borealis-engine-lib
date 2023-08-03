@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner-types"
-version = "0.23.1"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "A library containing definitions of data structures relating to NEAR and Aurora blocks."
