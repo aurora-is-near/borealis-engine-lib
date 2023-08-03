@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner-lib"
-version = "0.23.1"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "A library containing logic for parsing information about Aurora transactions from full NEAR blocks."
@@ -21,7 +21,6 @@ aurora-standalone-engine = { path = "../engine" }
 engine-standalone-storage.workspace = true
 
 anyhow.workspace = true
-base64.workspace = true
 borsh.workspace = true
 triehash-ethereum.workspace = true
 byteorder.workspace = true

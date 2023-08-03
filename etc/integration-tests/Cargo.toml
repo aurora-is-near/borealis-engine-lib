@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner-app-integration-tests"
-version = "0.23.2"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "Integration tests for the Aurora Refiner application."

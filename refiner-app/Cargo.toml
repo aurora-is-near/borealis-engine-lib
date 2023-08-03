@@ -1,6 +1,6 @@
 [package]
 name = "aurora-refiner"
-version = "0.23.1"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "An application for creating data about Aurora transactions by consuming data from a NEAR RPC endpoint."
@@ -27,7 +27,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 futures.workspace = true
-itertools.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
 tokio-stream.workspace = true
 
