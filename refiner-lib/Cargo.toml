@@ -21,7 +21,6 @@ aurora-standalone-engine = { path = "../engine" }
 engine-standalone-storage.workspace = true
 
 anyhow.workspace = true
-borsh.workspace = true
 triehash-ethereum.workspace = true
 byteorder.workspace = true
 derive_builder.workspace = true

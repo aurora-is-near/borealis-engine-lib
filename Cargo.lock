@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "2.10.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-precompiles",
@@ -542,7 +542,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "hex",
  "ibig",
@@ -552,7 +552,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -571,7 +571,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine-types",
  "base64 0.21.2",
@@ -580,9 +580,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "aurora-engine-standalone-nep141-legacy"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+dependencies = [
+ "aurora-engine",
+ "aurora-engine-modexp",
+ "aurora-engine-sdk",
+ "aurora-engine-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -595,7 +608,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "base64 0.21.2",
  "borsh 0.10.3",
@@ -655,7 +668,6 @@ dependencies = [
  "aurora-engine-types",
  "aurora-refiner-types",
  "aurora-standalone-engine",
- "borsh 0.10.3",
  "byteorder",
  "derive_builder 0.12.0",
  "engine-standalone-storage",
@@ -705,7 +717,6 @@ dependencies = [
  "aurora-engine-transactions",
  "aurora-engine-types",
  "aurora-refiner-types",
- "borsh 0.10.3",
  "engine-standalone-storage",
  "engine-standalone-tracing",
  "hex",
@@ -2336,12 +2347,13 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
+ "aurora-engine-standalone-nep141-legacy",
  "aurora-engine-transactions",
  "aurora-engine-types",
  "evm-core",
@@ -2355,7 +2367,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.10.1#6c3d46e943057fddb98492a5b091068b2e787b10"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
 dependencies = [
  "aurora-engine-types",
  "evm",

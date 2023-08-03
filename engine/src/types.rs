@@ -71,6 +71,22 @@ pub enum InnerTransactionKind {
     AddRelayerKey,
     #[strum(serialize = "remove_relayer_key")]
     RemoveRelayerKey,
+    #[strum(serialize = "set_eth_connector_contract_account")]
+    SetEthConnectorContractAccount,
+    #[strum(serialize = "disable_legacy_nep141")]
+    DisableLegacyNEP141,
+    #[strum(serialize = "set_fixed_gas_cost")]
+    SetFixedGasCost,
+    #[strum(serialize = "set_silo_params")]
+    SetSiloParams,
+    #[strum(serialize = "set_whitelist_status")]
+    SetWhitelistStatus,
+    #[strum(serialize = "add_entry_to_whitelist")]
+    AddEntryToWhitelist,
+    #[strum(serialize = "add_entry_to_whitelist_batch")]
+    AddEntryToWhitelistBatch,
+    #[strum(serialize = "remove_entry_from_whitelist")]
+    RemoveEntryFromWhitelist,
     Unknown,
 }
 
@@ -112,12 +128,26 @@ impl From<TransactionKind> for InnerTransactionKind {
             TransactionKind::SetUpgradeDelayBlocks(_) => {
                 InnerTransactionKind::SetUpgradeDelayBlocks
             }
-            TransactionKind::FundXccSubAccound(_) => InnerTransactionKind::FundXccSubAccound,
+            TransactionKind::FundXccSubAccount(_) => InnerTransactionKind::FundXccSubAccound,
             TransactionKind::PauseContract => InnerTransactionKind::PauseContract,
             TransactionKind::ResumeContract => InnerTransactionKind::ResumeContract,
             TransactionKind::SetKeyManager(_) => InnerTransactionKind::SetKeyManager,
             TransactionKind::AddRelayerKey(_) => InnerTransactionKind::AddRelayerKey,
             TransactionKind::RemoveRelayerKey(_) => InnerTransactionKind::RemoveRelayerKey,
+            TransactionKind::SetEthConnectorContractAccount(_) => {
+                InnerTransactionKind::SetEthConnectorContractAccount
+            }
+            TransactionKind::DisableLegacyNEP141 => InnerTransactionKind::DisableLegacyNEP141,
+            TransactionKind::SetFixedGasCost(_) => InnerTransactionKind::SetFixedGasCost,
+            TransactionKind::SetSiloParams(_) => InnerTransactionKind::SetSiloParams,
+            TransactionKind::AddEntryToWhitelist(_) => InnerTransactionKind::AddEntryToWhitelist,
+            TransactionKind::AddEntryToWhitelistBatch(_) => {
+                InnerTransactionKind::AddEntryToWhitelistBatch
+            }
+            TransactionKind::RemoveEntryFromWhitelist(_) => {
+                InnerTransactionKind::RemoveEntryFromWhitelist
+            }
+            TransactionKind::SetWhitelistStatus(_) => InnerTransactionKind::SetWhitelistStatus,
             TransactionKind::Unknown => InnerTransactionKind::Unknown,
         }
     }

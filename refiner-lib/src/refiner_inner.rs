@@ -8,6 +8,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
+use aurora_engine_types::borsh::{BorshDeserialize, BorshSerialize};
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -22,7 +23,6 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use aurora_standalone_engine::types::InnerTransactionKind;
-use borsh::{BorshDeserialize, BorshSerialize};
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
 use engine_standalone_storage::Storage;
