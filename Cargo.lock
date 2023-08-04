@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "2.10.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-precompiles",
@@ -542,17 +542,16 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "hex",
- "ibig",
  "num",
 ]
 
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -571,7 +570,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine-types",
  "base64 0.21.2",
@@ -582,7 +581,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-standalone-nep141-legacy"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -595,7 +594,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -608,7 +607,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "base64 0.21.2",
  "borsh 0.10.3",
@@ -2347,7 +2346,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2362,12 +2361,13 @@ dependencies = [
  "rocksdb",
  "serde",
  "serde_json",
+ "strum 0.25.0",
 ]
 
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#2d4dcac9ee51c3edacf7c5e921076dc2cc3ff23c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=silo-splitted-nep141#ea08ceec3653e087e6d989833f4dfe0867d089ad"
 dependencies = [
  "aurora-engine-types",
  "evm",
@@ -3175,17 +3175,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "ibig"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1fcc7f316b2c079dde77564a1360639c1a956a23fa96122732e416cb10717bb"
-dependencies = [
- "cfg-if 1.0.0",
- "num-traits",
- "static_assertions",
 ]
 
 [[package]]
@@ -6621,9 +6610,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.180"
+version = "1.0.181"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ea67f183f058fe88a4e3ec6e2788e003840893b91bac4559cabedd00863b3ed"
+checksum = "6d3e73c93c3240c0bda063c239298e633114c69a888c3e37ca8bb33f343e9890"
 dependencies = [
  "serde_derive",
 ]
@@ -6661,9 +6650,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.180"
+version = "1.0.181"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24e744d7782b686ab3b73267ef05697159cc0e5abbed3f47f9933165e5219036"
+checksum = "be02f6cb0cd3a5ec20bbcfbcbd749f57daddb1a0882dc2e46a6c236c90b977ed"
 dependencies = [
  "proc-macro2",
  "quote",
