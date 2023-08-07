@@ -299,6 +299,7 @@ fn eth_call(
     storage
         .with_engine_access(block_height + 1, 0, &[], |io| {
             let current_nonce = aurora_engine::engine::get_nonce(&io, &from).low_u64();
+            let fixed_gas_cost = aurora_engine::silo::get_fixed_gas_cost(&io);
             let mut local_io = io;
             let mut full_override = HashMap::new();
             for (address, state_override) in state_override {
@@ -330,7 +331,16 @@ fn eth_call(
 
             let submit_result = if full_override.is_empty() {
                 compute_call_result(
-                    local_io, from, to, gas_limit, gas_price, value, data, nonce, env,
+                    local_io,
+                    from,
+                    to,
+                    gas_limit,
+                    gas_price,
+                    value,
+                    data,
+                    nonce,
+                    env,
+                    fixed_gas_cost,
                 )
             } else {
                 let override_io = EngineStateOverride {
@@ -347,6 +357,7 @@ fn eth_call(
                     data,
                     nonce,
                     env,
+                    fixed_gas_cost,
                 )
             };
             let nonce_status = match nonce {
@@ -458,7 +469,7 @@ pub enum StateOrEngineError {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
+fn compute_call_result<I: IO + Copy>(
     io: I,
     from: Address,
     to: Option<Address>,
@@ -468,19 +479,19 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
     data: Vec<u8>,
     nonce: Option<u64>,
     env: aurora_engine_sdk::env::Fixed,
+    fixed_gas_cost: Option<Wei>,
 ) -> Result<SubmitResult, StateOrEngineError> {
     let mut handler = aurora_engine_sdk::promise::Noop;
     aurora_engine::state::get_state(&io)
         .map_err(|_| StateOrEngineError::StateMissing)
         .and_then(|engine_state| {
-            let mut engine: Engine<_, _, AuroraModExp> =
-                aurora_engine::engine::Engine::new_with_state(
-                    engine_state,
-                    from,
-                    env.current_account_id.clone(),
-                    io,
-                    &env,
-                );
+            let mut engine: Engine<_, _, AuroraModExp> = Engine::new_with_state(
+                engine_state,
+                from,
+                env.current_account_id.clone(),
+                io,
+                &env,
+            );
             let result = match to {
                 Some(to) => engine
                     .call(&from, &to, value, data, gas_limit, Vec::new(), &mut handler)
@@ -506,9 +517,11 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
                     data: Vec::new(),
                     access_list: Vec::new(),
                 };
-                engine.charge_gas(&from, &transaction, None).map_err(|e| {
-                    StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
-                })?;
+                engine
+                    .charge_gas(&from, &transaction, None, fixed_gas_cost)
+                    .map_err(|e| {
+                        StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
+                    })?;
             }
             result
         })

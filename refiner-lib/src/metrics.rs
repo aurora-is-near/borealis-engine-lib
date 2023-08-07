@@ -228,6 +228,46 @@ lazy_static! {
         "refiner_tx_type_remove_relayer_key",
         "Number of transactions of type: remove_relayer_key"
     ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_CONNECTOR_CONTRACT_ACCOUNT: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_connector_contract_account",
+        "Number of transactions of type: set_connector_contract_account"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_DISABLE_LEGACY_NEP141: IntCounter = register_int_counter!(
+        "refiner_tx_type_disable_legacy_nep141",
+        "Number of transactions of type: disable_legacy_nep141"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS_COST: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_fixed_gas_cost",
+        "Number of transactions of type: set_fixed_gas_cost"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_silo_params",
+        "Number of transactions of type: set_silo_params"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_WHITELIST_STATUS: IntCounter = register_int_counter!(
+        "refiner_tx_type_set_whitelist_status",
+        "Number of transactions of type: set_whitelist_status"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST: IntCounter = register_int_counter!(
+        "refiner_tx_type_add_entry_to_whitelist",
+        "Number of transactions of type: add_entry_to_whitelist"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST_BATCH: IntCounter = register_int_counter!(
+        "refiner_tx_type_add_entry_to_whitelist_batch",
+        "Number of transactions of type: add_entry_to_whitelist_batch"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_REMOVE_ENTRY_FROM_WHITELIST: IntCounter = register_int_counter!(
+        "refiner_tx_type_remove_entry_from_whitelist",
+        "Number of transactions of type: remove_entry_from_whitelist"
+    ).unwrap();
 }
 
 pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
@@ -331,6 +371,30 @@ pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
         }
         InnerTransactionKind::RemoveRelayerKey => {
             TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
+        }
+        InnerTransactionKind::SetEthConnectorContractAccount => {
+            TRANSACTION_TYPE_SET_CONNECTOR_CONTRACT_ACCOUNT.inc();
+        }
+        InnerTransactionKind::DisableLegacyNEP141 => {
+            TRANSACTION_TYPE_DISABLE_LEGACY_NEP141.inc();
+        }
+        InnerTransactionKind::SetFixedGasCost => {
+            TRANSACTION_TYPE_SET_FIXED_GAS_COST.inc();
+        }
+        InnerTransactionKind::SetSiloParams => {
+            TRANSACTION_TYPE_SET_SILO_PARAMS.inc();
+        }
+        InnerTransactionKind::SetWhitelistStatus => {
+            TRANSACTION_TYPE_SET_WHITELIST_STATUS.inc();
+        }
+        InnerTransactionKind::AddEntryToWhitelist => {
+            TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST.inc();
+        }
+        InnerTransactionKind::AddEntryToWhitelistBatch => {
+            TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST_BATCH.inc();
+        }
+        InnerTransactionKind::RemoveEntryFromWhitelist => {
+            TRANSACTION_TYPE_REMOVE_ENTRY_FROM_WHITELIST.inc();
         }
         InnerTransactionKind::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();

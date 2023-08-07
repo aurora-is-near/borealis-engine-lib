@@ -20,7 +20,6 @@ aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
 aurora-engine-sdk.workspace = true
 aurora-refiner-types = { path = "../refiner-types" }
-borsh.workspace = true
 engine-standalone-storage = { workspace = true, features = ["snappy", "zstd", "zlib", "bzip2"] }
 engine-standalone-tracing.workspace = true
 hex.workspace = true

@@ -2,13 +2,14 @@ use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
 use aurora_engine_transactions::EthTransactionKind;
+use aurora_engine_types::borsh::BorshDeserialize;
+use aurora_engine_types::parameters::silo;
 use aurora_engine_types::{account_id::AccountId, types::Address, H256};
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
     views::{ActionView, StateChangeValueView},
 };
-use borsh::BorshDeserialize;
 use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
     sync::{
@@ -709,34 +710,59 @@ fn parse_action(
                 }
                 InnerTransactionKind::SetUpgradeDelayBlocks => {
                     let args =
-                        aurora_engine::parameters::SetUpgradeDelayBlocksArgs::try_from_slice(
-                            &bytes,
-                        )
-                        .ok()?;
+                        parameters::SetUpgradeDelayBlocksArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::SetUpgradeDelayBlocks(args)
                 }
                 InnerTransactionKind::FundXccSubAccound => {
                     let args = aurora_engine::xcc::FundXccArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::FundXccSubAccound(args)
+                    TransactionKind::FundXccSubAccount(args)
                 }
 
                 InnerTransactionKind::PauseContract => TransactionKind::PauseContract,
                 InnerTransactionKind::ResumeContract => TransactionKind::ResumeContract,
                 InnerTransactionKind::SetKeyManager => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyManagerArgs::try_from_slice(&bytes)
-                            .ok()?;
+                    let args = parameters::RelayerKeyManagerArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::SetKeyManager(args)
                 }
                 InnerTransactionKind::AddRelayerKey => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
+                    let args = parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::AddRelayerKey(args)
                 }
                 InnerTransactionKind::RemoveRelayerKey => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
+                    let args = parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
                     TransactionKind::RemoveRelayerKey(args)
+                }
+                InnerTransactionKind::SetEthConnectorContractAccount => {
+                    let args =
+                        parameters::SetEthConnectorContractAccountArgs::try_from_slice(&bytes)
+                            .ok()?;
+                    TransactionKind::SetEthConnectorContractAccount(args)
+                }
+                InnerTransactionKind::DisableLegacyNEP141 => TransactionKind::DisableLegacyNEP141,
+                InnerTransactionKind::SetFixedGasCost => {
+                    let args = silo::FixedGasCostArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetFixedGasCost(args)
+                }
+                InnerTransactionKind::SetSiloParams => {
+                    let args = silo::SiloParamsArgs::try_from_slice(&bytes).ok();
+                    TransactionKind::SetSiloParams(args)
+                }
+                InnerTransactionKind::SetWhitelistStatus => {
+                    let args = silo::WhitelistStatusArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::SetWhitelistStatus(args)
+                }
+                InnerTransactionKind::AddEntryToWhitelist => {
+                    let args = silo::WhitelistArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::AddEntryToWhitelist(args)
+                }
+                InnerTransactionKind::AddEntryToWhitelistBatch => {
+                    let args: Vec<silo::WhitelistArgs> =
+                        BorshDeserialize::try_from_slice(&bytes).ok()?;
+                    TransactionKind::AddEntryToWhitelistBatch(args)
+                }
+                InnerTransactionKind::RemoveEntryFromWhitelist => {
+                    let args = silo::WhitelistArgs::try_from_slice(&bytes).ok()?;
+                    TransactionKind::RemoveEntryFromWhitelist(args)
                 }
 
                 InnerTransactionKind::Unknown => {

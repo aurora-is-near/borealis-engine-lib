@@ -19,17 +19,16 @@ license = "CC0-1.0"
 [workspace.dependencies]
 actix = "0.13"
 anyhow = "1"
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["std"] }
-aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["std"] }
-borsh = "0.10"
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["std"] }
+aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["std"] }
 byteorder = "1"
 clap = { version = "4", features = ["derive"] }
 derive_builder = "0.12"
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false }
-engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.10.1", default-features = false, features = ["impl-serde"] }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false }
+engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "silo-2.10.1", default-features = false, features = ["impl-serde"] }
 fixed-hash = "0.8"
 futures = "0.3"
 hex = "0.4"
