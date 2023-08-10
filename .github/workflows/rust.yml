@@ -84,7 +84,4 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p aurora-refiner-app-integration-tests
+        run: cargo test -p aurora-refiner-app-integration-tests
