@@ -84,4 +84,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
       - name: Run tests
-        run: cargo test -p aurora-refiner-app-integration-tests
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo test -p aurora-refiner-app-integration-tests
