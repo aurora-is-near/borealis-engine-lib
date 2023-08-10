@@ -12,7 +12,10 @@ check-compile:
 	$(CARGO) check --all-targets
 
 test:
-	$(CARGO) test
+	$(CARGO) test --workspace --exclude aurora-refiner-app-integration-tests
+
+run-test:
+	$(CARGO) test -p aurora-refiner-app-integration-tests
 
 check-format:
 	$(CARGO) fmt -- --check
