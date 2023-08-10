@@ -150,7 +150,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_block_84423722() {
-        // The block at hight 84423722 contains a transaction with zero actions.
+        // The block at height 84423722 contains a transaction with zero actions.
         // The refiner should be able to process such a block without crashing.
 
         let db_dir = tempfile::tempdir().unwrap();
