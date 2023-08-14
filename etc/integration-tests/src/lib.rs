@@ -26,7 +26,7 @@ async fn test_refiner_starts() {
     // Clone and build nearcore if missing or different version
     let thread_local_path: PathBuf = nearcore_root.path().into();
     let neard_binary = tokio::spawn(async move {
-        let neard_path = nearcore_utils::neard_path();
+        let neard_path = nearcore_utils::neard_path().await;
         if matches!(&neard_path, Ok(path) if path.exists() && nearcore_utils::neard_version(path).await? == nearcore_version)
         {
             neard_path

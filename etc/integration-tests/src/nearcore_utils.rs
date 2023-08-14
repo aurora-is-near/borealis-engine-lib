@@ -64,7 +64,7 @@ pub async fn build_neard(nearcore_repository: &Path) -> anyhow::Result<PathBuf> 
         ));
     }
 
-    let to_path = neard_path()?;
+    let to_path = neard_path().await?;
 
     create_dirs().await?;
     tokio::fs::copy(&expected_path, &to_path).await?;
@@ -120,16 +120,22 @@ pub async fn start_neard(
     Ok(child)
 }
 
-pub fn neard_path() -> anyhow::Result<PathBuf> {
-    std::env::current_dir()
-        .map(|dir| dir.join("target").join("neard"))
+pub async fn neard_path() -> anyhow::Result<PathBuf> {
+    crate::refiner_utils::get_repository_root()
+        .await
+        .map(|dir| dir.join("target").join("release").join("neard"))
         .map_err(Into::into)
 }
 
 async fn create_dirs() -> anyhow::Result<()> {
-    tokio::fs::create_dir_all(std::env::current_dir()?.join("target"))
-        .await
-        .map_err(Into::into)
+    tokio::fs::create_dir_all(
+        crate::refiner_utils::get_repository_root()
+            .await?
+            .join("target")
+            .join("release"),
+    )
+    .await
+    .map_err(Into::into)
 }
 
 pub async fn neard_version<P: AsRef<OsStr>>(neard_path: P) -> anyhow::Result<String> {
