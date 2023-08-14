@@ -83,7 +83,11 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
+      - name: Restore cache
+        run: cache-util restore neard:etc/integration-tests/target
       - name: Run tests
         run: |
           rustup target add wasm32-unknown-unknown
           cargo test -p aurora-refiner-app-integration-tests
+      - name: Save cache
+        run: cache-util msave neard:etc/integration-tests/target

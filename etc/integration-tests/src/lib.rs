@@ -23,12 +23,18 @@ async fn test_refiner_starts() {
     let refiner_binary =
         tokio::spawn(async move { refiner_utils::compile_refiner(&thread_local_path).await });
 
-    // Clone and build nearcore
+    // Clone and build nearcore if missing or different version
     let thread_local_path: PathBuf = nearcore_root.path().into();
     let neard_binary = tokio::spawn(async move {
-        let nearcore_repo =
-            nearcore_utils::clone_nearcore(&thread_local_path, &nearcore_version).await?;
-        nearcore_utils::build_neard(&nearcore_repo).await
+        let neard_path = nearcore_utils::neard_path();
+        if matches!(&neard_path, Ok(path) if path.exists() && nearcore_utils::neard_version(path).await? == nearcore_version)
+        {
+            neard_path
+        } else {
+            let nearcore_repo =
+                nearcore_utils::clone_nearcore(&thread_local_path, &nearcore_version).await?;
+            nearcore_utils::build_neard(&nearcore_repo).await
+        }
     });
 
     let refiner_binary = refiner_binary.await.unwrap().unwrap();
