@@ -48,9 +48,9 @@ impl NearStream {
         .unwrap(); // Panic if engine can't consume this block
 
         // Panic if transaction hash tracker cannot consume the block
-        self.tx_tracker
+        /*self.tx_tracker
             .consume_near_block(near_block)
-            .expect("Transaction tracker consume_near_block error");
+            .expect("Transaction tracker consume_near_block error");*/
 
         let storage = self.context.storage.as_ref().write().await;
         near_block
@@ -77,9 +77,9 @@ impl NearStream {
             });
 
         let aurora_block = self.handler.on_block_end(near_block);
-        self.tx_tracker
+        /*self.tx_tracker
             .on_block_end(near_block.block.header.height)
-            .expect("Transaction tracker on_block_end error");
+            .expect("Transaction tracker on_block_end error");*/
         aurora_block
     }
 
