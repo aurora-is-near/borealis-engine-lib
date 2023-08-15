@@ -13,8 +13,8 @@ pub struct NearStream {
     handler: Refiner,
     /// Context used to access engine
     context: EngineContext,
-    /// Helper to track the NEAR transaction hash associated with each NEAR receipt.
-    tx_tracker: TxHashTracker,
+    // Helper to track the NEAR transaction hash associated with each NEAR receipt.
+    //tx_tracker: TxHashTracker,
 }
 
 impl NearStream {
@@ -22,13 +22,13 @@ impl NearStream {
         chain_id: u64,
         last_block_height: Option<u64>,
         context: EngineContext,
-        tx_tracker: TxHashTracker,
+        //tx_tracker: TxHashTracker,
     ) -> Self {
         Self {
             last_block_height,
             handler: Refiner::new(chain_id),
             context,
-            tx_tracker,
+            //tx_tracker,
         }
     }
 
@@ -48,9 +48,9 @@ impl NearStream {
         .unwrap(); // Panic if engine can't consume this block
 
         // Panic if transaction hash tracker cannot consume the block
-        self.tx_tracker
+        /*self.tx_tracker
             .consume_near_block(near_block)
-            .expect("Transaction tracker consume_near_block error");
+            .expect("Transaction tracker consume_near_block error");*/
 
         let storage = self.context.storage.as_ref().write().await;
         near_block
@@ -62,7 +62,7 @@ impl NearStream {
             })
             .for_each(|outcome| {
                 let rx_hash = &outcome.receipt.receipt_id;
-                let near_tx_hash = self.tx_tracker.get_tx_hash(rx_hash);
+                let near_tx_hash = Some(*rx_hash); //self.tx_tracker.get_tx_hash(rx_hash);
                 if near_tx_hash.is_none() {
                     tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
                     crate::metrics::UNKNOWN_TX_FOR_RECEIPT.inc();
@@ -77,9 +77,9 @@ impl NearStream {
             });
 
         let aurora_block = self.handler.on_block_end(near_block);
-        self.tx_tracker
+        /*self.tx_tracker
             .on_block_end(near_block.block.header.height)
-            .expect("Transaction tracker on_block_end error");
+            .expect("Transaction tracker on_block_end error");*/
         aurora_block
     }
 
@@ -335,7 +335,7 @@ mod tests {
         }
 
         fn create_stream(self) -> NearStream {
-            NearStream::new(self.chain_id, None, self.engine_context, self.tx_tracker)
+            NearStream::new(self.chain_id, None, self.engine_context)//, self.tx_tracker)
         }
     }
 }

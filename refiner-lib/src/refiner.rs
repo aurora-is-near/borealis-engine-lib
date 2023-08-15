@@ -27,10 +27,10 @@ pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
     last_block: Option<u64>,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
-    let tx_tracker =
+    /*let tx_tracker =
         tx_hash_tracker::TxHashTracker::new(tx_storage_path, last_block.unwrap_or_default())
-            .expect("Failed to start transaction tracker");
-    let mut stream = NearStream::new(chain_id, last_block, ctx, tx_tracker);
+            .expect("Failed to start transaction tracker");*/
+    let mut stream = NearStream::new(chain_id, last_block, ctx);//, tx_tracker);
 
     loop {
         tokio::select! {
