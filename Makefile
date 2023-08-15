@@ -14,7 +14,7 @@ check-compile:
 test:
 	$(CARGO) test --workspace --exclude aurora-refiner-app-integration-tests
 
-run-test:
+integration-test:
 	$(CARGO) test -p aurora-refiner-app-integration-tests
 
 check-format:
@@ -29,7 +29,7 @@ format:
 clean:
 	$(CARGO) clean
 
-.PHONY: release debug check check-compile test check-format check-clippy format clean
+.PHONY: release debug check check-compile test integration-test check-format check-clippy format clean
 
 .SECONDARY:
 .SUFFIXES:
