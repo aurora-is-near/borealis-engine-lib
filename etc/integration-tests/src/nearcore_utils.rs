@@ -1,6 +1,7 @@
 //! Helper functions for downloading and compiling nearcore.
 //! These functions are used in the integration tests that require running Near nodes.
 
+use std::ffi::OsStr;
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
@@ -63,7 +64,12 @@ pub async fn build_neard(nearcore_repository: &Path) -> anyhow::Result<PathBuf> 
         ));
     }
 
-    Ok(expected_path)
+    let to_path = neard_path().await?;
+
+    create_dirs().await?;
+    tokio::fs::copy(&expected_path, &to_path).await?;
+
+    Ok(to_path)
 }
 
 pub async fn create_localnet_configs(
@@ -112,4 +118,57 @@ pub async fn start_neard(
         .spawn()?;
 
     Ok(child)
+}
+
+pub async fn neard_path() -> anyhow::Result<PathBuf> {
+    crate::refiner_utils::get_repository_root()
+        .await
+        .map(|dir| dir.join("target").join("release").join("neard"))
+        .map_err(Into::into)
+}
+
+async fn create_dirs() -> anyhow::Result<()> {
+    tokio::fs::create_dir_all(
+        crate::refiner_utils::get_repository_root()
+            .await?
+            .join("target")
+            .join("release"),
+    )
+    .await
+    .map_err(Into::into)
+}
+
+pub async fn neard_version<P: AsRef<OsStr>>(neard_path: P) -> anyhow::Result<String> {
+    let output = Command::new(neard_path).args(["-V"]).output().await?;
+    String::from_utf8(output.stdout)
+        .map_err(Into::into)
+        .and_then(parse_neard_version)
+}
+
+pub fn parse_neard_version(output: String) -> anyhow::Result<String> {
+    output
+        .split(" (")
+        .find(|x| x.ends_with(')'))
+        .and_then(|x| x.trim_end_matches(')').split_once(' '))
+        .map(|(_, ver)| ver.to_string())
+        .ok_or_else(|| anyhow::anyhow!("couldn't parce neard version"))
+}
+
+#[test]
+fn test_parse_neard_version() {
+    let output =
+        "neard (release 1.35.0) (build 1.35.0-modified) (rustc 1.69.0) (protocol 62) (db 37)";
+
+    assert_eq!(
+        parse_neard_version(output.to_string()).as_deref().unwrap(),
+        "1.35.0"
+    );
+
+    let output =
+        "neard (release 1.35.0-rc.1) (build 1.35.0-modified) (rustc 1.69.0) (protocol 62) (db 37)";
+
+    assert_eq!(
+        parse_neard_version(output.to_string()).as_deref().unwrap(),
+        "1.35.0-rc.1"
+    );
 }
