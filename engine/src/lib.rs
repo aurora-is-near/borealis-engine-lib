@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
+mod batch_tx_processing;
 pub mod gas;
 pub mod sync;
 #[cfg(test)]
