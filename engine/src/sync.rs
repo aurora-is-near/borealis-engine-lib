@@ -19,7 +19,7 @@ use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
 };
 use lru::LruCache;
-use std::{cell::RefCell, convert::TryFrom, collections::HashMap, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, convert::TryFrom, str::FromStr};
 use tracing::{debug, warn};
 
 use crate::{batch_tx_processing::BatchIO, types::InnerTransactionKind};
