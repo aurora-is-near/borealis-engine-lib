@@ -19,11 +19,10 @@ use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
 };
 use lru::LruCache;
-use std::convert::TryFrom;
-use std::{collections::HashMap, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, convert::TryFrom, str::FromStr};
 use tracing::{debug, warn};
 
-use crate::types::InnerTransactionKind;
+use crate::{batch_tx_processing::BatchIO, types::InnerTransactionKind};
 
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
@@ -240,22 +239,17 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                 || submit_result.as_ref().unwrap() != &expected_result
                             {
                                 warn!(
-                                    "Incorrect result in processing receipt_id={:?} computed={:?} expected={:?}",
-                                    receipt_id,
-                                    submit_result,
-                                    expected_result,
+                                    "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
                                 );
                             }
                         }
                         Err(_) => warn!(
-                            "Unable to deserialize receipt_id={:?} as SubmitResult",
-                            receipt_id
+                            "Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",
                         ),
                     }
                 }
                 None => warn!(
-                    "Expected receipt_id={:?} to have a return result, but there was none",
-                    receipt_id
+                    "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
                 ),
             }
         }
@@ -264,24 +258,18 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             None => {
                 if !tx_outcome.diff().is_empty() {
                     warn!(
-                        "Receipt {:?} not expected to have changes, but standalone computed diff {:?}",
-                        receipt_id, tx_outcome.diff(),
+                        "Receipt {receipt_id:?} not expected to have changes, but standalone computed a non-empty diff",
                     );
-                    tx_outcome.revert(storage)?;
                 }
             }
             Some(expected_diff) => {
-                if expected_diff != tx_outcome.diff() {
-                    warn!(
-                        "Diff mismatch in receipt_id={:?} computed={:?} ; expected={:?}",
-                        receipt_id,
-                        tx_outcome.diff(),
-                        expected_diff,
-                    );
-                    // Need to delete the incorrect diff before adding the correct diff because it could be
-                    // the case that the incorrect diff wrote some keys that the correct diff did not
-                    // (and these writes need to be undone).
-                    tx_outcome.revert(storage)?;
+                if expected_diff == tx_outcome.diff() {
+                    // Diff was correct, so commit it to the storage
+                    tx_outcome.commit(storage)?;
+                } else {
+                    // Diff was incorrect, so log a warning and commit
+                    // the one from the Near block instead
+                    warn!("Receipt {receipt_id:?} diff mismatch with computed diff");
                     tx_outcome.update_diff(storage, expected_diff)?;
                 }
             }
@@ -390,40 +378,92 @@ impl TransactionBatch {
                 ..
             } => {
                 let mut non_last_outcomes = Vec::with_capacity(non_last_actions.len());
-                for tx in non_last_actions {
-                    match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
-                        ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
-                            debug!("COMPLETED {:?}", tx_outcome.hash);
-                            non_last_outcomes.push(*tx_outcome);
-                        }
-                        // We sent a transaction message tagged as successful, so we can only get `TransactionIncluded` back
-                        ConsumeMessageOutcome::BlockAdded
-                        | ConsumeMessageOutcome::FailedTransactionIgnored => unreachable!(),
+                let mut cumulative_diff = Diff::default();
+
+                let block_hash = match last_action.as_ref() {
+                    Some(tx_msg) => tx_msg.block_hash,
+                    None => {
+                        // This case should never come up because empty
+                        // batches are thrown out before processing.
+                        return Ok(TransactionBatchOutcome::Batch {
+                            cumulative_diff: Diff::default(),
+                            non_last_outcomes: Vec::new(),
+                            last_outcome: None,
+                        });
                     }
+                };
+                let block_height = storage.get_block_height_by_hash(block_hash)?;
+                let block_metadata = storage.get_block_metadata(block_hash)?;
+                let engine_account_id = storage.get_engine_account_id()?;
+
+                // We need to use `BatchIO` here instead of simply calling `sync::consume_message` because
+                // the latter no longer persists to the DB right away (we wait util checking the expected diff first now),
+                // but a later transaction in a batch can see earlier ones, therefore we need to keep track all
+                // changes made and expose them as if they had been committed to the DB.
+                for tx in non_last_actions {
+                    let transaction_position = tx.position;
+                    let local_engine_account_id = engine_account_id.clone();
+                    let (tx_hash, diff, result) = storage
+                        .with_engine_access(block_height, transaction_position, &[], |io| {
+                            let local_diff = RefCell::new(Diff::default());
+                            let batch_io = BatchIO {
+                                fallback: io,
+                                cumulative_diff: &cumulative_diff,
+                                current_diff: &local_diff,
+                            };
+                            sync::execute_transaction::<_, M, _>(
+                                &tx,
+                                block_height,
+                                &block_metadata,
+                                local_engine_account_id,
+                                batch_io,
+                                |x| x.current_diff.borrow().clone(),
+                            )
+                        })
+                        .result;
+                    cumulative_diff.append(diff.clone());
+                    let tx_outcome = TransactionIncludedOutcome {
+                        hash: tx_hash,
+                        info: tx,
+                        diff,
+                        maybe_result: result,
+                    };
+                    debug!("COMPLETED {:?}", tx_outcome.hash);
+                    non_last_outcomes.push(tx_outcome);
                 }
                 let last_outcome = match last_action {
                     None => None,
                     Some(tx) => {
-                        match sync::consume_message::<M>(
-                            storage,
-                            Message::Transaction(Box::new(tx)),
-                        )? {
-                            ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
-                                debug!("COMPLETED {:?}", tx_outcome.hash);
-                                Some(tx_outcome)
-                            }
-                            ConsumeMessageOutcome::BlockAdded
-                            | ConsumeMessageOutcome::FailedTransactionIgnored => unreachable!(),
-                        }
+                        let transaction_position = tx.position;
+                        let (tx_hash, diff, result) = storage
+                            .with_engine_access(block_height, transaction_position, &[], |io| {
+                                let local_diff = RefCell::new(Diff::default());
+                                let batch_io = BatchIO {
+                                    fallback: io,
+                                    cumulative_diff: &cumulative_diff,
+                                    current_diff: &local_diff,
+                                };
+                                sync::execute_transaction::<_, M, _>(
+                                    &tx,
+                                    block_height,
+                                    &block_metadata,
+                                    engine_account_id,
+                                    batch_io,
+                                    |x| x.current_diff.borrow().clone(),
+                                )
+                            })
+                            .result;
+                        cumulative_diff.append(diff.clone());
+                        let tx_outcome = TransactionIncludedOutcome {
+                            hash: tx_hash,
+                            info: tx,
+                            diff,
+                            maybe_result: result,
+                        };
+                        debug!("COMPLETED {:?}", tx_outcome.hash);
+                        Some(Box::new(tx_outcome))
                     }
                 };
-                let cumulative_diff = non_last_outcomes
-                    .iter()
-                    .chain(last_outcome.iter().map(|x| x.as_ref()))
-                    .fold(Diff::default(), |mut acc, outcome| {
-                        acc.append(outcome.diff.clone());
-                        acc
-                    });
                 Ok(TransactionBatchOutcome::Batch {
                     cumulative_diff,
                     non_last_outcomes,
@@ -453,13 +493,9 @@ impl TransactionBatchOutcome {
         }
     }
 
-    fn revert(&self, storage: &mut Storage) -> Result<(), engine_standalone_storage::Error> {
+    fn commit(&self, storage: &mut Storage) -> Result<(), engine_standalone_storage::Error> {
         match self {
-            Self::Single(tx_outcome) => storage.revert_transaction_included(
-                tx_outcome.hash,
-                &tx_outcome.info,
-                &tx_outcome.diff,
-            ),
+            Self::Single(tx_outcome) => tx_outcome.commit(storage),
             Self::Batch {
                 non_last_outcomes,
                 last_outcome,
@@ -469,11 +505,7 @@ impl TransactionBatchOutcome {
                     .iter()
                     .chain(last_outcome.iter().map(|x| x.as_ref()));
                 for tx_outcome in all_outcomes {
-                    storage.revert_transaction_included(
-                        tx_outcome.hash,
-                        &tx_outcome.info,
-                        &tx_outcome.diff,
-                    )?
+                    tx_outcome.commit(storage)?
                 }
                 Ok(())
             }
