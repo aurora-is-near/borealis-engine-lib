@@ -1,8 +1,7 @@
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
-use aurora_engine_transactions::EthTransactionKind;
-use aurora_engine_types::{account_id::AccountId, types::Address, H256};
+use aurora_engine_types::{account_id::AccountId, H256};
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
@@ -19,10 +18,10 @@ use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
 };
 use lru::LruCache;
-use std::{cell::RefCell, collections::HashMap, convert::TryFrom, str::FromStr};
+use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
-use crate::{batch_tx_processing::BatchIO, types::InnerTransactionKind};
+use crate::batch_tx_processing::BatchIO;
 
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
@@ -131,7 +130,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             "Receipt {:?} not parsed as transaction, but has state changes",
                             near_receipt_id,
                         );
-                        ParsedActions::Single(Box::new(types::TransactionKind::Unknown), 0)
+                        ParsedActions::Single(SingleParsedAction::default())
                     } else {
                         return None;
                     }
@@ -139,7 +138,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             };
 
             let transaction_messages = match maybe_batch_actions {
-                ParsedActions::Single(transaction_kind, attached_near) => {
+                ParsedActions::Single(parsed_action) => {
                     let transaction_message = types::TransactionMessage {
                         block_hash,
                         near_receipt_id,
@@ -147,9 +146,10 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                         succeeded: true, // we drop failed transactions above
                         signer,
                         caller,
-                        attached_near,
-                        transaction: *transaction_kind,
+                        attached_near: parsed_action.deposit,
+                        transaction: *parsed_action.transaction_kind,
                         promise_data,
+                        raw_input: parsed_action.raw_input,
                     };
                     position_counter += 1;
 
@@ -159,7 +159,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                 ParsedActions::Batch(txs) => {
                     let mut non_last_actions: Vec<_> = txs
                         .into_iter()
-                        .map(|(index, transaction_kind, attached_near)| {
+                        .map(|(index, parsed_action)| {
                             let virtual_receipt_id = match index {
                                 BatchIndex::Index(i) => {
                                     let mut bytes = [0u8; 36];
@@ -176,9 +176,10 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                 succeeded: true, // we drop failed transactions above
                                 signer: signer.clone(),
                                 caller: caller.clone(),
-                                attached_near,
-                                transaction: transaction_kind,
+                                attached_near: parsed_action.deposit,
+                                transaction: *parsed_action.transaction_kind,
                                 promise_data: promise_data.clone(),
+                                raw_input: parsed_action.raw_input,
                             };
                             position_counter += 1;
 
@@ -333,8 +334,24 @@ enum BatchIndex {
 /// Most NEAR receipts are not batches, so we want to optimize for the case where there is just one
 /// action (not allocate a vec every time). This enum enables that optimization.
 enum ParsedActions {
-    Single(Box<TransactionKind>, u128),
-    Batch(Vec<(BatchIndex, TransactionKind, u128)>),
+    Single(SingleParsedAction),
+    Batch(Vec<(BatchIndex, SingleParsedAction)>),
+}
+
+struct SingleParsedAction {
+    pub transaction_kind: Box<TransactionKind>,
+    pub raw_input: Vec<u8>,
+    pub deposit: u128,
+}
+
+impl Default for SingleParsedAction {
+    fn default() -> Self {
+        Self {
+            transaction_kind: Box::new(TransactionKind::Unknown),
+            raw_input: Vec::new(),
+            deposit: 0,
+        }
+    }
 }
 
 enum TransactionBatch {
@@ -404,22 +421,27 @@ impl TransactionBatch {
                     let transaction_position = tx.position;
                     let local_engine_account_id = engine_account_id.clone();
                     let (tx_hash, diff, result) = storage
-                        .with_engine_access(block_height, transaction_position, &[], |io| {
-                            let local_diff = RefCell::new(Diff::default());
-                            let batch_io = BatchIO {
-                                fallback: io,
-                                cumulative_diff: &cumulative_diff,
-                                current_diff: &local_diff,
-                            };
-                            sync::execute_transaction::<_, M, _>(
-                                &tx,
-                                block_height,
-                                &block_metadata,
-                                local_engine_account_id,
-                                batch_io,
-                                |x| x.current_diff.borrow().clone(),
-                            )
-                        })
+                        .with_engine_access(
+                            block_height,
+                            transaction_position,
+                            &tx.raw_input,
+                            |io| {
+                                let local_diff = RefCell::new(Diff::default());
+                                let batch_io = BatchIO {
+                                    fallback: io,
+                                    cumulative_diff: &cumulative_diff,
+                                    current_diff: &local_diff,
+                                };
+                                sync::execute_transaction::<_, M, _>(
+                                    &tx,
+                                    block_height,
+                                    &block_metadata,
+                                    local_engine_account_id,
+                                    batch_io,
+                                    |x| x.current_diff.borrow().clone(),
+                                )
+                            },
+                        )
                         .result;
                     cumulative_diff.append(diff.clone());
                     let tx_outcome = TransactionIncludedOutcome {
@@ -436,22 +458,27 @@ impl TransactionBatch {
                     Some(tx) => {
                         let transaction_position = tx.position;
                         let (tx_hash, diff, result) = storage
-                            .with_engine_access(block_height, transaction_position, &[], |io| {
-                                let local_diff = RefCell::new(Diff::default());
-                                let batch_io = BatchIO {
-                                    fallback: io,
-                                    cumulative_diff: &cumulative_diff,
-                                    current_diff: &local_diff,
-                                };
-                                sync::execute_transaction::<_, M, _>(
-                                    &tx,
-                                    block_height,
-                                    &block_metadata,
-                                    engine_account_id,
-                                    batch_io,
-                                    |x| x.current_diff.borrow().clone(),
-                                )
-                            })
+                            .with_engine_access(
+                                block_height,
+                                transaction_position,
+                                &tx.raw_input,
+                                |io| {
+                                    let local_diff = RefCell::new(Diff::default());
+                                    let batch_io = BatchIO {
+                                        fallback: io,
+                                        cumulative_diff: &cumulative_diff,
+                                        current_diff: &local_diff,
+                                    };
+                                    sync::execute_transaction::<_, M, _>(
+                                        &tx,
+                                        block_height,
+                                        &block_metadata,
+                                        engine_account_id,
+                                        batch_io,
+                                        |x| x.current_diff.borrow().clone(),
+                                    )
+                                },
+                            )
                             .result;
                         cumulative_diff.append(diff.clone());
                         let tx_outcome = TransactionIncludedOutcome {
@@ -558,8 +585,13 @@ fn parse_actions(
 ) -> Option<ParsedActions> {
     let num_actions = actions.len();
     if num_actions == 1 {
-        parse_action(&actions[0], promise_data)
-            .map(|(tx, n)| ParsedActions::Single(Box::new(tx), n))
+        parse_action(&actions[0], promise_data).map(|(tx, input, n)| {
+            ParsedActions::Single(SingleParsedAction {
+                transaction_kind: Box::new(tx),
+                raw_input: input,
+                deposit: n,
+            })
+        })
     } else if num_actions == 0 {
         None
     } else {
@@ -568,14 +600,21 @@ fn parse_actions(
             .iter()
             .enumerate()
             .filter_map(|(i, action)| {
-                parse_action(action, promise_data).map(|(tx, n)| {
+                parse_action(action, promise_data).map(|(tx, input, n)| {
                     let index = if i == last_index {
                         BatchIndex::Last
                     } else {
                         BatchIndex::Index(i as u32)
                     };
 
-                    (index, tx, n)
+                    (
+                        index,
+                        SingleParsedAction {
+                            transaction_kind: Box::new(tx),
+                            raw_input: input,
+                            deposit: n,
+                        },
+                    )
                 })
             })
             .collect();
@@ -591,7 +630,7 @@ fn parse_actions(
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
-) -> Option<(TransactionKind, u128)> {
+) -> Option<(TransactionKind, Vec<u8>, u128)> {
     if let ActionView::FunctionCall {
         method_name,
         args,
@@ -600,188 +639,9 @@ fn parse_action(
     } = action
     {
         let bytes = args.to_vec();
-
-        let transaction_kind = if let Ok(raw_tx_kind) =
-            InnerTransactionKind::from_str(method_name.as_str())
-        {
-            match raw_tx_kind {
-                InnerTransactionKind::Submit => {
-                    let eth_tx = EthTransactionKind::try_from(bytes.as_slice()).ok()?;
-                    TransactionKind::Submit(eth_tx)
-                }
-                InnerTransactionKind::SubmitWithArgs => {
-                    let args = parameters::SubmitArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::SubmitWithArgs(args)
-                }
-                InnerTransactionKind::Call => {
-                    let call_args = parameters::CallArgs::deserialize(&bytes)?;
-                    TransactionKind::Call(call_args)
-                }
-                InnerTransactionKind::PausePrecompiles => {
-                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::PausePrecompiles(args)
-                }
-                InnerTransactionKind::ResumePrecompiles => {
-                    let args = parameters::PausePrecompilesCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::ResumePrecompiles(args)
-                }
-                InnerTransactionKind::SetOwner => {
-                    let args = parameters::SetOwnerArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::SetOwner(args)
-                }
-                InnerTransactionKind::Deploy => TransactionKind::Deploy(bytes),
-                InnerTransactionKind::DeployErc20 => {
-                    let deploy_args =
-                        parameters::DeployErc20TokenArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::DeployErc20(deploy_args)
-                }
-                InnerTransactionKind::FtOnTransfer => {
-                    let transfer_args: parameters::NEP141FtOnTransferArgs =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-
-                    TransactionKind::FtOnTransfer(transfer_args)
-                }
-                InnerTransactionKind::Deposit => TransactionKind::Deposit(bytes),
-                InnerTransactionKind::FtTransferCall => {
-                    let transfer_args: parameters::TransferCallCallArgs =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-
-                    TransactionKind::FtTransferCall(transfer_args)
-                }
-                InnerTransactionKind::FinishDeposit => {
-                    let args = parameters::FinishDepositCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::FinishDeposit(args)
-                }
-                InnerTransactionKind::ResolveTransfer => {
-                    let args = parameters::ResolveTransferCallArgs::try_from_slice(&bytes).ok()?;
-                    let promise_result = match promise_data.first().and_then(|x| x.as_ref()) {
-                        Some(bytes) => {
-                            aurora_engine_types::types::PromiseResult::Successful(bytes.clone())
-                        }
-                        None => aurora_engine_types::types::PromiseResult::Failed,
-                    };
-                    TransactionKind::ResolveTransfer(args, promise_result)
-                }
-                InnerTransactionKind::FtTransfer => {
-                    let args: parameters::TransferCallArgs =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-
-                    TransactionKind::FtTransfer(args)
-                }
-                InnerTransactionKind::Withdraw => {
-                    let args =
-                        aurora_engine_types::parameters::WithdrawCallArgs::try_from_slice(&bytes)
-                            .ok()?;
-                    TransactionKind::Withdraw(args)
-                }
-                InnerTransactionKind::StorageDeposit => {
-                    let args: parameters::StorageDepositCallArgs =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-
-                    TransactionKind::StorageDeposit(args)
-                }
-                InnerTransactionKind::StorageUnregister => {
-                    let json_args: serde_json::Value =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-                    let force = json_args
-                        .as_object()
-                        .and_then(|x| x.get("force"))
-                        .and_then(|x| x.as_bool());
-
-                    TransactionKind::StorageUnregister(force)
-                }
-                InnerTransactionKind::StorageWithdraw => {
-                    let args: parameters::StorageWithdrawCallArgs =
-                        serde_json::from_slice(bytes.as_slice()).ok()?;
-
-                    TransactionKind::StorageWithdraw(args)
-                }
-                InnerTransactionKind::SetPausedFlags => {
-                    let args =
-                        parameters::PauseEthConnectorCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::SetPausedFlags(args)
-                }
-                InnerTransactionKind::RegisterRelayer => {
-                    let address = Address::try_from_slice(&bytes).ok()?;
-                    TransactionKind::RegisterRelayer(address)
-                }
-                InnerTransactionKind::RefundOnError => match promise_data
-                    .first()
-                    .and_then(|x| x.as_ref())
-                {
-                    None => TransactionKind::RefundOnError(None),
-                    Some(_) => {
-                        let args =
-                            aurora_engine_types::parameters::RefundCallArgs::try_from_slice(&bytes)
-                                .ok()?;
-                        TransactionKind::RefundOnError(Some(args))
-                    }
-                },
-                InnerTransactionKind::SetConnectorData => {
-                    let args = parameters::SetContractDataCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::SetConnectorData(args)
-                }
-                InnerTransactionKind::NewConnector => {
-                    let args = parameters::InitCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::NewConnector(args)
-                }
-                InnerTransactionKind::NewEngine => {
-                    let args = parameters::NewCallArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::NewEngine(args)
-                }
-                InnerTransactionKind::FactoryUpdate => TransactionKind::FactoryUpdate(bytes),
-                InnerTransactionKind::FactoryUpdateAddressVersion => {
-                    let args = aurora_engine::xcc::AddressVersionUpdateArgs::try_from_slice(&bytes)
-                        .ok()?;
-                    TransactionKind::FactoryUpdateAddressVersion(args)
-                }
-                InnerTransactionKind::FactorySetWNearAddress => {
-                    let address = Address::try_from_slice(&bytes).ok()?;
-                    TransactionKind::FactorySetWNearAddress(address)
-                }
-                InnerTransactionKind::SetUpgradeDelayBlocks => {
-                    let args =
-                        aurora_engine::parameters::SetUpgradeDelayBlocksArgs::try_from_slice(
-                            &bytes,
-                        )
-                        .ok()?;
-                    TransactionKind::SetUpgradeDelayBlocks(args)
-                }
-                InnerTransactionKind::FundXccSubAccound => {
-                    let args = aurora_engine::xcc::FundXccArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::FundXccSubAccound(args)
-                }
-
-                InnerTransactionKind::PauseContract => TransactionKind::PauseContract,
-                InnerTransactionKind::ResumeContract => TransactionKind::ResumeContract,
-                InnerTransactionKind::SetKeyManager => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyManagerArgs::try_from_slice(&bytes)
-                            .ok()?;
-                    TransactionKind::SetKeyManager(args)
-                }
-                InnerTransactionKind::AddRelayerKey => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::AddRelayerKey(args)
-                }
-                InnerTransactionKind::RemoveRelayerKey => {
-                    let args =
-                        aurora_engine::parameters::RelayerKeyArgs::try_from_slice(&bytes).ok()?;
-                    TransactionKind::RemoveRelayerKey(args)
-                }
-
-                InnerTransactionKind::Unknown => {
-                    warn!("Unknown method name: {}", method_name);
-                    return None;
-                }
-            }
-        } else {
-            warn!("Unknown method name: {}", method_name);
-            return None;
-        };
-
-        return Some((transaction_kind, *deposit));
+        let transaction_kind =
+            sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
+        return Some((transaction_kind, bytes, *deposit));
     }
 
     None

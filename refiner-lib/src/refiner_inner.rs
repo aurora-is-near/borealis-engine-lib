@@ -21,10 +21,11 @@ use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
 use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
-use aurora_standalone_engine::types::InnerTransactionKind;
 use borsh::{BorshDeserialize, BorshSerialize};
 use byteorder::{BigEndian, WriteBytesExt};
-use engine_standalone_storage::sync::{TransactionExecutionResult, TransactionIncludedOutcome};
+use engine_standalone_storage::sync::{
+    types::TransactionKindTag, TransactionExecutionResult, TransactionIncludedOutcome,
+};
 use engine_standalone_storage::Storage;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
@@ -347,7 +348,7 @@ struct BuiltTransaction {
 /// two raw outcomes match in the case that they are both present.
 fn normalize_output(
     receipt_id: &CryptoHash,
-    tx_kind: InnerTransactionKind,
+    tx_kind: TransactionKindTag,
     execution_status: Option<&ExecutionStatusView>,
     engine_outcome: Option<&TransactionIncludedOutcome>,
 ) -> Result<SubmitResult, RefinerError> {
@@ -365,10 +366,10 @@ fn normalize_output(
         Some(ExecutionStatusView::SuccessValue(result)) => {
             let bytes = result.clone();
             match tx_kind {
-                InnerTransactionKind::Submit
-                | InnerTransactionKind::Call
-                | InnerTransactionKind::Deploy
-                | InnerTransactionKind::SubmitWithArgs => {
+                TransactionKindTag::Submit
+                | TransactionKindTag::Call
+                | TransactionKindTag::Deploy
+                | TransactionKindTag::SubmitWithArgs => {
                     // These transaction kinds should have a `SubmitResult` as an outcome
                     decode_submit_result(&bytes)
                         .map_err(|_| {
@@ -500,18 +501,18 @@ fn build_transaction(
 
             transaction_hash = sha256(bytes.as_slice());
 
-            let raw_tx_kind: InnerTransactionKind =
-                InnerTransactionKind::from_str(method_name.as_str())
-                    .unwrap_or(InnerTransactionKind::Unknown);
+            let raw_tx_kind: TransactionKindTag =
+                TransactionKindTag::from_str(method_name.as_str())
+                    .unwrap_or(TransactionKindTag::Unknown);
 
             record_metric(&raw_tx_kind);
 
-            if let InnerTransactionKind::Unknown = raw_tx_kind {
+            if let TransactionKindTag::Unknown = raw_tx_kind {
                 tracing::warn!("Unknown method: {}", method_name);
             }
 
             tx = match raw_tx_kind {
-                InnerTransactionKind::SubmitWithArgs => {
+                TransactionKindTag::SubmitWithArgs => {
                     match SubmitArgs::try_from_slice(&bytes) {
                         Ok(args) => {
                             let bytes = args.tx_data;
@@ -576,7 +577,7 @@ fn build_transaction(
                     )?;
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                InnerTransactionKind::Submit => {
+                TransactionKindTag::Submit => {
                     let tx_metadata = TxMetadata::try_from(bytes.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
 
@@ -621,7 +622,7 @@ fn build_transaction(
                     )?;
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                InnerTransactionKind::Call => {
+                TransactionKindTag::Call => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
@@ -668,7 +669,7 @@ fn build_transaction(
                     )?;
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                InnerTransactionKind::Deploy | InnerTransactionKind::DeployErc20 => {
+                TransactionKindTag::Deploy | TransactionKindTag::DeployErc20 => {
                     hash = virtual_receipt_id.0.try_into().unwrap();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
                     let nonce = storage
