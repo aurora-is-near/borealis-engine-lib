@@ -191,6 +191,7 @@ impl Refiner {
                         action_index: index,
                         receipt_hash: execution_outcome.receipt.receipt_id,
                         transaction_hash: near_tx_hash,
+                        hashchain_metadata: None, // TODO
                     };
 
                     // The execution outcome only applies to the last action in the batch
