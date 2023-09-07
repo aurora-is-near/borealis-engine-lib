@@ -1,5 +1,6 @@
 use aurora_engine::parameters::{ResultLog, SubmitResult, TransactionStatus};
 use aurora_engine_types::types::RawU256;
+use aurora_refiner_types::aurora_block::HashchainOutputKind;
 use borsh::BorshDeserialize;
 use std::io::Result;
 
@@ -49,10 +50,24 @@ impl From<SubmitResultLegacyV2> for SubmitResult {
     }
 }
 
-pub fn decode_submit_result(result: &[u8]) -> Result<SubmitResult> {
+pub fn decode_submit_result(result: &[u8]) -> Result<(SubmitResult, HashchainOutputKind)> {
     SubmitResult::try_from_slice(result)
-        .or_else(|_| SubmitResultLegacyV1::try_from_slice(result).map(Into::into))
-        .or_else(|_| SubmitResultLegacyV2::try_from_slice(result).map(Into::into))
+        .map(|x| {
+            let tag = (&x.status).into();
+            (x, HashchainOutputKind::SubmitResultV7(tag))
+        })
+        .or_else(|_| {
+            SubmitResultLegacyV1::try_from_slice(result).map(|x| {
+                let tag = (&x.status).into();
+                (x.into(), HashchainOutputKind::SubmitResultLegacyV1(tag))
+            })
+        })
+        .or_else(|_| {
+            SubmitResultLegacyV2::try_from_slice(result).map(|x| {
+                let tag = (&x.status).into();
+                (x.into(), HashchainOutputKind::SubmitResultLegacyV2(tag))
+            })
+        })
 }
 
 #[cfg(test)]

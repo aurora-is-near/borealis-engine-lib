@@ -2,7 +2,9 @@ use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::engine::create_legacy_address;
-use aurora_engine::parameters::{CallArgs, ResultLog, SubmitArgs, SubmitResult};
+use aurora_engine::parameters::{
+    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
+};
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
@@ -11,7 +13,8 @@ use aurora_engine_transactions::{
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
-    AuroraBlock, AuroraTransaction, AuroraTransactionBuilder, AuroraTransactionBuilderError,
+    AdditionalSubmitArgs, AuroraBlock, AuroraTransaction, AuroraTransactionBuilder,
+    AuroraTransactionBuilderError, HashchainInputKind, HashchainMetadata, HashchainOutputKind,
     NearBlock, NearBlockHeader, NearTransaction,
 };
 use aurora_refiner_types::bloom::Bloom;
@@ -191,7 +194,7 @@ impl Refiner {
                         action_index: index,
                         receipt_hash: execution_outcome.receipt.receipt_id,
                         transaction_hash: near_tx_hash,
-                        hashchain_metadata: None, // TODO
+                        hashchain_metadata: None, // Value filled during `build_transaction`
                     };
 
                     // The execution outcome only applies to the last action in the batch
@@ -352,7 +355,7 @@ fn normalize_output(
     tx_kind: TransactionKindTag,
     execution_status: Option<&ExecutionStatusView>,
     engine_outcome: Option<&TransactionIncludedOutcome>,
-) -> Result<SubmitResult, RefinerError> {
+) -> Result<(SubmitResult, HashchainOutputKind, Vec<u8>), RefinerError> {
     let near_output = match execution_status {
         Some(ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_)) => {
             // Regardless of anything else, if the transaction failed on Near then we report an error.
@@ -372,22 +375,27 @@ fn normalize_output(
                 | TransactionKindTag::Deploy
                 | TransactionKindTag::SubmitWithArgs => {
                     // These transaction kinds should have a `SubmitResult` as an outcome
-                    decode_submit_result(&bytes)
-                        .map_err(|_| {
-                            tracing::warn!(
-                                "Submit Result format unknown for receipt {:?}. (FIX)",
-                                receipt_id
-                            );
-                        })
-                        .ok()
+                    let (result, output_kind) = decode_submit_result(&bytes).unwrap_or_else(|_| {
+                        // This is now considered a fatal error because we must know how
+                        // to reproduce the Near output for all transactions
+                        panic!(
+                            "Submit Result format unknown for receipt {:?}. (FIX)",
+                            receipt_id
+                        );
+                    });
+                    Some((result, output_kind, bytes))
                 }
                 _ => {
                     // Everything else we'll just use the bytes directly as the output and
                     // set the other fields with default values.
-                    Some(SubmitResult::new(
-                        aurora_engine::parameters::TransactionStatus::Succeed(bytes),
-                        MIN_EVM_GAS,
-                        Vec::new(),
+                    Some((
+                        SubmitResult::new(
+                            aurora_engine::parameters::TransactionStatus::Succeed(bytes.clone()),
+                            MIN_EVM_GAS,
+                            Vec::new(),
+                        ),
+                        HashchainOutputKind::Explicit,
+                        bytes,
                     ))
                 }
             }
@@ -396,9 +404,13 @@ fn normalize_output(
             // No need to check the transaction kind in this case because transactions that
             // produce a SubmitResult as output do not produce a receipt id.
             let bytes = result.0.to_vec();
-            Some(SubmitResult::new(
-                aurora_engine::parameters::TransactionStatus::Succeed(bytes),
-                MIN_EVM_GAS,
+            Some((
+                SubmitResult::new(
+                    aurora_engine::parameters::TransactionStatus::Succeed(bytes),
+                    MIN_EVM_GAS,
+                    Vec::new(),
+                ),
+                HashchainOutputKind::None,
                 Vec::new(),
             ))
         }
@@ -437,7 +449,7 @@ fn normalize_output(
         (Some(near_output), Some(engine_output)) => {
             // We have a result from both sources, so we should compare them to
             // make sure they match. Log a warning and use the Near output if they don't.
-            if near_output != engine_output {
+            if near_output.0 != engine_output {
                 tracing::warn!("Mismatch between Near and Engine outputs. The internal Engine instance may not have the correct state.");
             }
             Ok(near_output)
@@ -446,7 +458,11 @@ fn normalize_output(
             // No Near outcome to rely on, so we simply have to trust the Borealis Engine
             // outcome without validation. This case happens for actions in a batch except
             // for the last one (Near only records the outcome of the last action in a batch).
-            Ok(output)
+            let tag = (&output.status).into();
+            let bytes = output
+                .try_to_vec()
+                .expect("Must be able to serialize Result");
+            Ok((output, HashchainOutputKind::SubmitResultV7(tag), bytes))
         }
         (Some(output), None) => {
             // No engine outcome to use, so can only rely on the NEAR output.
@@ -456,13 +472,55 @@ fn normalize_output(
         }
         (None, None) => {
             // if there is no outcome from either source then use a default value
-            Ok(SubmitResult::new(
-                aurora_engine::parameters::TransactionStatus::Succeed(Vec::new()),
-                MIN_EVM_GAS,
+            Ok((
+                SubmitResult::new(
+                    aurora_engine::parameters::TransactionStatus::Succeed(Vec::new()),
+                    MIN_EVM_GAS,
+                    Vec::new(),
+                ),
+                HashchainOutputKind::None,
                 Vec::new(),
             ))
         }
     }
+}
+
+fn compute_tx_hashchain(method_name: &str, input: &[u8], output: &[u8]) -> CryptoHash {
+    fn as_u32(x: usize) -> u32 {
+        x.try_into().unwrap_or(u32::MAX)
+    }
+
+    let data = [
+        &as_u32(method_name.len()).to_be_bytes(),
+        method_name.as_bytes(),
+        &as_u32(input.len()).to_be_bytes(),
+        input,
+        &as_u32(output.len()).to_be_bytes(),
+        output,
+    ]
+    .concat();
+
+    CryptoHash(aurora_engine_sdk::keccak(&data).0)
+}
+
+fn fill_hashchain_metadata(
+    tx: AuroraTransactionBuilder,
+    mut near_metadata: NearTransaction,
+    method_name: String,
+    raw_input: &[u8],
+    raw_output: &[u8],
+    input_kind: HashchainInputKind,
+    output_kind: HashchainOutputKind,
+) -> AuroraTransactionBuilder {
+    let intrinsic_hash = compute_tx_hashchain(&method_name, raw_input, raw_output);
+    let hashchain_metadata = HashchainMetadata {
+        method_name,
+        input: input_kind,
+        output: output_kind,
+        intrinsic_hash,
+    };
+    near_metadata.hashchain_metadata = Some(hashchain_metadata);
+    tx.near_metadata(near_metadata)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -488,8 +546,7 @@ fn build_transaction(
         .block_height(near_block.header.height)
         .chain_id(chain_id)
         .transaction_index(transaction_index)
-        .gas_price(U256::zero())
-        .near_metadata(near_metadata);
+        .gas_price(U256::zero());
 
     // Hash used to build transactions merkle tree
     let mut transaction_hash = H256::zero();
@@ -498,9 +555,9 @@ fn build_transaction(
         ActionView::FunctionCall {
             method_name, args, ..
         } => {
-            let bytes = args.to_vec();
+            let raw_input = args.to_vec();
 
-            transaction_hash = sha256(bytes.as_slice());
+            transaction_hash = sha256(raw_input.as_slice());
 
             let raw_tx_kind: TransactionKindTag =
                 TransactionKindTag::from_str(method_name.as_str())
@@ -514,7 +571,7 @@ fn build_transaction(
 
             tx = match raw_tx_kind {
                 TransactionKindTag::SubmitWithArgs => {
-                    match SubmitArgs::try_from_slice(&bytes) {
+                    let input_kind = match SubmitArgs::try_from_slice(&raw_input) {
                         Ok(args) => {
                             let bytes = args.tx_data;
 
@@ -560,34 +617,48 @@ fn build_transaction(
                                     create_legacy_address(&eth_tx.address, &eth_tx.nonce);
                                 tx.to(None).contract_address(Some(contract_address))
                             };
+                            HashchainInputKind::SubmitWithArgs(AdditionalSubmitArgs {
+                                max_gas_price: args.max_gas_price,
+                                gas_token_address: args.gas_token_address,
+                            })
                         }
                         Err(_) => {
                             hash = virtual_receipt_id.0.try_into().unwrap();
                             let from_address =
                                 near_account_to_evm_address(predecessor_id.as_bytes());
                             tx = tx.hash(hash).from(from_address);
-                            tx = fill_tx(tx, "submit_with_args", bytes);
+                            tx = fill_tx(tx, raw_input.clone());
+                            HashchainInputKind::Explicit
                         }
                     };
 
-                    let result = normalize_output(
+                    let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
                         execution_status,
                         txs.get(&hash),
                     )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        input_kind,
+                        output_kind,
+                    );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Submit => {
-                    let tx_metadata = TxMetadata::try_from(bytes.as_slice())
+                    let tx_metadata = TxMetadata::try_from(raw_input.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
 
                     let eth_tx: NormalizedEthTransaction =
-                        EthTransactionKind::try_from(bytes.as_slice())
+                        EthTransactionKind::try_from(raw_input.as_slice())
                             .and_then(TryFrom::try_from)
                             .map_err(RefinerError::ParseTransaction)?;
 
-                    hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
+                    hash = keccak256(raw_input.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
 
                     tx = tx
                         .hash(hash)
@@ -615,12 +686,21 @@ fn build_transaction(
                         tx.to(None).contract_address(Some(contract_address))
                     };
 
-                    let result = normalize_output(
+                    let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
                         execution_status,
                         txs.get(&hash),
                     )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Rlp,
+                        output_kind,
+                    );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Call => {
@@ -629,10 +709,23 @@ fn build_transaction(
 
                     tx = tx.hash(hash).from(from_address);
 
-                    if let Some(call_args) = CallArgs::deserialize(&bytes) {
-                        let (to_address, value, input) = match call_args {
-                            CallArgs::V2(args) => (args.contract, args.value, args.input),
-                            CallArgs::V1(args) => (args.contract, WeiU256::default(), args.input),
+                    let input_kind = if let Some(call_args) = CallArgs::deserialize(&raw_input) {
+                        let (to_address, value, input, input_kind) = match call_args {
+                            CallArgs::V2(args) => (
+                                args.contract,
+                                args.value,
+                                args.input,
+                                HashchainInputKind::CallArgs,
+                            ),
+                            CallArgs::V1(args) => {
+                                let input_kind =
+                                    if FunctionCallArgsV1::try_from_slice(&raw_input).is_err() {
+                                        HashchainInputKind::CallArgs
+                                    } else {
+                                        HashchainInputKind::CallArgsLegacy
+                                    };
+                                (args.contract, WeiU256::default(), args.input, input_kind)
+                            }
                         };
 
                         let nonce = storage
@@ -658,16 +751,28 @@ fn build_transaction(
                             .v(0)
                             .r(U256::zero())
                             .s(U256::zero());
-                    } else {
-                        tx = fill_tx(tx, "call", bytes);
-                    }
 
-                    let result = normalize_output(
+                        input_kind
+                    } else {
+                        tx = fill_tx(tx, raw_input.clone());
+                        HashchainInputKind::Explicit
+                    };
+
+                    let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
                         execution_status,
                         txs.get(&hash),
                     )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        input_kind,
+                        output_kind,
+                    );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Deploy | TransactionKindTag::DeployErc20 => {
@@ -692,7 +797,7 @@ fn build_transaction(
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
                         .value(Wei::zero())
-                        .input(vec![])
+                        .input(raw_input.clone())
                         .access_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
@@ -700,13 +805,21 @@ fn build_transaction(
                         .r(U256::zero())
                         .s(U256::zero());
 
-                    let result = normalize_output(
+                    let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
                         execution_status,
                         txs.get(&hash),
                     )?;
-
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {
@@ -714,14 +827,23 @@ fn build_transaction(
                     tx = tx
                         .hash(hash)
                         .from(near_account_to_evm_address(predecessor_id.as_bytes()));
-                    let result = normalize_output(
+                    let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
                         execution_status,
                         txs.get(&hash),
                     )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
                     tx = fill_with_submit_result(tx, result, &mut bloom);
-                    fill_tx(tx, method_name, bytes)
+                    fill_tx(tx, raw_input)
                 }
             }
         }
@@ -748,7 +870,8 @@ fn build_transaction(
                 .s(U256::zero())
                 // Type for NEAR custom transactions
                 .tx_type(0xfe)
-                .access_list(vec![]);
+                .access_list(vec![])
+                .near_metadata(near_metadata);
 
             match execution_status {
                 None | Some(ExecutionStatusView::Unknown) => {
@@ -796,25 +919,14 @@ fn fill_with_submit_result(
     }
 }
 
-fn fill_tx(
-    tx: AuroraTransactionBuilder,
-    method_name: &str,
-    input: Vec<u8>,
-) -> AuroraTransactionBuilder {
+fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBuilder {
     tx.to(None)
         .nonce(0)
         .gas_limit(0)
         .max_priority_fee_per_gas(U256::zero())
         .max_fee_per_gas(U256::zero())
         .value(Wei::new(U256::zero()))
-        .input(
-            vec![
-                method_name.to_string().as_bytes().to_vec(),
-                b":".to_vec(),
-                input,
-            ]
-            .concat(),
-        )
+        .input(input)
         .access_list(vec![])
         .tx_type(0xff)
         .contract_address(None)

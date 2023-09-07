@@ -1,5 +1,5 @@
 use crate::utils::{u128_dec_serde, u64_hex_serde};
-use aurora_engine::parameters::ResultLog;
+use aurora_engine::parameters::{ResultLog, TransactionStatus};
 use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::types::{Address, Wei};
 use aurora_engine_types::{H256, U256};
@@ -218,6 +218,8 @@ pub enum HashchainOutputKind {
     SubmitResultV7(ResultStatusTag),
     /// Raw output explicitly given in `AuroraTransaction.output`
     Explicit,
+    /// No output from this transaction on Near (because another receipt was created instead).
+    None,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -228,6 +230,19 @@ pub enum ResultStatusTag {
     OutOfFund,
     OutOfOffset,
     CallTooDeep,
+}
+
+impl From<&TransactionStatus> for ResultStatusTag {
+    fn from(value: &TransactionStatus) -> Self {
+        match value {
+            TransactionStatus::Succeed(_) => ResultStatusTag::Success,
+            TransactionStatus::Revert(_) => ResultStatusTag::Revert,
+            TransactionStatus::OutOfGas => ResultStatusTag::OutOfGas,
+            TransactionStatus::OutOfFund => ResultStatusTag::OutOfFund,
+            TransactionStatus::OutOfOffset => ResultStatusTag::OutOfOffset,
+            TransactionStatus::CallTooDeep => ResultStatusTag::CallTooDeep,
+        }
+    }
 }
 
 #[cfg(test)]
