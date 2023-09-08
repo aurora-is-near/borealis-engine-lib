@@ -24,9 +24,14 @@ impl NearStream {
         context: EngineContext,
         tx_tracker: TxHashTracker,
     ) -> Self {
+        let engine_account_id = context
+            .engine_account_id
+            .as_ref()
+            .parse()
+            .expect("Engine account ID must be valid");
         Self {
             last_block_height,
-            handler: Refiner::new(chain_id),
+            handler: Refiner::new(chain_id, engine_account_id),
             context,
             tx_tracker,
         }

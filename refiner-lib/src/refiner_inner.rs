@@ -65,6 +65,8 @@ struct TxExtraData {
 
 pub struct Refiner {
     chain_id: u64,
+    /// Account id of the engine contract on the chain
+    engine_account_id: AccountId,
     /// Constant value of an empty merkle tree root
     empty_merkle_tree_root: H256,
     /// Last prev_state_root known (useful to compute state roots on skip blocks)
@@ -99,9 +101,10 @@ pub struct RefinerItem {
 }
 
 impl Refiner {
-    pub fn new(chain_id: u64) -> Self {
+    pub fn new(chain_id: u64, engine_account_id: AccountId) -> Self {
         Self {
             chain_id,
+            engine_account_id,
             empty_merkle_tree_root: H256::from(
                 TryInto::<&[u8; 32]>::try_into(
                     &hex::decode(
@@ -121,6 +124,7 @@ impl Refiner {
     pub fn on_block_skip(&mut self, height: u64, next_block: &NEARBlock) -> AuroraBlock {
         AuroraBlock {
             chain_id: self.chain_id,
+            engine_account_id: self.engine_account_id.clone(),
             hash: compute_block_hash(height, self.chain_id),
             parent_hash: compute_block_hash(height - 1, self.chain_id),
             height,
@@ -301,6 +305,7 @@ impl Refiner {
 
         let aurora_block = AuroraBlock {
             chain_id: self.chain_id,
+            engine_account_id: self.engine_account_id.clone(),
             hash: compute_block_hash(block.header.height, self.chain_id),
             parent_hash: compute_block_hash(block.header.height - 1, self.chain_id),
             height: block.header.height,
