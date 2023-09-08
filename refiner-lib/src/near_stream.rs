@@ -112,7 +112,7 @@ impl NearStream {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use aurora_engine_types::account_id::AccountId;
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
@@ -303,19 +303,19 @@ mod tests {
         ));
     }
 
-    fn read_block(path: &str) -> NEARBlock {
+    pub fn read_block(path: &str) -> NEARBlock {
         let data = std::fs::read_to_string(path).unwrap();
         serde_json::from_str(&data).unwrap()
     }
 
-    struct TestContext {
+    pub struct TestContext {
         chain_id: u64,
         engine_context: EngineContext,
         tx_tracker: TxHashTracker,
     }
 
     impl TestContext {
-        fn new(db_dir: &tempfile::TempDir) -> Self {
+        pub fn new(db_dir: &tempfile::TempDir) -> Self {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             let chain_id = 1313161554_u64;
@@ -330,7 +330,7 @@ mod tests {
             }
         }
 
-        async fn init_with_snapshot(&mut self, snapshot_path: &str) {
+        pub async fn init_with_snapshot(&mut self, snapshot_path: &str) {
             let json_snapshot: JsonSnapshot = {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
@@ -339,7 +339,7 @@ mod tests {
             initialize_engine_state(&mut storage, json_snapshot).unwrap();
         }
 
-        fn create_stream(self) -> NearStream {
+        pub fn create_stream(self) -> NearStream {
             NearStream::new(self.chain_id, None, self.engine_context, self.tx_tracker)
         }
     }

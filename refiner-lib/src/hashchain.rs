@@ -235,3 +235,34 @@ pub enum ValidationError {
     UnknownEthTxType,
     MissingToInCallTx,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::near_stream::tests::{read_block, TestContext};
+
+    // All transactions in test blocks should pass `validate_tx_hashchain`.
+    // I.e. the method of reproducing the original Near input and output
+    // should be correct.
+    #[tokio::test]
+    async fn test_compute_hashchain() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let test_blocks = [
+            "tests/res/block-70834059.json",
+            "tests/res/block-70834061.json",
+            "tests/res/block-89402026.json",
+            "tests/res/block-81206675.json",
+        ];
+
+        for file in test_blocks {
+            let near_block = read_block(file);
+            let ctx = TestContext::new(&db_dir);
+            let mut stream = ctx.create_stream();
+            let aurora_blocks = stream.next_block(&near_block).await;
+
+            for block in aurora_blocks {
+                assert!(compute_hashchain(H256::default(), &block).is_ok());
+            }
+        }
+    }
+}
