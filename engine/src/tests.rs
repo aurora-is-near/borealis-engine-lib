@@ -140,7 +140,7 @@ impl TestContext {
         let mut storage = Storage::open(storage_path.path()).unwrap();
         storage.set_engine_account_id(&engine_account_id).unwrap();
         let snapshot = JsonSnapshot::load_from_file(snapshot_path).unwrap();
-        json_snapshot::initialize_engine_state(&mut storage, snapshot).unwrap();
+        json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
         Self {
             storage,
             storage_path,

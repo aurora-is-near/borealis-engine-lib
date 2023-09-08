@@ -335,8 +335,8 @@ pub mod tests {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
             };
-            let mut storage = self.engine_context.storage.as_ref().write().await;
-            initialize_engine_state(&mut storage, json_snapshot).unwrap();
+            let storage = self.engine_context.storage.as_ref().write().await;
+            initialize_engine_state(&storage, json_snapshot).unwrap();
         }
 
         pub fn create_stream(self) -> NearStream {
