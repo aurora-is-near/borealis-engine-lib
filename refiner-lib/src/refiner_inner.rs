@@ -14,8 +14,8 @@ use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AdditionalSubmitArgs, AuroraBlock, AuroraTransaction, AuroraTransactionBuilder,
-    AuroraTransactionBuilderError, HashchainInputKind, HashchainMetadata, HashchainOutputKind,
-    NearBlock, NearBlockHeader, NearTransaction,
+    AuroraTransactionBuilderError, CallArgsVersion, HashchainInputKind, HashchainMetadata,
+    HashchainOutputKind, NearBlock, NearBlockHeader, NearTransaction,
 };
 use aurora_refiner_types::bloom::Bloom;
 use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock};
@@ -490,24 +490,6 @@ fn normalize_output(
     }
 }
 
-fn compute_tx_hashchain(method_name: &str, input: &[u8], output: &[u8]) -> CryptoHash {
-    fn as_u32(x: usize) -> u32 {
-        x.try_into().unwrap_or(u32::MAX)
-    }
-
-    let data = [
-        &as_u32(method_name.len()).to_be_bytes(),
-        method_name.as_bytes(),
-        &as_u32(input.len()).to_be_bytes(),
-        input,
-        &as_u32(output.len()).to_be_bytes(),
-        output,
-    ]
-    .concat();
-
-    CryptoHash(aurora_engine_sdk::keccak(&data).0)
-}
-
 fn fill_hashchain_metadata(
     tx: AuroraTransactionBuilder,
     mut near_metadata: NearTransaction,
@@ -517,12 +499,13 @@ fn fill_hashchain_metadata(
     input_kind: HashchainInputKind,
     output_kind: HashchainOutputKind,
 ) -> AuroraTransactionBuilder {
-    let intrinsic_hash = compute_tx_hashchain(&method_name, raw_input, raw_output);
+    let intrinsic_hash =
+        crate::hashchain::compute_tx_hashchain(&method_name, raw_input, raw_output);
     let hashchain_metadata = HashchainMetadata {
         method_name,
         input: input_kind,
         output: output_kind,
-        intrinsic_hash,
+        intrinsic_hash: CryptoHash(intrinsic_hash.0),
     };
     near_metadata.hashchain_metadata = Some(hashchain_metadata);
     tx.near_metadata(near_metadata)
@@ -720,12 +703,12 @@ fn build_transaction(
                                 args.contract,
                                 args.value,
                                 args.input,
-                                HashchainInputKind::CallArgs,
+                                HashchainInputKind::CallArgs(CallArgsVersion::V2),
                             ),
                             CallArgs::V1(args) => {
                                 let input_kind =
                                     if FunctionCallArgsV1::try_from_slice(&raw_input).is_err() {
-                                        HashchainInputKind::CallArgs
+                                        HashchainInputKind::CallArgs(CallArgsVersion::V1)
                                     } else {
                                         HashchainInputKind::CallArgsLegacy
                                     };

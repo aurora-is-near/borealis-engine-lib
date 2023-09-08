@@ -195,12 +195,18 @@ pub enum HashchainInputKind {
     /// Legacy version of Borsh-encoded args for `call` function.
     CallArgsLegacy,
     /// Current version of Borsh-encoded args for `call` function.
-    CallArgs,
+    CallArgs(CallArgsVersion),
     /// The `submit_with_args` function uses a Borsh-encoded struct that has an embedded
     /// RLP-encoded Ethereum transaction along with additional parameters.
     SubmitWithArgs(AdditionalSubmitArgs),
     /// Raw input explicitly given in `AuroraTransaction.input`
     Explicit,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CallArgsVersion {
+    V1,
+    V2,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

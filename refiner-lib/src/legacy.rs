@@ -1,17 +1,17 @@
 use aurora_engine::parameters::{ResultLog, SubmitResult, TransactionStatus};
 use aurora_engine_types::types::RawU256;
 use aurora_refiner_types::aurora_block::HashchainOutputKind;
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::io::Result;
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct SubmitResultLegacyV1 {
     pub status: TransactionStatus,
     pub gas_used: u64,
     pub logs: Vec<ResultLog>,
 }
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct ResultLogV1 {
     pub topics: Vec<RawU256>,
     pub data: Vec<u8>,
@@ -33,7 +33,7 @@ impl From<SubmitResultLegacyV1> for SubmitResult {
     }
 }
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct SubmitResultLegacyV2 {
     pub status: TransactionStatus,
     pub gas_used: u64,

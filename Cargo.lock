@@ -661,6 +661,7 @@ version = "0.23.4"
 dependencies = [
  "anyhow",
  "aurora-engine",
+ "aurora-engine-hashchain",
  "aurora-engine-modexp",
  "aurora-engine-sdk",
  "aurora-engine-transactions",
