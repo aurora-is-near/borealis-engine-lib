@@ -230,6 +230,7 @@ fn rlp_encode(transaction: &AuroraTransaction) -> Result<Vec<u8>, ValidationErro
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidationError {
     IncorrectTxHash,
     UnknownEthTxType,
