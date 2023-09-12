@@ -222,6 +222,8 @@ pub enum HashchainOutputKind {
     SubmitResultLegacyV1(ResultStatusTag),
     /// Borsh-encoding of SubmitResultLegacyV2 (fields populated with data from `AuroraTransaction`).
     SubmitResultLegacyV2(ResultStatusTag),
+    /// Borsh-encoding of SubmitResultLegacyV3 (fields populated with data from `AuroraTransaction`).
+    SubmitResultLegacyV3,
     /// Borsh-encoding of current SubmitResult version (fields populated with data from `AuroraTransaction`).
     SubmitResultV7(ResultStatusTag),
     /// Raw output explicitly given in `AuroraTransaction.output`

@@ -106,14 +106,16 @@ pub fn validate_tx_hashchain(
             let result = crate::legacy::SubmitResultLegacyV2 {
                 status,
                 gas_used: transaction.gas_used,
-                logs: transaction
-                    .logs
-                    .iter()
-                    .map(|l| crate::legacy::ResultLogV1 {
-                        topics: l.topics.clone(),
-                        data: l.data.clone(),
-                    })
-                    .collect(),
+                logs: crate::legacy::to_v1_logs(&transaction.logs),
+            };
+            Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+        }
+        HashchainOutputKind::SubmitResultLegacyV3 => {
+            let result = crate::legacy::SubmitResultLegacyV3 {
+                status: transaction.status,
+                gas_used: transaction.gas_used,
+                result: transaction.output.clone(),
+                logs: crate::legacy::to_v1_logs(&transaction.logs),
             };
             Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
         }
