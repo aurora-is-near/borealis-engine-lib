@@ -255,6 +255,8 @@ mod tests {
             "tests/res/block-70834061.json",
             "tests/res/block-89402026.json",
             "tests/res/block-81206675.json",
+            // This block contains an EIP-2930 submit transaction
+            "tests/res/block-55905793.json",
         ];
 
         for file in test_blocks {
