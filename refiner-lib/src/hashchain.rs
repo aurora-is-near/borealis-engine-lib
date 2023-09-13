@@ -5,7 +5,7 @@ use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, FunctionCallArgsV2, SubmitArgs, SubmitResult, TransactionStatus,
 };
 use aurora_engine_hashchain::merkle::StreamCompactMerkleTree;
-use aurora_engine_transactions::{eip_1559, eip_2930, legacy};
+use aurora_engine_transactions::{eip_1559, eip_2930, legacy, EthTransactionKind};
 use aurora_engine_types::{types::u256_to_arr, H256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, CallArgsVersion, HashchainInputKind, HashchainOutputKind,
@@ -186,8 +186,8 @@ fn rlp_encode(transaction: &AuroraTransaction) -> Result<Vec<u8>, ValidationErro
                 r: transaction.r,
                 s: transaction.s,
             };
-            let bytes = rlp::encode(&tx);
-            Ok(bytes.to_vec())
+            let bytes = (&EthTransactionKind::Legacy(tx)).into();
+            Ok(bytes)
         }
         eip_1559::TYPE_BYTE => {
             let tx = eip_1559::SignedTransaction1559 {
@@ -206,8 +206,8 @@ fn rlp_encode(transaction: &AuroraTransaction) -> Result<Vec<u8>, ValidationErro
                 r: transaction.r,
                 s: transaction.s,
             };
-            let bytes = rlp::encode(&tx);
-            Ok(bytes.to_vec())
+            let bytes = (&EthTransactionKind::Eip1559(tx)).into();
+            Ok(bytes)
         }
         eip_2930::TYPE_BYTE => {
             let tx = eip_2930::SignedTransaction2930 {
@@ -225,8 +225,8 @@ fn rlp_encode(transaction: &AuroraTransaction) -> Result<Vec<u8>, ValidationErro
                 r: transaction.r,
                 s: transaction.s,
             };
-            let bytes = rlp::encode(&tx);
-            Ok(bytes.to_vec())
+            let bytes = (&EthTransactionKind::Eip2930(tx)).into();
+            Ok(bytes)
         }
         _ => Err(ValidationError::UnknownEthTxType),
     }
