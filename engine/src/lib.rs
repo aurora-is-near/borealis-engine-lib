@@ -12,7 +12,6 @@ pub mod sync;
 #[cfg(test)]
 mod tests;
 pub mod tracing;
-pub mod types;
 
 pub type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 

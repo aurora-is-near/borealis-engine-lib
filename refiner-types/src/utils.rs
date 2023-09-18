@@ -36,6 +36,37 @@ pub mod u64_hex_serde {
     }
 }
 
+pub mod u128_dec_serde {
+    //! This module provides serde serialization for optional u128 numbers with base-10 strings.
+    //! It can be used with the field attribute `#[serde(with = "u128_dec_serde")]` on u128 fields
+    //! inside structs deriving serde Serialize and Deserialize traits.
+
+    use serde::de::Error;
+
+    pub fn serialize<S>(n: &Option<u128>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if let Some(n) = n {
+            let dec_str = format!("{n}");
+            serializer.serialize_some(&dec_str)
+        } else {
+            serializer.serialize_none()
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<u128>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let dec_str: Option<String> = serde::Deserialize::deserialize(deserializer)?;
+        dec_str.map_or(Ok(None), |dec_str| {
+            let n = dec_str.parse().map_err(D::Error::custom)?;
+            Ok(Some(n))
+        })
+    }
+}
+
 /// Cast a U256 value down to u64; if the value is too large then return u64::MAX.
 pub fn saturating_cast(x: U256) -> u64 {
     if x < U64_MAX {
@@ -53,13 +84,19 @@ pub fn keccak256(input: &[u8]) -> H256 {
 
 #[cfg(test)]
 mod tests {
-    use super::u64_hex_serde;
+    use super::{u128_dec_serde, u64_hex_serde};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
     struct HexU64 {
         #[serde(with = "u64_hex_serde")]
         inner: u64,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+    struct DecU128 {
+        #[serde(with = "u128_dec_serde")]
+        inner: Option<u128>,
     }
 
     #[test]
@@ -80,5 +117,33 @@ mod tests {
         let err: Result<HexU64, _> = serde_json::from_str(invalid_char);
         assert!(err.is_err());
         assert!(format!("{:?}", err).contains("Invalid character 'q'"));
+    }
+
+    #[test]
+    fn test_u128_dec_serde() {
+        let x = DecU128 { inner: None };
+        let x_ser = serde_json::to_string(&x).unwrap();
+        let x_desr: DecU128 = serde_json::from_str(&x_ser).unwrap();
+        assert_eq!(x, x_desr);
+        assert_eq!(x_ser, r#"{"inner":null}"#);
+
+        let x = DecU128 {
+            inner: Some(123456),
+        };
+        let x_ser = serde_json::to_string(&x).unwrap();
+        let x_desr: DecU128 = serde_json::from_str(&x_ser).unwrap();
+        assert_eq!(x, x_desr);
+        assert_eq!(x_ser, r#"{"inner":"123456"}"#);
+
+        let negative_number = r#"{"inner":"-123"}"#;
+        let invalid_number = r#"{"inner":"123a"}"#;
+
+        let err: Result<DecU128, _> = serde_json::from_str(negative_number);
+        assert!(err.is_err());
+        assert!(format!("{:?}", err).contains("invalid digit found in string"));
+
+        let err: Result<DecU128, _> = serde_json::from_str(invalid_number);
+        assert!(err.is_err());
+        assert!(format!("{:?}", err).contains("invalid digit found in string"));
     }
 }

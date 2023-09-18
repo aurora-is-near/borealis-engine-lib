@@ -1,3 +1,4 @@
+pub mod hashchain;
 mod metrics;
 pub mod near_stream;
 mod refiner;

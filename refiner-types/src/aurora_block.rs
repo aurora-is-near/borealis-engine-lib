@@ -1,5 +1,5 @@
-use crate::utils::u64_hex_serde;
-use aurora_engine::parameters::ResultLog;
+use crate::utils::{u128_dec_serde, u64_hex_serde};
+use aurora_engine::parameters::{ResultLog, TransactionStatus};
 use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::types::{Address, Wei};
 use aurora_engine_types::{H256, U256};
@@ -25,6 +25,8 @@ use crate::bloom::Bloom;
 pub struct AuroraBlock {
     /// Chain where this block belongs to
     pub chain_id: u64,
+    /// Account id of the engine contract on the chain
+    pub engine_account_id: AccountId,
     /// Hash of the block
     pub hash: H256,
     /// Hash of the parent block. It is guaranteed that heights from consecutive blocks will be
@@ -163,6 +165,94 @@ pub struct NearTransaction {
     /// expected to be set for call newly produced data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_hash: Option<CryptoHash>,
+    /// Transaction metadata which is needed to compute the
+    /// value this transaction contributes to the overall block hashchain.
+    /// See [AIP-008](https://github.com/aurora-is-near/AIPs/pull/8) for details.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hashchain_metadata: Option<HashchainMetadata>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HashchainMetadata {
+    /// Name of the method called on the Engine in the original Near transaction.
+    pub method_name: String,
+    /// Tag describing how to compute the original Near input from the data available in `AuroraTransaction`.
+    pub input: HashchainInputKind,
+    /// Tag describing how to compute the original Near output from the data available in `AuroraTransaction`.
+    pub output: HashchainOutputKind,
+    /// Computed "intrinsic transaction hash" as per
+    /// [AIP-008](https://github.com/aurora-is-near/AIPs/pull/8)
+    /// using the transaction data as described in the above fields.
+    /// This is present as a sort of checksum to ensure the overall `AuroraTransaction`
+    /// is consistent with what was present in the original Near transaction.
+    pub intrinsic_hash: CryptoHash,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum HashchainInputKind {
+    /// Standard RLP-encoded Ethereum transaction.
+    Rlp,
+    /// Legacy version of Borsh-encoded args for `call` function.
+    CallArgsLegacy,
+    /// Current version of Borsh-encoded args for `call` function.
+    CallArgs(CallArgsVersion),
+    /// The `submit_with_args` function uses a Borsh-encoded struct that has an embedded
+    /// RLP-encoded Ethereum transaction along with additional parameters.
+    SubmitWithArgs(AdditionalSubmitArgs),
+    /// Raw input explicitly given in `AuroraTransaction.input`
+    Explicit,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CallArgsVersion {
+    V1,
+    V2,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdditionalSubmitArgs {
+    #[serde(with = "u128_dec_serde")]
+    pub max_gas_price: Option<u128>,
+    pub gas_token_address: Option<Address>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum HashchainOutputKind {
+    /// Borsh-encoding of SubmitResultLegacyV1 (fields populated with data from `AuroraTransaction`).
+    SubmitResultLegacyV1(ResultStatusTag),
+    /// Borsh-encoding of SubmitResultLegacyV2 (fields populated with data from `AuroraTransaction`).
+    SubmitResultLegacyV2(ResultStatusTag),
+    /// Borsh-encoding of SubmitResultLegacyV3 (fields populated with data from `AuroraTransaction`).
+    SubmitResultLegacyV3,
+    /// Borsh-encoding of current SubmitResult version (fields populated with data from `AuroraTransaction`).
+    SubmitResultV7(ResultStatusTag),
+    /// Raw output explicitly given in `AuroraTransaction.output`
+    Explicit,
+    /// No output from this transaction on Near (because another receipt was created instead).
+    None,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ResultStatusTag {
+    Success,
+    Revert,
+    OutOfGas,
+    OutOfFund,
+    OutOfOffset,
+    CallTooDeep,
+}
+
+impl From<&TransactionStatus> for ResultStatusTag {
+    fn from(value: &TransactionStatus) -> Self {
+        match value {
+            TransactionStatus::Succeed(_) => ResultStatusTag::Success,
+            TransactionStatus::Revert(_) => ResultStatusTag::Revert,
+            TransactionStatus::OutOfGas => ResultStatusTag::OutOfGas,
+            TransactionStatus::OutOfFund => ResultStatusTag::OutOfFund,
+            TransactionStatus::OutOfOffset => ResultStatusTag::OutOfOffset,
+            TransactionStatus::CallTooDeep => ResultStatusTag::CallTooDeep,
+        }
+    }
 }
 
 #[cfg(test)]

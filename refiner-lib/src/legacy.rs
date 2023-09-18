@@ -1,16 +1,17 @@
 use aurora_engine::parameters::{ResultLog, SubmitResult, TransactionStatus};
 use aurora_engine_types::types::RawU256;
-use borsh::BorshDeserialize;
+use aurora_refiner_types::aurora_block::HashchainOutputKind;
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::io::Result;
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct SubmitResultLegacyV1 {
     pub status: TransactionStatus,
     pub gas_used: u64,
     pub logs: Vec<ResultLog>,
 }
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct ResultLogV1 {
     pub topics: Vec<RawU256>,
     pub data: Vec<u8>,
@@ -32,7 +33,7 @@ impl From<SubmitResultLegacyV1> for SubmitResult {
     }
 }
 
-#[derive(BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct SubmitResultLegacyV2 {
     pub status: TransactionStatus,
     pub gas_used: u64,
@@ -49,15 +50,78 @@ impl From<SubmitResultLegacyV2> for SubmitResult {
     }
 }
 
-pub fn decode_submit_result(result: &[u8]) -> Result<SubmitResult> {
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct SubmitResultLegacyV3 {
+    pub status: bool,
+    pub gas_used: u64,
+    pub result: Vec<u8>,
+    pub logs: Vec<ResultLogV1>,
+}
+
+impl From<SubmitResultLegacyV3> for SubmitResult {
+    fn from(result: SubmitResultLegacyV3) -> Self {
+        let status = if result.status {
+            TransactionStatus::Succeed(result.result)
+        } else if !result.result.is_empty() {
+            TransactionStatus::Revert(result.result)
+        } else {
+            TransactionStatus::OutOfFund
+        };
+        SubmitResult::new(
+            status,
+            result.gas_used,
+            result.logs.into_iter().map(Into::into).collect(),
+        )
+    }
+}
+
+pub fn to_v1_logs(logs: &[ResultLog]) -> Vec<ResultLogV1> {
+    logs.iter()
+        .map(|l| ResultLogV1 {
+            topics: l.topics.clone(),
+            data: l.data.clone(),
+        })
+        .collect()
+}
+
+pub fn decode_submit_result(result: &[u8]) -> Result<(SubmitResult, HashchainOutputKind)> {
     SubmitResult::try_from_slice(result)
-        .or_else(|_| SubmitResultLegacyV1::try_from_slice(result).map(Into::into))
-        .or_else(|_| SubmitResultLegacyV2::try_from_slice(result).map(Into::into))
+        .map(|x| {
+            let tag = (&x.status).into();
+            (x, HashchainOutputKind::SubmitResultV7(tag))
+        })
+        .or_else(|_| {
+            SubmitResultLegacyV1::try_from_slice(result).map(|x| {
+                let tag = (&x.status).into();
+                (x.into(), HashchainOutputKind::SubmitResultLegacyV1(tag))
+            })
+        })
+        .or_else(|_| {
+            SubmitResultLegacyV2::try_from_slice(result).map(|x| {
+                let tag = (&x.status).into();
+                (x.into(), HashchainOutputKind::SubmitResultLegacyV2(tag))
+            })
+        })
+        .or_else(|_| {
+            SubmitResultLegacyV3::try_from_slice(result)
+                .map(|x| (x.into(), HashchainOutputKind::SubmitResultLegacyV3))
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::decode_submit_result;
+
+    #[test]
+    fn test_legacy_may_2021() {
+        // `SubmitResult` taken from
+        // https://explorer.mainnet.near.org/transactions/CeG24XrGneQb3PF5xmgzkPGPcFZ3yDzKJ755ZPdXAT6Q#B36aGoLRkspLkjGPgR13ZqUtR3vK7WftqT6HH2BJu5r2
+        let data = hex::decode(
+            "01b026010000000000140000008a778c47d1d6b4dd5d2cef9881f889c250cd882000000000",
+        )
+        .unwrap();
+        decode_submit_result(&data).unwrap();
+    }
 
     #[test]
     fn test_legacy_v2() {

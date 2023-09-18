@@ -1,4 +1,4 @@
-use aurora_standalone_engine::types::InnerTransactionKind;
+use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
 use prometheus::{self, register_int_counter, register_int_gauge, IntCounter, IntGauge};
 
@@ -228,111 +228,119 @@ lazy_static! {
         "refiner_tx_type_remove_relayer_key",
         "Number of transactions of type: remove_relayer_key"
     ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_START_HASHCHAIN : IntCounter = register_int_counter!(
+        "refiner_tx_type_start_hashchain",
+        "Number of transactions of type: start_hashchain"
+    ).unwrap();
 }
 
-pub(crate) fn record_metric(tx_kind: &InnerTransactionKind) {
+pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
     match tx_kind {
-        InnerTransactionKind::Submit => {
+        TransactionKindTag::Submit => {
             TRANSACTION_TYPE_SUBMIT.inc();
         }
-        InnerTransactionKind::SubmitWithArgs => {
+        TransactionKindTag::SubmitWithArgs => {
             TRANSACTION_TYPE_SUBMIT_WITH_ARGS.inc();
         }
-        InnerTransactionKind::Call => {
+        TransactionKindTag::Call => {
             TRANSACTION_TYPE_CALL.inc();
         }
-        InnerTransactionKind::PausePrecompiles => {
+        TransactionKindTag::PausePrecompiles => {
             TRANSACTION_TYPE_PAUSE_PRECOMPILES.inc();
         }
-        InnerTransactionKind::ResumePrecompiles => {
+        TransactionKindTag::ResumePrecompiles => {
             TRANSACTION_TYPE_RESUME_PRECOMPILES.inc();
         }
-        InnerTransactionKind::SetOwner => {
+        TransactionKindTag::SetOwner => {
             TRANSACTION_TYPE_SET_OWNER.inc();
         }
-        InnerTransactionKind::Deploy => {
+        TransactionKindTag::Deploy => {
             TRANSACTION_TYPE_DEPLOY_CODE.inc();
         }
-        InnerTransactionKind::DeployErc20 => {
+        TransactionKindTag::DeployErc20 => {
             TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
         }
-        InnerTransactionKind::FtOnTransfer => {
+        TransactionKindTag::FtOnTransfer => {
             TRANSACTION_TYPE_FT_ON_TRANSFER.inc();
         }
-        InnerTransactionKind::Deposit => {
+        TransactionKindTag::Deposit => {
             TRANSACTION_TYPE_DEPOSIT.inc();
         }
-        InnerTransactionKind::FtTransferCall => {
+        TransactionKindTag::FtTransferCall => {
             TRANSACTION_TYPE_FT_TRANSFER_CALL.inc();
         }
-        InnerTransactionKind::FinishDeposit => {
+        TransactionKindTag::FinishDeposit => {
             TRANSACTION_TYPE_FINISH_DEPOSIT.inc();
         }
-        InnerTransactionKind::ResolveTransfer => {
+        TransactionKindTag::ResolveTransfer => {
             TRANSACTION_TYPE_FT_RESOLVE_TRANSFER.inc();
         }
-        InnerTransactionKind::FtTransfer => {
+        TransactionKindTag::FtTransfer => {
             TRANSACTION_TYPE_FT_TRANSFER.inc();
         }
-        InnerTransactionKind::Withdraw => {
+        TransactionKindTag::Withdraw => {
             TRANSACTION_TYPE_WITHDRAW.inc();
         }
-        InnerTransactionKind::StorageDeposit => {
+        TransactionKindTag::StorageDeposit => {
             TRANSACTION_TYPE_STORAGE_DEPOSIT.inc();
         }
-        InnerTransactionKind::StorageUnregister => {
+        TransactionKindTag::StorageUnregister => {
             TRANSACTION_TYPE_STORAGE_UNREGISTER.inc();
         }
-        InnerTransactionKind::StorageWithdraw => {
+        TransactionKindTag::StorageWithdraw => {
             TRANSACTION_TYPE_STORAGE_WITHDRAW.inc();
         }
-        InnerTransactionKind::SetPausedFlags => {
+        TransactionKindTag::SetPausedFlags => {
             TRANSACTION_TYPE_SET_PAUSED_FLAGS.inc();
         }
-        InnerTransactionKind::RegisterRelayer => {
+        TransactionKindTag::RegisterRelayer => {
             TRANSACTION_TYPE_REGISTER_RELAYER.inc();
         }
-        InnerTransactionKind::RefundOnError => {
+        TransactionKindTag::RefundOnError => {
             TRANSACTION_TYPE_REFUND_ON_ERROR.inc();
         }
-        InnerTransactionKind::SetConnectorData => {
+        TransactionKindTag::SetConnectorData => {
             TRANSACTION_TYPE_SET_CONNECTOR_DATA.inc();
         }
-        InnerTransactionKind::NewConnector => {
+        TransactionKindTag::NewConnector => {
             TRANSACTION_TYPE_NEW_CONNECTOR.inc();
         }
-        InnerTransactionKind::NewEngine => {
+        TransactionKindTag::NewEngine => {
             TRANSACTION_TYPE_NEW_ENGINE.inc();
         }
-        InnerTransactionKind::FactoryUpdate => {
+        TransactionKindTag::FactoryUpdate => {
             TRANSACTION_TYPE_FACTORY_UPDATE.inc();
         }
-        InnerTransactionKind::FactoryUpdateAddressVersion => {
+        TransactionKindTag::FactoryUpdateAddressVersion => {
             TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION.inc();
         }
-        InnerTransactionKind::FactorySetWNearAddress => {
+        TransactionKindTag::FactorySetWNearAddress => {
             TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS.inc();
         }
-        InnerTransactionKind::SetUpgradeDelayBlocks => {
+        TransactionKindTag::SetUpgradeDelayBlocks => {
             TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS.inc();
         }
-        InnerTransactionKind::FundXccSubAccound => {
+        TransactionKindTag::FundXccSubAccound => {
             TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT.inc();
         }
-        InnerTransactionKind::PauseContract => {
+        TransactionKindTag::PauseContract => {
             TRANSACTION_TYPE_PAUSE_CONTRACT.inc();
         }
-        InnerTransactionKind::ResumeContract => TRANSACTION_TYPE_RESUME_CONTRACT.inc(),
-        InnerTransactionKind::SetKeyManager => {
+        TransactionKindTag::ResumeContract => TRANSACTION_TYPE_RESUME_CONTRACT.inc(),
+        TransactionKindTag::SetKeyManager => {
             TRANSACTION_TYPE_SET_KEY_MANAGER.inc();
         }
-        InnerTransactionKind::AddRelayerKey => {
+        TransactionKindTag::AddRelayerKey => {
             TRANSACTION_TYPE_ADD_RELAYER_KEY.inc();
         }
-        InnerTransactionKind::RemoveRelayerKey => {
+        TransactionKindTag::RemoveRelayerKey => {
             TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
         }
-        InnerTransactionKind::Unknown => {
+        TransactionKindTag::StartHashchain => {
+            TRANSACTION_TYPE_START_HASHCHAIN.inc();
+        }
+        TransactionKindTag::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();
         }
     }
