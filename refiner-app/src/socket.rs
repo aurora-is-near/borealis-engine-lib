@@ -20,6 +20,11 @@ pub async fn start_socket_server(
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
+    // Remove the old socket file if it exists
+    if std::path::Path::new(path).exists() {
+        std::fs::remove_file(path).expect("failed to remove socket file");
+    }
+
     let sock = UnixListener::bind(path).expect("failed to open socket");
 
     loop {
