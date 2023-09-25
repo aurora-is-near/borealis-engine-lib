@@ -233,6 +233,16 @@ lazy_static! {
         "refiner_tx_type_start_hashchain",
         "Number of transactions of type: start_hashchain"
     ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_SET_ERC20_METADATA : IntCounter = register_int_counter!(
+        "refiner_tx_type_set_erc20_metadata",
+        "Number of transactions of type: set_erc20_metadata"
+    ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_EXIT_TO_NEAR : IntCounter = register_int_counter!(
+        "refiner_tx_type_exit_to_near",
+        "Number of transactions of type: exit_to_near"
+    ).unwrap();
 }
 
 pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
@@ -296,11 +306,7 @@ pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::RegisterRelayer => {
             TRANSACTION_TYPE_REGISTER_RELAYER.inc();
-        }
-        TransactionKindTag::RefundOnError => {
-            TRANSACTION_TYPE_REFUND_ON_ERROR.inc();
-        }
-        TransactionKindTag::SetConnectorData => {
+        } TransactionKindTag::SetConnectorData => {
             TRANSACTION_TYPE_SET_CONNECTOR_DATA.inc();
         }
         TransactionKindTag::NewConnector => {
@@ -343,5 +349,12 @@ pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
         TransactionKindTag::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();
         }
+        TransactionKindTag::SetErc20Metadata => {
+            TRANSACTION_TYPE_SET_ERC20_METADATA.inc();
+        }
+        TransactionKindTag::ExitToNear => {
+            TRANSACTION_TYPE_EXIT_TO_NEAR.inc();
+        }
+
     }
 }
