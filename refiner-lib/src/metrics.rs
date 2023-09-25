@@ -306,7 +306,8 @@ pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::RegisterRelayer => {
             TRANSACTION_TYPE_REGISTER_RELAYER.inc();
-        } TransactionKindTag::SetConnectorData => {
+        }
+        TransactionKindTag::SetConnectorData => {
             TRANSACTION_TYPE_SET_CONNECTOR_DATA.inc();
         }
         TransactionKindTag::NewConnector => {
@@ -355,6 +356,5 @@ pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
         TransactionKindTag::ExitToNear => {
             TRANSACTION_TYPE_EXIT_TO_NEAR.inc();
         }
-
     }
 }
