@@ -176,6 +176,7 @@ struct FrameLocalData {
     error: Option<String>,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 fn extract_subcalls(frame: CallFrame) -> (FrameLocalData, Vec<CallFrame>) {
     let local = FrameLocalData {
         call_type: frame.call_type,

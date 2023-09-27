@@ -135,18 +135,18 @@ pub enum BlockId {
 impl BlockId {
     pub fn from_json_value(value: Option<&serde_json::Value>) -> Option<Self> {
         match value {
-            None => Some(BlockId::Latest),
+            None => Some(Self::Latest),
             // Block Id can be a string or object as per https://eips.ethereum.org/EIPS/eip-1898
             Some(serde_json::Value::String(value)) => {
                 let value = value.to_lowercase();
                 match value.as_str() {
-                    "latest" => Some(BlockId::Latest),
-                    "earliest" => Some(BlockId::Earliest),
-                    "pending" => Some(BlockId::Latest),
+                    "latest" => Some(Self::Latest),
+                    "earliest" => Some(Self::Earliest),
+                    "pending" => Some(Self::Latest),
                     hex_str if hex_str.starts_with("0x") => {
                         let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
                         let block_height = U256::from_str_radix(hex_str, 16).ok()?;
-                        Some(BlockId::Number(block_height.low_u64()))
+                        Some(Self::Number(block_height.low_u64()))
                     }
                     _ => None,
                 }
@@ -158,7 +158,7 @@ impl BlockId {
                     if maybe_hex_str.starts_with("0x") {
                         let hex_str = maybe_hex_str.strip_prefix("0x").unwrap_or(maybe_hex_str);
                         let block_height = U256::from_str_radix(hex_str, 16).ok()?;
-                        return Some(BlockId::Number(block_height.low_u64()));
+                        return Some(Self::Number(block_height.low_u64()));
                     }
                 }
 
@@ -171,14 +171,14 @@ impl BlockId {
                         if bytes.len() != 32 {
                             return None;
                         }
-                        return Some(BlockId::Hash(H256::from_slice(&bytes)));
+                        return Some(Self::Hash(H256::from_slice(&bytes)));
                     }
                 }
 
                 None
             }
             // Also allow a regular number
-            Some(serde_json::Value::Number(n)) => n.as_u64().map(BlockId::Number),
+            Some(serde_json::Value::Number(n)) => n.as_u64().map(Self::Number),
             Some(_) => None,
         }
     }
@@ -349,16 +349,13 @@ fn eth_call(
                     env,
                 )
             };
-            let nonce_status = match nonce {
-                Some(nonce) => {
-                    if nonce < current_nonce {
-                        NonceStatus::TooLow
-                    } else {
-                        NonceStatus::GreaterOrEqual { current_nonce }
-                    }
+            let nonce_status = nonce.map_or(NonceStatus::NotProvided { current_nonce }, |nonce| {
+                if nonce < current_nonce {
+                    NonceStatus::TooLow
+                } else {
+                    NonceStatus::GreaterOrEqual { current_nonce }
                 }
-                None => NonceStatus::NotProvided { current_nonce },
-            };
+            });
             (submit_result, nonce_status)
         })
         .result
@@ -386,12 +383,14 @@ impl<'db, 'input: 'db, 'output: 'db, 'state> IO
     fn read_storage(&self, key: &[u8]) -> Option<Self::StorageValue> {
         match deconstruct_storage_key(key) {
             None => self.inner.read_storage(key),
-            Some((address, index)) => match self.state_override.get(&address) {
-                None => self.inner.read_storage(key),
-                Some(state_override) => state_override
-                    .get(&index)
-                    .map(|value| EngineStorageValue::Vec(value.as_bytes().to_vec())),
-            },
+            Some((address, index)) => self.state_override.get(&address).map_or_else(
+                || self.inner.read_storage(key),
+                |state_override| {
+                    state_override
+                        .get(&index)
+                        .map(|value| EngineStorageValue::Vec(value.as_bytes().to_vec()))
+                },
+            ),
         }
     }
 

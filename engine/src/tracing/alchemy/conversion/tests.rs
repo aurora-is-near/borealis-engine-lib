@@ -115,6 +115,7 @@ pub struct DeserializableCallFrame {
     calls: Vec<DeserializableCallFrame>,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<DeserializableCallFrame> for CallFrame {
     fn from(serialized: DeserializableCallFrame) -> Self {
         Self {

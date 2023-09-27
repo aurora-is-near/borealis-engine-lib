@@ -131,6 +131,7 @@ async fn handle_msg(
     }
 }
 
+#[allow(clippy::significant_drop_tightening)]
 async fn handle_estimate_gas(
     storage: SharedStorage,
     msg: serde_json::Value,
@@ -145,6 +146,7 @@ async fn handle_estimate_gas(
     }
 }
 
+#[allow(clippy::significant_drop_tightening)]
 async fn handle_trace_transaction(
     storage: SharedStorage,
     msg: serde_json::Value,
@@ -190,7 +192,7 @@ struct JsonRpcError<T> {
 }
 
 /// Reads 4 bytes that indicate length of message and then the following message data.
-pub async fn wrapped_read<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Vec<u8>> {
+pub async fn wrapped_read<R: AsyncRead + Unpin + Send>(reader: &mut R) -> io::Result<Vec<u8>> {
     let payload_len = reader.read_u32_le().await? as usize;
     let mut payload = vec![0; payload_len];
     reader.read_exact(&mut payload).await?;
@@ -198,7 +200,7 @@ pub async fn wrapped_read<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Ve
 }
 
 /// Writes 4 bytes to indicate length of message followed by the message data.
-pub async fn wrapped_write<W: AsyncWrite + Unpin>(
+pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
     writer: &mut W,
     payload: &[u8],
 ) -> io::Result<()> {

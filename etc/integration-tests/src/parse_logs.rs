@@ -3,9 +3,9 @@
 use crate::ansi_utils;
 use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 
-/// Extracts the block height from a nearcore stats log line. Exmaple:
+/// Extracts the block height from a nearcore stats log line. Example:
 /// 2023-08-01T08:26:02.869336Z  INFO stats: #      52 24LGJniHqZjL4nhd55ocngvTofG8jyTKQNCgixcTsJTV Validator | 4 validators 3 peers ⬇ 4.92 kB/s ⬆ 4.80 kB/s 1.90 bps 0 gas/s CPU: 0%, Mem: 59.9 MB
-/// Notably there are 8 characters availble for the block height after the '#' in the line.
+/// Notably there are 8 characters available for the block height after the '#' in the line.
 fn get_height_from_log(line: &str) -> anyhow::Result<u32> {
     let index = line
         .find('#')
@@ -16,7 +16,7 @@ fn get_height_from_log(line: &str) -> anyhow::Result<u32> {
 }
 
 /// Waits for the stats log to report a block height greater than the given value.
-pub async fn wait_for_height<R: AsyncRead + Unpin>(
+pub async fn wait_for_height<R: AsyncRead + Unpin + Send>(
     stdout: R,
     expected_height: u32,
 ) -> anyhow::Result<()> {

@@ -18,7 +18,7 @@ construct_fixed_hash! {
 impl_fixed_hash_serde!(Bloom, BLOOM_SIZE);
 
 /// Returns log2.
-fn log2(x: usize) -> u32 {
+const fn log2(x: usize) -> u32 {
     if x <= 1 {
         return 0;
     }
@@ -50,7 +50,7 @@ impl Bloom {
     }
 
     /// Merge two bloom filters
-    pub fn accrue_bloom(&mut self, bloom: &Bloom) {
+    pub fn accrue_bloom(&mut self, bloom: &Self) {
         for i in 0..BLOOM_SIZE {
             self.0[i] |= bloom.0[i];
         }

@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 pub mod ansi_utils;
 pub mod nearcore_utils;
 pub mod parse_logs;

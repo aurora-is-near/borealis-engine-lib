@@ -13,12 +13,12 @@ pub struct BlockWithMetadata<B: Debug, M: Debug + Clone> {
 }
 
 impl<B: Debug, M: Debug + Clone> BlockWithMetadata<B, M> {
-    pub fn new(block: B, metadata: M) -> Self {
+    pub const fn new(block: B, metadata: M) -> Self {
         Self { block, metadata }
     }
 }
 
-pub async fn run_refiner<P: AsRef<Path>, M: Debug + Clone>(
+pub async fn run_refiner<P: AsRef<Path> + Send, M: Debug + Clone + Send + Sync>(
     ctx: EngineContext,
     chain_id: u64,
     tx_storage_path: P,

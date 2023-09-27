@@ -245,12 +245,12 @@ pub enum ResultStatusTag {
 impl From<&TransactionStatus> for ResultStatusTag {
     fn from(value: &TransactionStatus) -> Self {
         match value {
-            TransactionStatus::Succeed(_) => ResultStatusTag::Success,
-            TransactionStatus::Revert(_) => ResultStatusTag::Revert,
-            TransactionStatus::OutOfGas => ResultStatusTag::OutOfGas,
-            TransactionStatus::OutOfFund => ResultStatusTag::OutOfFund,
-            TransactionStatus::OutOfOffset => ResultStatusTag::OutOfOffset,
-            TransactionStatus::CallTooDeep => ResultStatusTag::CallTooDeep,
+            TransactionStatus::Succeed(_) => Self::Success,
+            TransactionStatus::Revert(_) => Self::Revert,
+            TransactionStatus::OutOfGas => Self::OutOfGas,
+            TransactionStatus::OutOfFund => Self::OutOfFund,
+            TransactionStatus::OutOfOffset => Self::OutOfOffset,
+            TransactionStatus::CallTooDeep => Self::CallTooDeep,
         }
     }
 }

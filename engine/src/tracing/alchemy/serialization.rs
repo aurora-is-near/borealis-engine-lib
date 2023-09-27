@@ -336,7 +336,7 @@ impl TryFrom<&Option<SerializableAlchemyTraceResult>> for AlchemySuicideResult {
 
     fn try_from(value: &Option<SerializableAlchemyTraceResult>) -> Result<Self, Self::Error> {
         match value {
-            None => Ok(AlchemySuicideResult),
+            None => Ok(Self),
             Some(_) => Err(anyhow::Error::msg("Unexpected `result` field")),
         }
     }
@@ -377,10 +377,10 @@ impl TryFrom<&Option<SerializableAlchemyTraceResult>> for AlchemyCallResult {
 impl ToString for AlchemyCallKind {
     fn to_string(&self) -> String {
         match self {
-            AlchemyCallKind::Call => ALCHEMY_CALL_KIND_CALL_TAG.into(),
-            AlchemyCallKind::DelegateCall => ALCHEMY_CALL_KIND_DELEGATE_CALL_TAG.into(),
-            AlchemyCallKind::CallCode => ALCHEMY_CALL_KIND_CALL_CODE_TAG.into(),
-            AlchemyCallKind::StaticCall => ALCHEMY_CALL_KIND_STATIC_CALL_TAG.into(),
+            Self::Call => ALCHEMY_CALL_KIND_CALL_TAG.into(),
+            Self::DelegateCall => ALCHEMY_CALL_KIND_DELEGATE_CALL_TAG.into(),
+            Self::CallCode => ALCHEMY_CALL_KIND_CALL_CODE_TAG.into(),
+            Self::StaticCall => ALCHEMY_CALL_KIND_STATIC_CALL_TAG.into(),
         }
     }
 }
