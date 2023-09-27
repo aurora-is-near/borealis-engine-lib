@@ -242,17 +242,17 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             {
                                 warn!(
                                     "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
-                                 );
+                                );
                             }
                         }
                         Err(_) => warn!(
                              "Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",
-                         ),
+                        ),
                     }
                 }
                 None => warn!(
                      "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
-                 ),
+                ),
             }
         }
         // Validate against expected diff
