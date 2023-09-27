@@ -138,7 +138,7 @@ async fn create_dirs() -> anyhow::Result<()> {
     .map_err(Into::into)
 }
 
-pub async fn neard_version<P: AsRef<OsStr>>(neard_path: P) -> anyhow::Result<String> {
+pub async fn neard_version<P: AsRef<OsStr> + Send>(neard_path: P) -> anyhow::Result<String> {
     let output = Command::new(neard_path).args(["-V"]).output().await?;
     String::from_utf8(output.stdout)
         .map_err(Into::into)
