@@ -23,6 +23,7 @@ use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
 
+#[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
     message: &aurora_refiner_types::near_block::NEARBlock,
@@ -241,17 +242,17 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             {
                                 warn!(
                                     "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
-                                );
+                                 );
                             }
                         }
                         Err(_) => warn!(
-                            "Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",
-                        ),
+                             "Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",
+                         ),
                     }
                 }
                 None => warn!(
-                    "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
-                ),
+                     "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
+                 ),
             }
         }
         // Validate against expected diff
@@ -364,7 +365,7 @@ enum TransactionBatch {
 }
 
 impl TransactionBatch {
-    fn near_receipt_id(&self) -> H256 {
+    const fn near_receipt_id(&self) -> H256 {
         match self {
             Self::Single(tx) => tx.near_receipt_id,
             Self::Batch {
@@ -373,6 +374,7 @@ impl TransactionBatch {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn process<M: ModExpAlgorithm>(
         self,
         storage: &mut Storage,
@@ -412,7 +414,6 @@ impl TransactionBatch {
                 let block_height = storage.get_block_height_by_hash(block_hash)?;
                 let block_metadata = storage.get_block_metadata(block_hash)?;
                 let engine_account_id = storage.get_engine_account_id()?;
-
                 // We need to use `BatchIO` here instead of simply calling `sync::consume_message` because
                 // the latter no longer persists to the DB right away (we wait util checking the expected diff first now),
                 // but a later transaction in a batch can see earlier ones, therefore we need to keep track all

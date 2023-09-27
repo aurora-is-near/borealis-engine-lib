@@ -28,7 +28,7 @@ impl TryFrom<&[u8]> for TxMetadata {
             match value[0] {
                 0x01 => {
                     let rlp = Rlp::new(&value[1..]);
-                    Ok(TxMetadata {
+                    Ok(Self {
                         tx_type: 0x1,
                         v: rlp.val_at(8)?,
                         r: rlp.val_at(9)?,
@@ -37,7 +37,7 @@ impl TryFrom<&[u8]> for TxMetadata {
                 }
                 0x02 => {
                     let rlp = Rlp::new(&value[1..]);
-                    Ok(TxMetadata {
+                    Ok(Self {
                         tx_type: 0x2,
                         v: rlp.val_at(9)?,
                         r: rlp.val_at(10)?,
@@ -50,7 +50,7 @@ impl TryFrom<&[u8]> for TxMetadata {
                 0xff => Err(DecoderError::Custom("Unsupported transaction type (0xff)")),
                 _ => {
                     let rlp = Rlp::new(value);
-                    Ok(TxMetadata {
+                    Ok(Self {
                         tx_type: 0x0,
                         v: rlp.val_at(6)?,
                         r: rlp.val_at(7)?,

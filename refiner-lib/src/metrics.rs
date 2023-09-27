@@ -245,7 +245,7 @@ lazy_static! {
     ).unwrap();
 }
 
-pub(crate) fn record_metric(tx_kind: &TransactionKindTag) {
+pub fn record_metric(tx_kind: &TransactionKindTag) {
     match tx_kind {
         TransactionKindTag::Submit => {
             TRANSACTION_TYPE_SUBMIT.inc();

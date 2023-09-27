@@ -27,7 +27,7 @@ pub struct BlockView {
 
 impl From<views::BlockView> for BlockView {
     fn from(view: views::BlockView) -> Self {
-        BlockView {
+        Self {
             author: view.author,
             header: view.header.into(),
         }
@@ -107,7 +107,7 @@ impl From<views::BlockHeaderView> for IndexerBlockHeaderView {
             latest_protocol_version,
             ..
         } = header;
-        IndexerBlockHeaderView {
+        Self {
             height,
             prev_height,
             epoch_id,
@@ -186,7 +186,7 @@ impl From<views::ChunkHeaderView> for ChunkHeaderView {
             signature,
             ..
         } = view;
-        ChunkHeaderView {
+        Self {
             chunk_hash,
             prev_block_hash,
             outcome_root,

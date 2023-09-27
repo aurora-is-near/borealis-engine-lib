@@ -73,10 +73,10 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.chain_id,
             );
 
-            let tx_tracker_path = match config.refiner.tx_tracker_path.as_ref() {
-                Some(path) => Cow::Borrowed(Path::new(path)),
-                None => Cow::Owned(engine_path.join("tx_tracker")),
-            };
+            let tx_tracker_path = config.refiner.tx_tracker_path.as_ref().map_or_else(
+                || Cow::Owned(engine_path.join("tx_tracker")),
+                |path| Cow::Borrowed(Path::new(path)),
+            );
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,

@@ -152,6 +152,7 @@ impl Refiner {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     pub fn on_execution_outcome(
         &mut self,
         block: &NEARBlock,
@@ -553,7 +554,7 @@ fn build_transaction(
 
             record_metric(&raw_tx_kind);
 
-            if let TransactionKindTag::Unknown = raw_tx_kind {
+            if TransactionKindTag::Unknown == raw_tx_kind {
                 tracing::warn!("Unknown method: {}", method_name);
             }
 

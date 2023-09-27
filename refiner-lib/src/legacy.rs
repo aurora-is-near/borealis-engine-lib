@@ -19,7 +19,7 @@ pub struct ResultLogV1 {
 
 impl From<ResultLogV1> for ResultLog {
     fn from(result: ResultLogV1) -> Self {
-        ResultLog {
+        Self {
             address: Default::default(),
             topics: result.topics,
             data: result.data,
@@ -29,7 +29,7 @@ impl From<ResultLogV1> for ResultLog {
 
 impl From<SubmitResultLegacyV1> for SubmitResult {
     fn from(result: SubmitResultLegacyV1) -> Self {
-        SubmitResult::new(result.status, result.gas_used, result.logs)
+        Self::new(result.status, result.gas_used, result.logs)
     }
 }
 
@@ -42,7 +42,7 @@ pub struct SubmitResultLegacyV2 {
 
 impl From<SubmitResultLegacyV2> for SubmitResult {
     fn from(result: SubmitResultLegacyV2) -> Self {
-        SubmitResult::new(
+        Self::new(
             result.status,
             result.gas_used,
             result.logs.into_iter().map(Into::into).collect(),
@@ -67,7 +67,7 @@ impl From<SubmitResultLegacyV3> for SubmitResult {
         } else {
             TransactionStatus::OutOfFund
         };
-        SubmitResult::new(
+        Self::new(
             status,
             result.gas_used,
             result.logs.into_iter().map(Into::into).collect(),

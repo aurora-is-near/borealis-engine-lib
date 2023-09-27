@@ -77,7 +77,9 @@ pub fn get_output_stream(
     sender
 }
 
-pub async fn load_last_block_height<P: AsRef<std::path::Path>>(storage_path: P) -> Option<u64> {
+pub async fn load_last_block_height<P: AsRef<std::path::Path> + Send>(
+    storage_path: P,
+) -> Option<u64> {
     let path = storage_path.as_ref();
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();
@@ -94,7 +96,10 @@ pub async fn load_last_block_height<P: AsRef<std::path::Path>>(storage_path: P) 
     }
 }
 
-async fn save_last_block_height<P: AsRef<std::path::Path>>(storage_path: P, block_height: u64) {
+async fn save_last_block_height<P: AsRef<std::path::Path> + Send>(
+    storage_path: P,
+    block_height: u64,
+) {
     let path = storage_path.as_ref();
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();
