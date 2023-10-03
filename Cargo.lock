@@ -523,7 +523,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -545,7 +545,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -556,7 +556,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "hex",
  "num",
@@ -565,7 +565,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -584,7 +584,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-types",
  "base64 0.21.4",
@@ -595,7 +595,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -608,7 +608,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "base64 0.21.4",
  "borsh 0.10.3",
@@ -2414,7 +2414,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2434,7 +2434,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=bf66f7b#bf66f7ba29eab92f08b2856e31a7795749db0aa4"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat/aleksuss/silo#34285fdfcdda9de155fdeed823733d2eb201d11d"
 dependencies = [
  "aurora-engine-types",
  "evm",

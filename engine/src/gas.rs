@@ -505,9 +505,11 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
                     data: Vec::new(),
                     access_list: Vec::new(),
                 };
-                engine.charge_gas(&from, &transaction, None).map_err(|e| {
-                    StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
-                })?;
+                engine
+                    .charge_gas(&from, &transaction, None, None)
+                    .map_err(|e| {
+                        StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
+                    })?;
             }
             result
         })
