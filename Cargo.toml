@@ -40,6 +40,12 @@ lru = "0.11"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
 near-indexer = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1"  }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+nearcore = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+near-client = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+near-chain-configs = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+node-runtime = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+near-store = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
+near-o11y = { git = "https://github.com/near/nearcore", tag = "1.36.0-rc.1" }
 near-lake-framework = "0.7"
 prometheus = "0.13"
 rlp = "0.5"
