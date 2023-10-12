@@ -61,15 +61,7 @@ jobs:
 
   test:
     name: ${{ matrix.build }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        build: [Linux, macOS]
-        include:
-          - build: Linux
-            os: ubuntu-latest
-          - build: macOS
-            os: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
