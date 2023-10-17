@@ -270,7 +270,7 @@ lazy_static! {
     ).unwrap();
 
     pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST: IntCounter = register_int_counter!(
-        "`s`ss``sss`assssssssssssssssss````````````````ssrefiner_tx_type_add_entry_to_whitelist",
+        "refiner_tx_type_add_entry_to_whitelist",
         "Number of transactions of type: add_entry_to_whitelist"
     ).unwrap();
 
@@ -278,6 +278,13 @@ lazy_static! {
         "refiner_tx_type_set_whitelist_status",
         "Number of transactions of type: set_whitelist_status"
     ).unwrap();
+
+    pub static ref TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK: IntCounter = register_int_counter!(
+        "refiner_tx_type_mirror_erc20_token_callback",
+        "Number of transactions of type: mirror_erc20_token_callback"
+    ).unwrap();
+
+
 }
 
 pub fn record_metric(tx_kind: &TransactionKindTag) {
@@ -411,6 +418,9 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::SetWhitelistStatus => {
             TRANSACTION_TYPE_SET_WHITELIST_STATUS.inc();
+        }
+        TransactionKindTag::MirrorErc20TokenCallback => {
+            TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK.inc();
         }
     }
 }
