@@ -485,7 +485,7 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
                     .call(&from, &to, value, data, gas_limit, Vec::new(), &mut handler)
                     .map_err(StateOrEngineError::Engine),
                 None => engine
-                    .deploy_code(from, value, data, gas_limit, Vec::new(), &mut handler)
+                    .deploy_code(from, value, data, None, gas_limit, Vec::new(), &mut handler)
                     .map_err(StateOrEngineError::Engine),
             };
             if !gas_price.is_zero() && result.is_ok() {
@@ -505,9 +505,11 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
                     data: Vec::new(),
                     access_list: Vec::new(),
                 };
-                engine.charge_gas(&from, &transaction, None).map_err(|e| {
-                    StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
-                })?;
+                engine
+                    .charge_gas(&from, &transaction, None, None)
+                    .map_err(|e| {
+                        StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
+                    })?;
             }
             result
         })
