@@ -40,9 +40,21 @@ pub async fn get_nearcore_version(repository_root: &Path) -> anyhow::Result<Stri
 }
 
 pub async fn compile_refiner(repository_root: &Path) -> anyhow::Result<PathBuf> {
+    #[cfg(not(feature = "ext-connector"))]
+    let args = ["build", "-p", "aurora-refiner", "--release"];
+    #[cfg(feature = "ext-connector")]
+    let args = [
+        "build",
+        "-p",
+        "aurora-refiner",
+        "--features",
+        "ext-connector",
+        "--release",
+    ];
+
     let status = Command::new("cargo")
         .current_dir(repository_root)
-        .args(["build", "-p", "aurora-refiner", "--release"])
+        .args(args)
         .status()
         .await?;
 

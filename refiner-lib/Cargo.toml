@@ -42,3 +42,6 @@ rocksdb.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
+
+[features]
+ext-connector = ["aurora-engine/ext-connector", "engine-standalone-storage/ext-connector", "aurora-refiner-types/ext-connector", "aurora-standalone-engine/ext-connector"]
