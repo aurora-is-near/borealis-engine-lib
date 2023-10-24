@@ -244,9 +244,9 @@ lazy_static! {
         "Number of transactions of type: exit_to_near"
     ).unwrap();
 
-    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS_COST : IntCounter = register_int_counter!(
-        "refiner_tx_type_set_fixed_gas_cost",
-        "Number of transactions of type: set_fixed_gas_cost"
+    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS : IntCounter = register_int_counter!(
+        "refiner_tx_type_set_fixed_gas",
+        "Number of transactions of type: set_fixed_gas"
     ).unwrap();
 
     pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS : IntCounter = register_int_counter!(
@@ -398,8 +398,8 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         TransactionKindTag::ExitToNear => {
             TRANSACTION_TYPE_EXIT_TO_NEAR.inc();
         }
-        TransactionKindTag::SetFixedGasCost => {
-            TRANSACTION_TYPE_SET_FIXED_GAS_COST.inc();
+        TransactionKindTag::SetFixedGas => {
+            TRANSACTION_TYPE_SET_FIXED_GAS.inc();
         }
         TransactionKindTag::SetSiloParams => {
             TRANSACTION_TYPE_SET_SILO_PARAMS.inc();
