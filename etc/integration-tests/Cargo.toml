@@ -11,10 +11,12 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-tempfile.workspace = true
 tokio = { workspace = true, features = ["full"] }
 toml.workspace = true
 vte = "0.12.0"
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [features]
 ext-connector = []
