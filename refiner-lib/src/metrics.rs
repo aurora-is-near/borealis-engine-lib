@@ -1,290 +1,238 @@
 use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
-use prometheus::{self, register_int_counter, register_int_gauge, IntCounter, IntGauge};
+use prometheus::{
+    self, labels, opts, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts,
+};
 
 lazy_static! {
-    pub static ref MISSING_SHARDS: IntCounter =
-        register_int_counter!("refiner_missing_shards", "Blocks that are missing shards.").unwrap();
-    pub static ref BATCHED_ACTIONS: IntCounter = register_int_counter!(
+    pub static ref MISSING_SHARDS: IntCounter = counter(
+        "refiner_missing_shards",
+        "Blocks that are missing shards"
+    );
+    pub static ref BATCHED_ACTIONS: IntCounter = counter(
         "refiner_batched_actions",
         "Transactions that uses batched actions"
-    )
-    .unwrap();
-    pub static ref ERROR_BUILDING_TRANSACTION: IntCounter = register_int_counter!(
+    );
+    pub static ref ERROR_BUILDING_TRANSACTION: IntCounter = counter(
         "refiner_error_building_transaction",
         "Error building transaction"
-    )
-    .unwrap();
-    pub static ref LATEST_BLOCK_PROCESSED: IntGauge = register_int_gauge!(
+    );
+    pub static ref LATEST_BLOCK_PROCESSED: IntGauge = gauge(
         "refiner_number_of_latest_block_processed",
-        "Height of last block processed. Can be slightly out of sync with the actual height given multiple process."
-    )
-    .unwrap();
-    pub static ref FAILING_NEAR_TRANSACTION: IntCounter =
-        register_int_counter!("refiner_near_transaction_failed", "NEAR Transaction failed")
-            .unwrap();
-    pub static ref TRANSACTIONS: IntCounter = register_int_counter!(
+        "Height of last block processed. Can be slightly out of sync with the actual height given multiple process"
+    );
+    pub static ref FAILING_NEAR_TRANSACTION: IntCounter = counter(
+        "refiner_near_transaction_failed",
+        "NEAR Transaction failed"
+    );
+    pub static ref TRANSACTIONS: IntCounter = counter(
         "refiner_transactions",
         "Number of transactions after filter"
-    )
-    .unwrap();
-    pub static ref TRANSACTIONS_ACTION: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTIONS_ACTION: IntCounter = counter(
         "refiner_transaction_actions",
         "Number of actions inside transactions"
-    )
-    .unwrap();
-    pub static ref TRANSACTIONS_DATA: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTIONS_DATA: IntCounter = counter(
         "refiner_transaction_data",
         "Number of receipts that are of type data"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SUBMIT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SUBMIT: IntCounter = counter(
         "refiner_tx_type_submit",
         "Number of transactions of type: submit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SUBMIT_WITH_ARGS: IntCounter = counter(
         "refiner_tx_type_submit_with_args",
         "Number of transactions of type: submit_with_args"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_CALL: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_CALL: IntCounter = counter(
         "refiner_tx_type_call",
         "Number of transactions of type: call"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_PAUSE_PRECOMPILES: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_PAUSE_PRECOMPILES: IntCounter = counter(
         "refiner_tx_type_pause_precompiles",
         "Number of transactions of type: pause_precompiles"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_RESUME_PRECOMPILES: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_RESUME_PRECOMPILES: IntCounter = counter(
         "refiner_tx_type_resume_precompiles",
         "Number of transactions of type: resume_precompiles"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SET_OWNER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_OWNER: IntCounter = counter(
         "refiner_tx_type_set_owner",
         "Number of transactions of type: set_owner"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_DEPLOY_CODE: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_DEPLOY_CODE: IntCounter = counter(
         "refiner_tx_type_deploy_code",
         "Number of transactions of type: deploy_code"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN: IntCounter = counter(
         "refiner_tx_type_deploy_erc20_token",
         "Number of transactions of type: deploy_erc20_token"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FT_ON_TRANSFER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FT_ON_TRANSFER: IntCounter = counter(
         "refiner_tx_type_ft_on_transfer",
         "Number of transactions of type: ft_on_transfer"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_DEPOSIT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_DEPOSIT: IntCounter = counter(
         "refiner_tx_type_deposit",
         "Number of transactions of type: deposit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_WITHDRAW: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_WITHDRAW: IntCounter = counter(
         "refiner_tx_type_withdraw",
         "Number of transactions of type: withdraw"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FINISH_DEPOSIT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FINISH_DEPOSIT: IntCounter = counter(
         "refiner_tx_type_finish_deposit",
         "Number of transactions of type: finish_deposit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FT_TRANSFER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FT_TRANSFER: IntCounter = counter(
         "refiner_tx_type_ft_transfer",
         "Number of transactions of type: ft_deposit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FT_TRANSFER_CALL: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FT_TRANSFER_CALL: IntCounter = counter(
         "refiner_tx_type_ft_transfer_call",
         "Number of transactions of type: ft_transfer_call"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FT_RESOLVE_TRANSFER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FT_RESOLVE_TRANSFER: IntCounter = counter(
         "refiner_tx_type_ft_resolve_transfer",
         "Number of transactions of type: ft_resolve_transfer"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_STORAGE_DEPOSIT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_STORAGE_DEPOSIT: IntCounter = counter(
         "refiner_tx_type_storage_deposit",
         "Number of transactions of type: storage_deposit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_STORAGE_UNREGISTER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_STORAGE_UNREGISTER: IntCounter = counter(
         "refiner_tx_type_storage_unregister",
         "Number of transactions of type: storage_unregister"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_STORAGE_WITHDRAW: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_STORAGE_WITHDRAW: IntCounter = counter(
         "refiner_tx_type_storage_deposit",
         "Number of transactions of type: storage_deposit"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SET_PAUSED_FLAGS: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_PAUSED_FLAGS: IntCounter = counter(
         "refiner_tx_type_set_paused_flags",
         "Number of transactions of type: set_paused_flags"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_REGISTER_RELAYER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_REGISTER_RELAYER: IntCounter = counter(
         "refiner_tx_type_register_relayer",
         "Number of transactions of type: register_relayer"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_REFUND_ON_ERROR: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_REFUND_ON_ERROR: IntCounter = counter(
         "refiner_tx_type_refund_on_error",
         "Number of transactions of type: refund_on_error"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SET_CONNECTOR_DATA: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_CONNECTOR_DATA: IntCounter = counter(
         "refiner_tx_type_set_connector_data",
         "Number of transactions of type: set_connector_data"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_NEW_CONNECTOR: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_NEW_CONNECTOR: IntCounter = counter(
         "refiner_tx_type_new_connector",
         "Number of transactions of type: new_connector"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_NEW_ENGINE: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_NEW_ENGINE: IntCounter = counter(
         "refiner_tx_type_new_engine",
         "Number of transactions of type: new_engine"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS: IntCounter = counter(
         "refiner_tx_type_set_upgrade_delay_blocks",
         "Number of transactions of type: set_upgrade_delay_blocks"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT: IntCounter = counter(
         "refiner_tx_type_fund_xcc_sub_account",
         "Number of transactions of type: fund_xcc_sub_account"
-    )
-    .unwrap();
-    pub static ref TRANSACTION_TYPE_UNKNOWN: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_UNKNOWN: IntCounter = counter(
         "refiner_tx_type_unknown",
         "Number of transactions of type: unknown"
-    )
-    .unwrap();
-    pub static ref SKIP_BLOCKS: IntCounter = register_int_counter!(
+    );
+    pub static ref SKIP_BLOCKS: IntCounter = counter(
         "refiner_near_listener_skip_blocks",
         "Number of skip blocks seen"
-    )
-    .unwrap();
-    pub static ref PROCESSED_BLOCKS: IntCounter = register_int_counter!(
+    );
+    pub static ref PROCESSED_BLOCKS: IntCounter = counter(
         "refiner_near_listener_processed_blocks",
         "Number of blocks processed"
-    )
-    .unwrap();
-    pub static ref UNKNOWN_TX_FOR_RECEIPT: IntCounter = register_int_counter!(
+    );
+    pub static ref UNKNOWN_TX_FOR_RECEIPT: IntCounter = counter(
         "refiner_unknown_tx_for_receipt",
-        "Number of receipts where the transaction provenance was not known (should be 0)."
-    )
-    .unwrap();
-
-    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE: IntCounter = register_int_counter!(
+        "Number of receipts where the transaction provenance was not known (should be 0)"
+    );
+    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE: IntCounter = counter(
         "refiner_tx_type_factory_update",
         "Number of transactions of type: factory_update"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION: IntCounter = counter(
         "refiner_tx_type_factory_update_address_version",
         "Number of transactions of type: factory_update_address_version"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS: IntCounter = counter(
         "refiner_tx_type_factory_set_wnear_address",
         "Number of transactions of type: factory_set_wnear_address"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_PAUSE_CONTRACT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_PAUSE_CONTRACT: IntCounter = counter(
         "refiner_tx_type_pause_contract",
         "Number of transactions of type: pause_contract"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_RESUME_CONTRACT: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_RESUME_CONTRACT: IntCounter = counter(
         "refiner_tx_type_resume_contract",
         "Number of transactions of type: resume_contract"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_KEY_MANAGER: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_KEY_MANAGER: IntCounter = counter(
         "refiner_tx_type_set_key_manager",
         "Number of transactions of type: set_key_manager"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_ADD_RELAYER_KEY: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_ADD_RELAYER_KEY: IntCounter = counter(
         "refiner_tx_type_add_relayer_key",
         "Number of transactions of type: add_relayer_key"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_REMOVE_RELAYER_KEY: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_REMOVE_RELAYER_KEY: IntCounter = counter(
         "refiner_tx_type_remove_relayer_key",
         "Number of transactions of type: remove_relayer_key"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_START_HASHCHAIN : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_START_HASHCHAIN : IntCounter = counter(
         "refiner_tx_type_start_hashchain",
         "Number of transactions of type: start_hashchain"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_ERC20_METADATA : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_ERC20_METADATA : IntCounter = counter(
         "refiner_tx_type_set_erc20_metadata",
         "Number of transactions of type: set_erc20_metadata"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_EXIT_TO_NEAR : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_EXIT_TO_NEAR : IntCounter = counter(
         "refiner_tx_type_exit_to_near",
         "Number of transactions of type: exit_to_near"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS : IntCounter = counter(
         "refiner_tx_type_set_fixed_gas",
         "Number of transactions of type: set_fixed_gas"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS : IntCounter = counter(
         "refiner_tx_type_set_silo_params",
         "Number of transactions of type: set_silo_params"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_ETH_CONNECTOR_CONTRACT_ACCOUNT : IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_ETH_CONNECTOR_CONTRACT_ACCOUNT : IntCounter = counter(
         "refiner_tx_type_set_eth_connector_contract_account",
         "Number of transactions of type: set_eth_connector_contract_account"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_REMOVE_ENTRY_FROM_WHITE_LIST: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_REMOVE_ENTRY_FROM_WHITE_LIST: IntCounter = counter(
         "refiner_tx_type_remove_entry_from_white_list",
         "Number of transactions of type: remove_entry_from_white_list"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST_BATCH: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST_BATCH: IntCounter = counter(
         "refiner_tx_type_add_entry_to_whitelist_batch",
         "Number of transactions of type: add_entry_to_whitelist_batch"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST: IntCounter = counter(
         "refiner_tx_type_add_entry_to_whitelist",
         "Number of transactions of type: add_entry_to_whitelist"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_SET_WHITELIST_STATUS: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_SET_WHITELIST_STATUS: IntCounter = counter(
         "refiner_tx_type_set_whitelist_status",
         "Number of transactions of type: set_whitelist_status"
-    ).unwrap();
-
-    pub static ref TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK: IntCounter = register_int_counter!(
+    );
+    pub static ref TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK: IntCounter = counter(
         "refiner_tx_type_mirror_erc20_token_callback",
         "Number of transactions of type: mirror_erc20_token_callback"
-    ).unwrap();
-
-
+    );
 }
 
 pub fn record_metric(tx_kind: &TransactionKindTag) {
@@ -423,4 +371,20 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
             TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK.inc();
         }
     }
+}
+
+fn counter(name: &str, help: &str) -> IntCounter {
+    register_int_counter!(opts(name, help)).unwrap()
+}
+
+fn gauge(name: &str, help: &str) -> IntGauge {
+    register_int_gauge!(opts(name, help)).unwrap()
+}
+
+fn opts(name: &str, help: &str) -> Opts {
+    opts!(
+        name,
+        help,
+        labels! {"version" => env!("CARGO_PKG_VERSION") }
+    )
 }
