@@ -34,6 +34,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
 ) -> Result<(), engine_standalone_storage::Error> {
     let block_hash =
         add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
+    let near_block_hash = &message.block.header.hash;
 
     // Capture data receipts (for using in promises)
     message
@@ -140,6 +141,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
 
             let transaction_messages = match maybe_batch_actions {
                 ParsedActions::Single(parsed_action) => {
+                    let action_hash =
+                        compute_action_hash(&outcome.receipt.receipt_id, near_block_hash, 0);
                     let transaction_message = types::TransactionMessage {
                         block_hash,
                         near_receipt_id,
@@ -151,6 +154,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                         transaction: *parsed_action.transaction_kind,
                         promise_data,
                         raw_input: parsed_action.raw_input,
+                        action_hash,
                     };
                     position_counter += 1;
 
@@ -161,6 +165,15 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     let mut non_last_actions: Vec<_> = txs
                         .into_iter()
                         .map(|(index, parsed_action)| {
+                            let action_index = match index {
+                                BatchIndex::Index(i) => i.into(),
+                                BatchIndex::Last(i) => i.into(),
+                            };
+                            let action_hash = compute_action_hash(
+                                &outcome.receipt.receipt_id,
+                                near_block_hash,
+                                action_index,
+                            );
                             let virtual_receipt_id = match index {
                                 BatchIndex::Index(i) => {
                                     let mut bytes = [0u8; 36];
@@ -168,7 +181,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                     bytes[32..36].copy_from_slice(&i.to_be_bytes());
                                     aurora_refiner_types::utils::keccak256(&bytes)
                                 }
-                                BatchIndex::Last => near_receipt_id,
+                                BatchIndex::Last(_) => near_receipt_id,
                             };
                             let transaction_message = types::TransactionMessage {
                                 block_hash,
@@ -181,6 +194,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                 transaction: *parsed_action.transaction_kind,
                                 promise_data: promise_data.clone(),
                                 raw_input: parsed_action.raw_input,
+                                action_hash,
                             };
                             position_counter += 1;
 
@@ -301,6 +315,22 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     Ok(())
 }
 
+/// Based on nearcore implementation:
+/// <https://github.com/near/nearcore/blob/00ca2f3f73e2a547ba881f76ecc59450dbbef6e2/core/primitives/src/utils.rs#L261>
+fn compute_action_hash(
+    receipt_id: &CryptoHash,
+    near_block_hash: &CryptoHash,
+    action_index: u64,
+) -> H256 {
+    const BYTES_LEN: usize = 32 + 32 + 8;
+    let mut bytes: Vec<u8> = Vec::with_capacity(BYTES_LEN);
+    bytes.extend_from_slice(receipt_id.as_ref());
+    bytes.extend_from_slice(near_block_hash.as_ref());
+    bytes.extend_from_slice(&(u64::MAX - action_index).to_le_bytes());
+    let hash = near_primitives::hash::hash(&bytes);
+    H256(hash.0)
+}
+
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
     message: &aurora_refiner_types::near_block::NEARBlock,
@@ -329,7 +359,7 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
 /// of the whole receipt. This enum tags the elements of a batch for downstream processing.
 enum BatchIndex {
     Index(u32),
-    Last,
+    Last(u32),
 }
 
 /// Most NEAR receipts are not batches, so we want to optimize for the case where there is just one
@@ -603,7 +633,7 @@ fn parse_actions(
             .filter_map(|(i, action)| {
                 parse_action(action, promise_data).map(|(tx, input, n)| {
                     let index = if i == last_index {
-                        BatchIndex::Last
+                        BatchIndex::Last(i as u32)
                     } else {
                         BatchIndex::Index(i as u32)
                     };

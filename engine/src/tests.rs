@@ -8,6 +8,55 @@ use engine_standalone_storage::Storage;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
+/// This test processes a real block from mainnet:
+/// <https://nearblocks.io/blocks/5SRtKoD8JppC3LRv8uCp5bS26wCd4wUXtT6M1yziUFdN>
+/// It includes a transaction which directly calls the random value precompile.
+/// The purpose of this test is to confirm that the random value computed by Borealis
+/// matches the one on-chain.
+#[test]
+fn test_random_value() {
+    let mut test_context =
+        TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
+    let block: NEARBlock = {
+        let file = std::fs::File::open("src/res/block_105089746.json").unwrap();
+        serde_json::from_reader(file).unwrap()
+    };
+    let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
+    let mut outcomes_map = HashMap::new();
+    let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
+
+    crate::sync::consume_near_block::<AuroraModExp>(
+        &mut test_context.storage,
+        &block,
+        &mut data_id_mapping,
+        &test_context.engine_account_id,
+        chain_id,
+        Some(&mut outcomes_map),
+    )
+    .unwrap();
+
+    // Expected values taken from on-chain transaction outcome.
+    assert_eq!(outcomes_map.len(), 1);
+    let expected_tx_hash = H256::from_slice(
+        &hex::decode("6b8347214889d5386b7e95a1cb4a55b3706ea8b0b873e198e6e6f715b33ea2a7").unwrap(),
+    );
+    let expected_output =
+        hex::decode("9e3716b5647ea6c5cb7db9aaa1f60ddfaaee3b04294f4289b6755fcee58029b5").unwrap();
+
+    let outcome = outcomes_map.remove(&expected_tx_hash).unwrap();
+    let submit_result = match outcome.maybe_result.unwrap().unwrap() {
+        TransactionExecutionResult::Submit(x) => x.unwrap(),
+        other => panic!("Unexpected result {:?}", other),
+    };
+    let output = match submit_result.status {
+        TransactionStatus::Succeed(x) => x,
+        other => panic!("Unexpected status {:?}", other),
+    };
+    assert_eq!(output, expected_output, "Failed to reproduce random value");
+
+    test_context.close()
+}
+
 /// This test confirms that the engine is able to process `submit` transactions
 /// with empty input (which failed on NEAR) without crashing.
 #[test]
