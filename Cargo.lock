@@ -2121,7 +2121,7 @@ dependencies = [
 [[package]]
 name = "delay-detector"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "cpu-time",
  "tracing",
@@ -3979,7 +3979,7 @@ dependencies = [
 [[package]]
 name = "near-account-id"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "borsh 0.10.3",
  "serde",
@@ -3988,7 +3988,7 @@ dependencies = [
 [[package]]
 name = "near-async"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "derive-enum-from-into",
@@ -4007,7 +4007,7 @@ dependencies = [
 [[package]]
 name = "near-cache"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "lru 0.7.8",
 ]
@@ -4015,7 +4015,7 @@ dependencies = [
 [[package]]
 name = "near-chain"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "ansi_term",
@@ -4051,7 +4051,7 @@ dependencies = [
 [[package]]
 name = "near-chain-configs"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4072,7 +4072,7 @@ dependencies = [
 [[package]]
 name = "near-chain-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "chrono",
  "near-crypto 1.36.0",
@@ -4084,7 +4084,7 @@ dependencies = [
 [[package]]
 name = "near-chunks"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "borsh 0.10.3",
@@ -4115,7 +4115,7 @@ dependencies = [
 [[package]]
 name = "near-chunks-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "near-chain-primitives",
  "near-primitives 1.36.0",
@@ -4124,7 +4124,7 @@ dependencies = [
 [[package]]
 name = "near-client"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "actix-rt",
@@ -4176,7 +4176,7 @@ dependencies = [
 [[package]]
 name = "near-client-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "ansi_term",
@@ -4207,7 +4207,7 @@ dependencies = [
 [[package]]
 name = "near-config-utils"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "anyhow",
  "json_comments",
@@ -4245,7 +4245,7 @@ dependencies = [
 [[package]]
 name = "near-crypto"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "blake2",
  "borsh 0.10.3",
@@ -4271,7 +4271,7 @@ dependencies = [
 [[package]]
 name = "near-dyn-configs"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "anyhow",
  "near-chain-configs",
@@ -4289,7 +4289,7 @@ dependencies = [
 [[package]]
 name = "near-epoch-manager"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "borsh 0.10.3",
  "near-cache",
@@ -4319,7 +4319,7 @@ dependencies = [
 [[package]]
 name = "near-fmt"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "near-primitives-core 1.36.0",
 ]
@@ -4327,7 +4327,7 @@ dependencies = [
 [[package]]
 name = "near-indexer"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "anyhow",
@@ -4365,7 +4365,7 @@ dependencies = [
 [[package]]
 name = "near-indexer-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "near-primitives 1.36.0",
  "serde",
@@ -4375,7 +4375,7 @@ dependencies = [
 [[package]]
 name = "near-jsonrpc"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "actix-cors",
@@ -4405,7 +4405,7 @@ dependencies = [
 [[package]]
 name = "near-jsonrpc-client"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix-http",
  "awc",
@@ -4419,7 +4419,7 @@ dependencies = [
 [[package]]
 name = "near-jsonrpc-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "arbitrary",
  "near-chain-configs",
@@ -4459,7 +4459,7 @@ dependencies = [
 [[package]]
 name = "near-mainnet-res"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "near-account-id 1.36.0",
  "near-chain-configs",
@@ -4470,7 +4470,7 @@ dependencies = [
 [[package]]
 name = "near-network"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "anyhow",
@@ -4522,7 +4522,7 @@ dependencies = [
 [[package]]
 name = "near-o11y"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "atty",
@@ -4550,7 +4550,7 @@ dependencies = [
 [[package]]
 name = "near-performance-metrics"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "bitflags 1.3.2",
@@ -4567,7 +4567,7 @@ dependencies = [
 [[package]]
 name = "near-performance-metrics-macros"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "quote",
  "syn 2.0.38",
@@ -4576,7 +4576,7 @@ dependencies = [
 [[package]]
 name = "near-pool"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "borsh 0.10.3",
  "near-crypto 1.36.0",
@@ -4626,7 +4626,7 @@ dependencies = [
 [[package]]
 name = "near-primitives"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "arbitrary",
  "borsh 0.10.3",
@@ -4684,7 +4684,7 @@ dependencies = [
 [[package]]
 name = "near-primitives-core"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "arbitrary",
  "base64 0.21.5",
@@ -4705,7 +4705,7 @@ dependencies = [
 [[package]]
 name = "near-rosetta-rpc"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "actix-cors",
@@ -4747,7 +4747,7 @@ dependencies = [
 [[package]]
 name = "near-rpc-error-core"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "quote",
  "serde",
@@ -4769,7 +4769,7 @@ dependencies = [
 [[package]]
 name = "near-rpc-error-macro"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "fs2",
  "near-rpc-error-core 1.36.0",
@@ -4780,7 +4780,7 @@ dependencies = [
 [[package]]
 name = "near-stable-hasher"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 
 [[package]]
 name = "near-stdx"
@@ -4791,12 +4791,12 @@ checksum = "6540152fba5e96fe5d575b79e8cd244cf2add747bb01362426bdc069bc3a23bc"
 [[package]]
 name = "near-stdx"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 
 [[package]]
 name = "near-store"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "actix-rt",
@@ -4836,7 +4836,7 @@ dependencies = [
 [[package]]
 name = "near-telemetry"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "awc",
@@ -4855,7 +4855,7 @@ dependencies = [
 [[package]]
 name = "near-vm-compiler"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "enumset",
  "finite-wasm",
@@ -4872,7 +4872,7 @@ dependencies = [
 [[package]]
 name = "near-vm-compiler-singlepass"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "dynasm 2.0.0",
  "dynasmrt 2.0.0",
@@ -4893,7 +4893,7 @@ dependencies = [
 [[package]]
 name = "near-vm-engine"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "backtrace",
  "cfg-if 1.0.0",
@@ -4930,7 +4930,7 @@ dependencies = [
 [[package]]
 name = "near-vm-runner"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "anyhow",
  "base64 0.21.5",
@@ -4978,7 +4978,7 @@ dependencies = [
 [[package]]
 name = "near-vm-types"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "indexmap 1.9.3",
  "num-traits",
@@ -4989,7 +4989,7 @@ dependencies = [
 [[package]]
 name = "near-vm-vm"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "backtrace",
  "cc",
@@ -5011,7 +5011,7 @@ dependencies = [
 [[package]]
 name = "nearcore"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "actix",
  "actix-rt",
@@ -5100,7 +5100,7 @@ dependencies = [
 [[package]]
 name = "node-runtime"
 version = "1.36.0"
-source = "git+https://github.com/near/nearcore?tag=1.36.0#b0c5d14557b0e24ee8f4ffcc293963b8ccf633a6"
+source = "git+https://github.com/aurora-is-near/nearcore?branch=1.36.0-sidecar#c4bf563b82d24fceccbbec7cb441e266afe5d264"
 dependencies = [
  "borsh 0.10.3",
  "hex",
