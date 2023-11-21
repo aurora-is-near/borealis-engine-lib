@@ -362,6 +362,34 @@ fn normalize_output(
     execution_status: Option<&ExecutionStatusView>,
     engine_outcome: Option<&TransactionIncludedOutcome>,
 ) -> Result<(SubmitResult, HashchainOutputKind, Vec<u8>), RefinerError> {
+    let engine_output = engine_outcome
+        .and_then(|x| x.maybe_result.as_ref().ok())
+        .and_then(Option::as_ref)
+        .map(|result| match result {
+            TransactionExecutionResult::Submit(result) => match result {
+                Ok(result) => result.clone(),
+                Err(err) => SubmitResult::new(
+                    aurora_engine::parameters::TransactionStatus::Revert(
+                        format!("{:?}", err.kind).into_bytes(),
+                    ),
+                    err.gas_used,
+                    Vec::new(),
+                ),
+            },
+            TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ),
+            TransactionExecutionResult::Promise(p) => SubmitResult::new(
+                aurora_engine::parameters::TransactionStatus::Succeed(
+                    format!("{:?}", p).into_bytes(),
+                ),
+                MIN_EVM_GAS,
+                Vec::new(),
+            ),
+        });
+
     let near_output = match execution_status {
         Some(ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_)) => {
             // Regardless of anything else, if the transaction failed on Near then we report an error.
@@ -406,6 +434,24 @@ fn normalize_output(
                 }
             }
         }
+        // In the case of `withdraw_wnear_to_router` we take the `SubmitResult` from the
+        // Standalone Engine because the promise value is only returned to properly link
+        // the execution of various XCC receipts, but the EVM computation still happened.
+        // In terms of the hashchain, we still treat it as `HashchainOutputKind::None` because
+        // `io.return_output` is never called since the promise is returned instead.
+        Some(ExecutionStatusView::SuccessReceiptId(result))
+            if tx_kind == TransactionKindTag::WithdrawWnearToRouter =>
+        {
+            let submit_result = engine_output.as_ref().cloned().unwrap_or_else(|| {
+                let bytes = result.0.to_vec();
+                SubmitResult::new(
+                    aurora_engine::parameters::TransactionStatus::Succeed(bytes),
+                    MIN_EVM_GAS,
+                    Vec::new(),
+                )
+            });
+            Some((submit_result, HashchainOutputKind::None, Vec::new()))
+        }
         Some(ExecutionStatusView::SuccessReceiptId(result)) => {
             // No need to check the transaction kind in this case because transactions that
             // produce a SubmitResult as output do not produce a receipt id.
@@ -423,36 +469,16 @@ fn normalize_output(
         None => None,
     };
 
-    let engine_output = engine_outcome
-        .and_then(|x| x.maybe_result.as_ref().ok())
-        .and_then(Option::as_ref)
-        .map(|result| match result {
-            TransactionExecutionResult::Submit(result) => match result {
-                Ok(result) => result.clone(),
-                Err(err) => SubmitResult::new(
-                    aurora_engine::parameters::TransactionStatus::Revert(
-                        format!("{:?}", err.kind).into_bytes(),
-                    ),
-                    err.gas_used,
-                    Vec::new(),
-                ),
-            },
-            TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
-                aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
-                MIN_EVM_GAS,
-                Vec::new(),
-            ),
-            TransactionExecutionResult::Promise(p) => SubmitResult::new(
-                aurora_engine::parameters::TransactionStatus::Succeed(
-                    format!("{:?}", p).into_bytes(),
-                ),
-                MIN_EVM_GAS,
-                Vec::new(),
-            ),
-        });
-
     match (near_output, engine_output) {
         (Some(near_output), Some(engine_output)) => {
+            // In the case of ft_on_transfer, the bridge may mint new ERC-20 tokens.
+            // However, the NEP-141 protocol must still be followed, therefore the on-chain
+            // output cannot be a `SubmitResult`. But the Standalone Engine can still capture
+            // the `SubmitResult` from the execution. Hence, in this case we combine the
+            // Standalone's result with the the on-chain output to get a complete picture.
+            if tx_kind == TransactionKindTag::FtOnTransfer {
+                return Ok((engine_output, near_output.1, near_output.2));
+            }
             // We have a result from both sources, so we should compare them to
             // make sure they match. Log a warning and use the Near output if they don't.
             if near_output.0 != engine_output {

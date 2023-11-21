@@ -524,7 +524,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.3.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -546,7 +546,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -557,7 +557,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "hex",
  "num",
@@ -566,7 +566,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -585,7 +585,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-types",
  "base64 0.21.5",
@@ -596,7 +596,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "base64 0.21.5",
  "borsh 0.10.3",
@@ -2416,7 +2416,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2436,7 +2436,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=4527320c940d33a7ce40ce422b4d2fb77dc8e74e#4527320c940d33a7ce40ce422b4d2fb77dc8e74e"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=7fff9ff2825483005f958108f767a91fd2422b0b#7fff9ff2825483005f958108f767a91fd2422b0b"
 dependencies = [
  "aurora-engine-types",
  "evm",
