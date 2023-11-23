@@ -248,6 +248,53 @@ pub mod tests {
         assert_eq!(target_aurora_tx.nonce, expected_nonce);
     }
 
+    // Tests processing the transaction https://explorer.mainnet.near.org/transactions/964KbgjnkCfyUS1kaHVJNGuXAMsahdNHiP1jWkMnx1Bk
+    // which is a bridge transfer of some tokens into Aurora. The ERC-20 logs should be present
+    // based on the tokens that were minted from th bridging.
+    #[tokio::test]
+    async fn test_block_75306841_bridge_tx() {
+        // load state snapshot and main objects
+        let db_dir = tempfile::tempdir().unwrap();
+        let mut ctx = TestContext::new(&db_dir);
+        ctx.init_with_snapshot("tests/res/state_EVVnmqiPm6efCJGWLS5DgMTq3spVnevvh4fEgvc2e2Hz.json")
+            .await;
+        let mut stream = ctx.create_stream();
+
+        // parameters of the test
+        let block = read_block("tests/res/block-75306841.json");
+
+        // run and assert
+        let mut aurora_block = stream.next_block(&block).await.pop().unwrap();
+
+        assert_eq!(aurora_block.transactions.len(), 1);
+        let mut target_aurora_tx = aurora_block.transactions.pop().unwrap();
+
+        assert_eq!(target_aurora_tx.logs.len(), 1);
+        let log = target_aurora_tx.logs.pop().unwrap();
+
+        // ERC-20 event hex signature for `Transfer(address,address,uint256)`
+        // https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+        assert_eq!(
+            hex::encode(log.topics[0]),
+            "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        );
+
+        // Transfer from 0x00 (i.e. mint)
+        assert_eq!(log.topics[1], [0u8; 32]);
+
+        // Transfer to user's address (given in the `ft_on_transfer` message).
+        assert_eq!(
+            hex::encode(log.topics[2]),
+            "000000000000000000000000852285d421bb5682470ad46e2eb99adf001ab9f1"
+        );
+
+        // Transfer amount equal to value specified in `ft_on_transfer`
+        assert_eq!(
+            aurora_engine_types::U256::from_big_endian(&log.data),
+            13870504203340000000000_u128.into()
+        );
+    }
+
     #[tokio::test]
     async fn test_block_70834061_skip_block() {
         let db_dir = tempfile::tempdir().unwrap();

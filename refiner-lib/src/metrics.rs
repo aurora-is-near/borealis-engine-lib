@@ -233,6 +233,10 @@ lazy_static! {
         "refiner_tx_type_mirror_erc20_token_callback",
         "Number of transactions of type: mirror_erc20_token_callback"
     );
+    pub static ref TRANSACTION_TYPE_WITHDRAW_WNEAR_TO_ROUTER: IntCounter = counter(
+        "refiner_tx_type_withdraw_wnear_to_router",
+        "Number of transactions of type: withdraw_wnear_to_router"
+    );
 }
 
 pub fn record_metric(tx_kind: &TransactionKindTag) {
@@ -369,6 +373,9 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::MirrorErc20TokenCallback => {
             TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK.inc();
+        }
+        TransactionKindTag::WithdrawWnearToRouter => {
+            TRANSACTION_TYPE_WITHDRAW_WNEAR_TO_ROUTER.inc();
         }
     }
 }
