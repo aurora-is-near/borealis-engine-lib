@@ -627,6 +627,7 @@ version = "0.25.6"
 dependencies = [
  "actix",
  "anyhow",
+ "aurora-engine-sdk",
  "aurora-engine-types",
  "aurora-refiner-lib",
  "aurora-refiner-types",

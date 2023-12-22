@@ -141,8 +141,11 @@ async fn handle_estimate_gas(
     let (res, _nonce) = estimate_gas(&storage, req, 0);
     match res {
         Err(_) => Err(internal_err(None)),
-        Ok(res) => serde_json::to_value(res.gas_used)
-            .map_err(|_| internal_err(Some("serialization failed"))),
+        Ok(res) => {
+            // Add 33% buffer to avoid under-estimates.
+            let estimate = res.gas_used.saturating_add(res.gas_used / 3);
+            serde_json::to_value(estimate).map_err(|_| internal_err(Some("serialization failed")))
+        }
     }
 }
 
@@ -212,9 +215,30 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    struct TestStorage {
+        dir: tempfile::TempDir,
+        storage: SharedStorage,
+    }
+
+    impl TestStorage {
+        pub fn get(&self) -> SharedStorage {
+            self.storage.clone()
+        }
+
+        pub fn close(self) {
+            drop(self.storage);
+            self.dir.close().unwrap();
+        }
+    }
 
     #[tokio::test]
     async fn test_stream_open_and_close() {
+        let storage = init_storage();
+        let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
@@ -224,22 +248,53 @@ mod tests {
                 assert_eq!(0, res);
             }),
             tokio::task::spawn(async move {
-                handle_conn(init_storage(), &mut handler).await;
+                handle_conn(server_storage, &mut handler).await;
             })
         )
         .unwrap();
+        storage.close();
     }
 
-    fn init_storage() -> SharedStorage {
-        let db_dir = tempfile::tempdir().unwrap().path().join("storage");
-        Storage::open(db_dir)
-            .map(tokio::sync::RwLock::new)
-            .map(std::sync::Arc::new)
-            .unwrap()
+    fn init_storage() -> TestStorage {
+        let dir = tempfile::tempdir().unwrap();
+        let mut storage = Storage::open(dir.path().join("storage")).unwrap();
+
+        // Initialize storage with data so that Engine can process transactions
+        storage
+            .set_engine_account_id(&"aurora".parse().unwrap())
+            .unwrap();
+        let snapshot =
+            JsonSnapshot::load_from_file("src/tests/res/aurora_state_minimal.json").unwrap();
+        let block_metadata = {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let random_seed = aurora_engine_sdk::keccak(&nanos.to_be_bytes());
+            engine_standalone_storage::BlockMetadata {
+                timestamp: aurora_engine_sdk::env::Timestamp::new(nanos as u64),
+                random_seed,
+            }
+        };
+        storage
+            .set_block_data(
+                Default::default(),
+                snapshot.result.block_height + 1,
+                &block_metadata,
+            )
+            .unwrap();
+        json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
+
+        TestStorage {
+            dir,
+            storage: Arc::new(RwLock::new(storage)),
+        }
     }
 
     #[tokio::test]
     async fn test_parse_error() {
+        let storage = init_storage();
+        let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
@@ -262,13 +317,16 @@ mod tests {
             }),
 
             tokio::task::spawn(async move {
-                handle_conn(init_storage(), &mut handler).await;
+                handle_conn(server_storage, &mut handler).await;
             })
         ).unwrap();
+        storage.close();
     }
 
     #[tokio::test]
     async fn test_trace_transaction() {
+        let storage = init_storage();
+        let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
@@ -306,8 +364,50 @@ mod tests {
             }),
 
             tokio::task::spawn(async move {
-                handle_conn(init_storage(), &mut handler).await;
+                handle_conn(server_storage, &mut handler).await;
             })
         ).unwrap();
+        storage.close();
+    }
+
+    #[tokio::test]
+    async fn test_estimate_gas() {
+        let storage = init_storage();
+        let server_storage = storage.get();
+        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();
+
+        let req_task = tokio::task::spawn(async move {
+            client.writable().await.unwrap();
+
+            let req = json!({
+                "id": 1,
+                "jsonrpc": "2.0",
+                "method": "eth_estimateGas",
+                "params": [
+                    {
+                        "from": "0x1c76df114f0113e947d116d8cc2a9202921a2de0",
+                        "data": input.trim(),
+                    },
+                ]
+            });
+            let req_body = serde_json::to_vec(&req).unwrap();
+            wrapped_write(&mut client, &req_body).await.unwrap();
+
+            client.readable().await.unwrap();
+            let data = wrapped_read(&mut client).await.unwrap();
+            let response: serde_json::Value = serde_json::from_slice(&data).unwrap();
+            let expected = json!({ "result": 991508, "id": 1, "jsonrpc": "2.0" });
+            assert_eq!(response, expected);
+
+            client.shutdown().await.unwrap();
+        });
+
+        let server_task = tokio::task::spawn(async move {
+            handle_conn(server_storage, &mut handler).await;
+        });
+
+        tokio::try_join!(req_task, server_task).unwrap();
+        storage.close();
     }
 }
