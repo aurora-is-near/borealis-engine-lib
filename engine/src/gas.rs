@@ -204,7 +204,11 @@ impl EthCallRequest {
         let params = body.as_object()?.get("params")?.as_array()?;
         let params_obj = params.first()?.as_object()?;
         let from = Self::parse_address(params_obj, "from")?;
-        let to = Self::parse_address(params_obj, "to");
+        let to = if params_obj.contains_key("to") {
+            Some(Self::parse_address(params_obj, "to")?)
+        } else {
+            None
+        };
         let gas_limit = parse_hex_int(params_obj, "gas", Some(Self::DEFAULT_GAS_LIMIT))?.low_u64();
         let gas_price = parse_hex_int(params_obj, "gasPrice", Some(U256::zero()))?;
         let value = parse_hex_int(params_obj, "value", Some(U256::zero())).map(Wei::new)?;

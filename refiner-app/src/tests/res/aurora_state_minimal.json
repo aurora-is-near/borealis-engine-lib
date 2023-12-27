@@ -1,0 +1,16 @@
+{
+    "id": "1",
+    "jsonrpc": "2.0",
+    "result": {
+        "block_hash": "DjECexFqJDscF2T2V87niHPoT6RCrdksrdpGgemXv3jJ",
+        "block_height": 34834052,
+        "proof": [],
+        "values": [
+            {
+                "key": "BwBTVEFURQ==",
+                "proof": [],
+                "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE5FQVIGAAAAYXVyb3JhAAAAAAAAAAAAAAAA"
+            }
+        ]
+    }
+}

@@ -36,6 +36,7 @@ actix.workspace = true
 near-lake-framework.workspace = true
 
 [dev-dependencies]
+aurora-engine-sdk.workspace = true
 tempfile.workspace = true
 
 [features]
