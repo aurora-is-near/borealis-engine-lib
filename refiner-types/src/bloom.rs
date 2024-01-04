@@ -2,6 +2,7 @@
 //! Link: https://github.com/paritytech/parity-common/blob/master/ethbloom/src/lib.rs
 //!
 //! Reimplemented here since there is a large miss match in types and dependencies.
+#![allow(clippy::non_canonical_clone_impl)]
 use fixed_hash::construct_fixed_hash;
 use impl_serde::impl_fixed_hash_serde;
 
