@@ -35,10 +35,7 @@ impl<T: std::ops::Add<Output = T> + Copy + Default> SumTrie<T> {
         self.root.value = self.root.value + value;
         let mut curr_node = &mut self.root;
         for index in key {
-            curr_node = curr_node
-                .children
-                .entry(*index)
-                .or_insert_with(Default::default);
+            curr_node = curr_node.children.entry(*index).or_default();
             curr_node.value = curr_node.value + value;
         }
     }
