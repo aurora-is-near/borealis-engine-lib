@@ -14,12 +14,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          components: rustfmt
-          profile: minimal
-          override: true
       - name: Run rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -42,12 +36,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          components: clippy
-          profile: minimal
-          override: true
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -83,10 +71,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install rust wasm32-unknown-unknown
-        uses: actions-rs/toolchain@v1
-        with:
-          target: wasm32-unknown-unknown
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
