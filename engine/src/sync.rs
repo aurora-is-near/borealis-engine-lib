@@ -1,13 +1,13 @@
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
+use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{account_id::AccountId, H256};
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
     views::{ActionView, StateChangeValueView},
 };
-use borsh::BorshDeserialize;
 use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
     sync::{
@@ -43,7 +43,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .filter_map(|shard| shard.chunk.as_ref())
         .flat_map(|chunk| chunk.receipts.as_slice())
         .for_each(|r| {
-            if r.receiver_id.as_ref() == engine_account_id.as_ref() {
+            if r.receiver_id.as_str() == engine_account_id.as_ref() {
                 if let near_primitives::views::ReceiptEnumView::Data { data_id, data } = &r.receipt
                 {
                     data_id_mapping.put(*data_id, data.clone());
@@ -67,7 +67,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             }
             _ => None,
         })
-        .filter(|(account_id, _, _, _)| account_id.as_ref() == engine_account_id.as_ref());
+        .filter(|(account_id, _, _, _)| account_id.as_str() == engine_account_id.as_ref());
 
     let mut expected_diffs: HashMap<H256, Diff> = HashMap::new();
     for (_, key, expected_value, cause) in aurora_state_changes {
@@ -91,7 +91,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .iter()
         .flat_map(|shard| shard.receipt_execution_outcomes.iter())
         .filter_map(|outcome| {
-            if outcome.receipt.receiver_id.as_ref() != engine_account_id.as_ref() {
+            if outcome.receipt.receiver_id.as_str() != engine_account_id.as_ref() {
                 return None;
             }
 
@@ -121,8 +121,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                 near_primitives::views::ReceiptEnumView::Data { .. } => return None,
             };
 
-            let signer = signer.as_ref().parse().ok()?;
-            let caller = outcome.receipt.predecessor_id.as_ref().parse().ok()?;
+            let signer = signer.as_str().parse().ok()?;
+            let caller = outcome.receipt.predecessor_id.as_str().parse().ok()?;
             let near_receipt_id = outcome.receipt.receipt_id.0.into();
             let maybe_batch_actions = match maybe_tx {
                 Some(tn) => tn,
@@ -542,7 +542,7 @@ enum TransactionBatchOutcome {
 }
 
 impl TransactionBatchOutcome {
-    fn diff(&self) -> &Diff {
+    const fn diff(&self) -> &Diff {
         match self {
             Self::Single(tx_outcome) => &tx_outcome.diff,
             Self::Batch {

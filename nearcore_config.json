@@ -6,7 +6,7 @@
     },
     "input_mode": {
         "Nearcore": {
-            "path": "node1"
+            "path": "/tmp/localnet/node0/"
         }
     },
     "output_storage": {
