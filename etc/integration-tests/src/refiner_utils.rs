@@ -22,7 +22,7 @@ pub async fn get_repository_root() -> anyhow::Result<PathBuf> {
     }
 
     let output = String::from_utf8(output.stdout)?;
-    let path = PathBuf::try_from(output.trim())?;
+    let path = PathBuf::from(output.trim());
     Ok(path)
 }
 

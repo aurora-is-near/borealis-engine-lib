@@ -1,7 +1,7 @@
 use aurora_engine::parameters::{ResultLog, SubmitResult, TransactionStatus};
+use aurora_engine_types::borsh::{self, BorshDeserialize, BorshSerialize};
 use aurora_engine_types::types::RawU256;
 use aurora_refiner_types::aurora_block::HashchainOutputKind;
-use borsh::{BorshDeserialize, BorshSerialize};
 use std::io::Result;
 
 #[derive(BorshSerialize, BorshDeserialize)]

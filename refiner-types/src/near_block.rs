@@ -67,7 +67,7 @@ pub struct IndexerBlockHeaderView {
     pub next_bp_hash: CryptoHash,
     pub block_merkle_root: CryptoHash,
     pub epoch_sync_data_hash: Option<CryptoHash>,
-    pub approvals: Vec<Option<Signature>>,
+    pub approvals: Vec<Option<Box<Signature>>>,
     pub signature: Signature,
     pub latest_protocol_version: ProtocolVersion,
 }

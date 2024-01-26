@@ -6,12 +6,12 @@ use aurora_engine::parameters::{
 };
 use aurora_engine_hashchain::merkle::StreamCompactMerkleTree;
 use aurora_engine_transactions::{eip_1559, eip_2930, legacy, EthTransactionKind};
+use aurora_engine_types::borsh::BorshSerialize;
 use aurora_engine_types::{types::u256_to_arr, H256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, CallArgsVersion, HashchainInputKind, HashchainOutputKind,
     ResultStatusTag,
 };
-use borsh::BorshSerialize;
 use std::borrow::Cow;
 
 const MUST_BORSH_SERIALIZE: &str = "Must borsh serialize";

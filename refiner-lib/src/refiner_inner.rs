@@ -10,6 +10,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
+use aurora_engine_types::borsh::{BorshDeserialize, BorshSerialize};
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -24,7 +25,6 @@ use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
 use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
-use borsh::{BorshDeserialize, BorshSerialize};
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::sync::{
     types::TransactionKindTag, TransactionExecutionResult, TransactionIncludedOutcome,
@@ -170,9 +170,8 @@ impl Refiner {
         {
             // Using recent version of borsh to serialize the receipt.
             // Include in the size of the block the size of this transaction.
-            self.partial_state.size += BorshSerialize::try_to_vec(&execution_outcome.receipt)
-                .unwrap()
-                .len() as u64;
+            self.partial_state.size +=
+                borsh::to_vec(&execution_outcome.receipt).unwrap().len() as u64;
         }
 
         match &execution_outcome.receipt.receipt {
@@ -638,7 +637,7 @@ fn build_transaction(
                             })
                         }
                         Err(_) => {
-                            hash = virtual_receipt_id.0.try_into().unwrap();
+                            hash = virtual_receipt_id.0.into();
                             let from_address =
                                 near_account_to_evm_address(predecessor_id.as_bytes());
                             tx = tx.hash(hash).from(from_address);
@@ -719,7 +718,7 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Call => {
-                    hash = virtual_receipt_id.0.try_into().unwrap();
+                    hash = virtual_receipt_id.0.into();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
                     tx = tx.hash(hash).from(from_address);
@@ -791,7 +790,7 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Deploy | TransactionKindTag::DeployErc20 => {
-                    hash = virtual_receipt_id.0.try_into().unwrap();
+                    hash = virtual_receipt_id.0.into();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
                     let nonce = storage
                         .with_engine_access(
@@ -838,7 +837,7 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {
-                    hash = virtual_receipt_id.0.try_into().unwrap();
+                    hash = virtual_receipt_id.0.into();
                     tx = tx
                         .hash(hash)
                         .from(near_account_to_evm_address(predecessor_id.as_bytes()));
@@ -863,10 +862,10 @@ fn build_transaction(
             }
         }
         action => {
-            let input = action.try_to_vec().unwrap();
+            let input = borsh::to_vec(&action).unwrap();
 
             tx = tx
-                .hash(virtual_receipt_id.0.try_into().unwrap())
+                .hash(virtual_receipt_id.0.into())
                 .from(near_account_to_evm_address(predecessor_id.as_bytes()))
                 .to(Some(near_account_to_evm_address(b"aurora")))
                 .contract_address(None)
@@ -893,7 +892,7 @@ fn build_transaction(
                     tx = tx.output(vec![]).status(false);
                 }
                 Some(ExecutionStatusView::Failure(err)) => {
-                    tx = tx.output(err.try_to_vec().unwrap()).status(false);
+                    tx = tx.output(borsh::to_vec(err).unwrap()).status(false);
                 }
                 Some(ExecutionStatusView::SuccessValue(value)) => {
                     tx = tx.output(value.clone()).status(true);
