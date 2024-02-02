@@ -37,9 +37,9 @@ hex = "0.4"
 impl-serde = "0.4"
 lazy_static = "1"
 lru = "0.12"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.1" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.1"  }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.1" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.3" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.3"  }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "1.37.0-rc.3" }
 near-lake-framework = "0.7"
 prometheus = "0.13"
 rlp = "0.5"
