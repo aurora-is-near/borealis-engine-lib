@@ -289,7 +289,7 @@ fn eth_call(
         }
     });
     let default_account_id: aurora_engine_types::account_id::AccountId = "system".parse().unwrap();
-    let current_account_id = "aurora".parse().unwrap();
+    let current_account_id = storage.get_engine_account_id().unwrap();
     let env = aurora_engine_sdk::env::Fixed {
         signer_account_id: default_account_id.clone(),
         current_account_id,
