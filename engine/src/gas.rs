@@ -461,7 +461,7 @@ pub enum StateOrEngineError {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
+fn compute_call_result<I: IO + Copy>(
     io: I,
     from: Address,
     to: Option<Address>,
@@ -476,14 +476,13 @@ fn compute_call_result<I: aurora_engine_sdk::io::IO + Copy>(
     aurora_engine::state::get_state(&io)
         .map_err(|_| StateOrEngineError::StateMissing)
         .and_then(|engine_state| {
-            let mut engine: Engine<_, _, AuroraModExp> =
-                aurora_engine::engine::Engine::new_with_state(
-                    engine_state,
-                    from,
-                    env.current_account_id.clone(),
-                    io,
-                    &env,
-                );
+            let mut engine: Engine<_, _, AuroraModExp> = Engine::new_with_state(
+                engine_state,
+                from,
+                env.current_account_id.clone(),
+                io,
+                &env,
+            );
             let result = match to {
                 Some(to) => engine
                     .call(&from, &to, value, data, gas_limit, Vec::new(), &mut handler)
