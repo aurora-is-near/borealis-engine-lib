@@ -25,6 +25,7 @@ jobs:
 
     - name: Determine tags
       run: |
+        # This pattern will not tag with latest `0.0.6-1.1.1-rc.1` or `0.0.6` but will tag `0.0.6-1.1.1` as the latest
         if [[ "${{ github.event.release.tag_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "TAGS=${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:latest,${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ github.event.release.tag_name }}" >> $GITHUB_ENV
         else
