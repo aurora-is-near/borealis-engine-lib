@@ -2,6 +2,10 @@ name: Docker Image CI
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag'
+        required: true
   release:
     types: [created]
     
@@ -22,16 +26,19 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     -
-      name: Set RELEASE_TAG env
-      run: echo "RELEASE_TAG=${{ github.event.release.tag_name || 'latest' }}" >> $GITHUB_ENV
+      name: Determine tags
+      run: |
+        if [[ "${{ github.event.release.tag_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "TAGS=${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:latest,${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+        else
+          echo "TAGS=${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ github.event.release.tag_name || github.event.inputs.tag }}" >> $GITHUB_ENV
+        fi
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         file: Dockerfile
         push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ env.RELEASE_TAG }}
+        tags: ${{ env.TAGS }}
         build-args: |
           RELEASE_TAG=${{ github.event.release.tag_name }}
