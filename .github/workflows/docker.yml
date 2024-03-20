@@ -1,0 +1,42 @@
+name: Docker Image CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag'
+        required: true
+  release:
+    types: [created]
+    
+jobs:
+  build-and-push:
+    runs-on: github-hosted-heavy-runner
+    steps:
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Docker registry
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Determine tags
+      run: |
+        # This pattern will not tag with latest `0.0.6-1.1.1-rc.1` or `0.0.6` but will tag `0.0.6-1.1.1` as the latest
+        if [[ "${{ github.event.release.tag_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "TAGS=${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:latest,${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+        else
+          echo "TAGS=${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ github.event.release.tag_name || github.event.inputs.tag }}" >> $GITHUB_ENV
+        fi
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        file: Dockerfile
+        push: true
+        tags: ${{ env.TAGS }}
+        build-args: |
+          RELEASE_TAG=${{ github.event.release.tag_name }}
