@@ -31,7 +31,7 @@ jobs:
         file: Dockerfile
         push: true
         tags: |
-          spilin/test-build:latest
-          spilin/test-build:${{ env.RELEASE_TAG }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/srpc2-refiner:${{ env.RELEASE_TAG }}
         build-args: |
           RELEASE_TAG=${{ github.event.release.tag_name }}
