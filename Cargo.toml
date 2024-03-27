@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 edition = "2021"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
@@ -19,14 +19,14 @@ license = "CC0-1.0"
 [workspace.dependencies]
 actix = "0.13"
 anyhow = "1"
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std"] }
-aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std"] }
-aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["std"] }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false }
-engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.1", default-features = false, features = ["impl-serde"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std"] }
+aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std"] }
+aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["std"] }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false }
+engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.6.2", default-features = false, features = ["impl-serde"] }
 borsh = { version = "1", features = ["borsh-derive"] }
 byteorder = "1"
 clap = { version = "4", features = ["derive"] }

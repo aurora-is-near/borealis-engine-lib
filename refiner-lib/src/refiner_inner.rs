@@ -10,7 +10,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
-use aurora_engine_types::borsh::{BorshDeserialize, BorshSerialize};
+use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::types::{Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -490,9 +490,7 @@ fn normalize_output(
             // outcome without validation. This case happens for actions in a batch except
             // for the last one (Near only records the outcome of the last action in a batch).
             let tag = (&output.status).into();
-            let bytes = output
-                .try_to_vec()
-                .expect("Must be able to serialize Result");
+            let bytes = borsh::to_vec(&output).expect("Must be able to serialize Result");
             Ok((output, HashchainOutputKind::SubmitResultV7(tag), bytes))
         }
         (Some(output), None) => {

@@ -493,8 +493,8 @@ dependencies = [
 
 [[package]]
 name = "aurora-engine"
-version = "3.6.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+version = "3.6.2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -516,7 +516,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "hex",
  "num",
@@ -536,7 +536,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -555,7 +555,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-types",
  "base64 0.21.7",
@@ -566,7 +566,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-precompiles",
  "aurora-engine-sdk",
@@ -579,10 +579,10 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "base64 0.21.7",
- "borsh 0.10.3",
+ "borsh 1.3.1",
  "bs58 0.5.0",
  "hex",
  "primitive-types 0.12.2",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner"
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 dependencies = [
  "actix",
  "anyhow",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-app-integration-tests"
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -630,7 +630,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-lib"
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -664,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-types"
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 dependencies = [
  "aurora-engine",
  "aurora-engine-sdk",
@@ -682,7 +682,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-standalone-engine"
-version = "0.28.0+1.38.0"
+version = "0.28.1+1.38.0"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -1337,16 +1337,6 @@ dependencies = [
 
 [[package]]
 name = "borsh"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
-dependencies = [
- "borsh-derive 0.10.3",
- "hashbrown 0.11.2",
-]
-
-[[package]]
-name = "borsh"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f58b559fd6448c6e2fd0adb5720cd98a2506594cafa4737ff98c396f3e82f667"
@@ -1361,21 +1351,8 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal 0.9.3",
- "borsh-schema-derive-internal 0.9.3",
- "proc-macro-crate 0.1.5",
- "proc-macro2",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0754613691538d51f329cce9af41d7b7ca150bc973056f1156611489475f54f7"
-dependencies = [
- "borsh-derive-internal 0.10.3",
- "borsh-schema-derive-internal 0.10.3",
+ "borsh-derive-internal",
+ "borsh-schema-derive-internal",
  "proc-macro-crate 0.1.5",
  "proc-macro2",
  "syn 1.0.109",
@@ -1407,32 +1384,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "borsh-derive-internal"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb438156919598d2c7bad7e1c0adf3d26ed3840dbc010db1a882a65583ca2fb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-schema-derive-internal"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "634205cc43f74a1b9046ef87c4540ebda95696ec0f315024860cad7c5b0f5ccd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2487,7 +2442,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2501,13 +2456,13 @@ dependencies = [
  "rocksdb",
  "serde",
  "serde_json",
- "strum 0.25.0",
+ "strum 0.26.2",
 ]
 
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.1#26a126231e1ce338598a7d9909779f32e4dce8a2"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.6.2#dcba953e14d9f06fb89f42cafa93598471c93766"
 dependencies = [
  "aurora-engine-types",
  "evm",
@@ -7401,6 +7356,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d8cec3501a5194c432b2b7976db6b7d10ec95c253208b45f83f7136aa985e29"
+dependencies = [
+ "strum_macros 0.26.2",
+]
+
+[[package]]
 name = "strum_macros"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7418,6 +7382,19 @@ name = "strum_macros"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.52",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.26.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6cf59daf282c0a494ba14fd21610a0325f9f90ec9d1231dea26bcb1d696c946"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
