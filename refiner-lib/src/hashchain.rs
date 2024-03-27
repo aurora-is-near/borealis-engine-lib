@@ -6,7 +6,6 @@ use aurora_engine::parameters::{
 };
 use aurora_engine_hashchain::merkle::StreamCompactMerkleTree;
 use aurora_engine_transactions::{eip_1559, eip_2930, legacy, EthTransactionKind};
-use aurora_engine_types::borsh::BorshSerialize;
 use aurora_engine_types::{types::u256_to_arr, H256};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, CallArgsVersion, HashchainInputKind, HashchainOutputKind,
@@ -61,7 +60,7 @@ pub fn validate_tx_hashchain(
                 contract: transaction.to.ok_or(ValidationError::MissingToInCallTx)?,
                 input: transaction.input.clone(),
             };
-            Cow::Owned(call_args.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&call_args).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainInputKind::CallArgs(CallArgsVersion::V1) => {
             let call_args = FunctionCallArgsV1 {
@@ -69,7 +68,7 @@ pub fn validate_tx_hashchain(
                 input: transaction.input.clone(),
             };
             let call_args = CallArgs::V1(call_args);
-            Cow::Owned(call_args.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&call_args).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainInputKind::CallArgs(CallArgsVersion::V2) => {
             let call_args = FunctionCallArgsV2 {
@@ -78,7 +77,7 @@ pub fn validate_tx_hashchain(
                 value: transaction.value.to_bytes(),
             };
             let call_args = CallArgs::V2(call_args);
-            Cow::Owned(call_args.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&call_args).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainInputKind::SubmitWithArgs(args) => {
             let submit_args = SubmitArgs {
@@ -86,7 +85,7 @@ pub fn validate_tx_hashchain(
                 max_gas_price: args.max_gas_price,
                 gas_token_address: args.gas_token_address,
             };
-            Cow::Owned(submit_args.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&submit_args).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainInputKind::Explicit => Cow::Borrowed(transaction.input.as_slice()),
     };
@@ -99,7 +98,7 @@ pub fn validate_tx_hashchain(
                 gas_used: transaction.gas_used,
                 logs: transaction.logs.clone(),
             };
-            Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&result).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainOutputKind::SubmitResultLegacyV2(tag) => {
             let status = tag_to_status(tag, transaction);
@@ -108,7 +107,7 @@ pub fn validate_tx_hashchain(
                 gas_used: transaction.gas_used,
                 logs: crate::legacy::to_v1_logs(&transaction.logs),
             };
-            Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&result).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainOutputKind::SubmitResultLegacyV3 => {
             let result = crate::legacy::SubmitResultLegacyV3 {
@@ -117,12 +116,12 @@ pub fn validate_tx_hashchain(
                 result: transaction.output.clone(),
                 logs: crate::legacy::to_v1_logs(&transaction.logs),
             };
-            Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&result).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainOutputKind::SubmitResultV7(tag) => {
             let status = tag_to_status(tag, transaction);
             let result = SubmitResult::new(status, transaction.gas_used, transaction.logs.clone());
-            Cow::Owned(result.try_to_vec().expect(MUST_BORSH_SERIALIZE))
+            Cow::Owned(borsh::to_vec(&result).expect(MUST_BORSH_SERIALIZE))
         }
         HashchainOutputKind::Explicit => Cow::Borrowed(transaction.output.as_slice()),
         HashchainOutputKind::None => Cow::<'_, [u8]>::Borrowed(&[]),
