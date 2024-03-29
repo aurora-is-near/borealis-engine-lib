@@ -34,3 +34,7 @@ cargo run --release -- -c nearcore_config.json run
 ```
 
 With this approach a nearcore instance will be launched, and will be syncing with the network. It is ok to download any valid snapshot and start from there. Starting from scratch can take several days(?).
+
+### Docker and DockerHub
+
+Refiner application is published to the Dockerhub and could be found [at nearaurora/srpc2-refiner](https://hub.docker.com/r/nearaurora/srpc2-refiner)
