@@ -40,7 +40,8 @@ lru = "0.12"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "1.38.2" }
 near-indexer = { git = "https://github.com/near/nearcore", tag = "1.38.2" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "1.38.2" }
-near-lake-framework = "0.7"
+# near-indexer-primitives = "0.20.0"
+near-lake-framework = { path = "/Users/raventid/NearProtocol/near/near-lake-framework-rs" }
 prometheus = "0.13"
 rlp = "0.5"
 rocksdb = { version = "0.21", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
