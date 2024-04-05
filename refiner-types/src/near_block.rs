@@ -12,11 +12,22 @@ use near_primitives::views::{
 };
 use serde::{Deserialize, Serialize};
 
+use near_lake_framework::near_indexer_primitives;
+
 /// Resulting struct represents block with chunks
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NEARBlock {
     pub block: BlockView,
     pub shards: Vec<Shard>,
+}
+
+impl From<near_indexer_primitives::StreamerMessage> for NEARBlock {
+    fn from(block: near_indexer_primitives::StreamerMessage) -> Self {
+        Self {
+            block: block.block.into(),
+            shards: block.shards.into_iter().map(Shard::from).collect(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -325,6 +336,21 @@ impl Clone for Shard {
     }
 }
 
+impl From<near_indexer_primitives::IndexerShard> for Shard {
+    fn from(shard: near_indexer_primitives::IndexerShard) -> Self {
+        Self {
+            shard_id: shard.shard_id,
+            chunk: shard.chunk.map(ChunkView::from),
+            receipt_execution_outcomes: shard
+                .receipt_execution_outcomes
+                .into_iter()
+                .map(ExecutionOutcomeWithReceipt::from)
+                .collect(),
+            state_changes: shard.state_changes,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChunkView {
     pub author: AccountId,
@@ -333,10 +359,34 @@ pub struct ChunkView {
     pub receipts: Vec<views::ReceiptView>,
 }
 
+impl From<near_indexer_primitives::IndexerChunkView> for ChunkView {
+    fn from(chunk: near_indexer_primitives::IndexerChunkView) -> Self {
+        Self {
+            author: chunk.author,
+            header: chunk.header.into(),
+            transactions: chunk
+                .transactions
+                .into_iter()
+                .map(TransactionWithOutcome::from)
+                .collect(),
+            receipts: chunk.receipts.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionWithOutcome {
     pub transaction: views::SignedTransactionView,
     pub outcome: ExecutionOutcomeWithOptionalReceipt,
+}
+
+impl From<near_indexer_primitives::IndexerTransactionWithOutcome> for TransactionWithOutcome {
+    fn from(transaction: near_indexer_primitives::IndexerTransactionWithOutcome) -> Self {
+        Self {
+            transaction: transaction.transaction.into(),
+            outcome: transaction.outcome.into(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -345,8 +395,30 @@ pub struct ExecutionOutcomeWithOptionalReceipt {
     pub receipt: Option<views::ReceiptView>,
 }
 
+impl From<near_indexer_primitives::IndexerExecutionOutcomeWithOptionalReceipt>
+    for ExecutionOutcomeWithOptionalReceipt
+{
+    fn from(outcome: near_indexer_primitives::IndexerExecutionOutcomeWithOptionalReceipt) -> Self {
+        Self {
+            execution_outcome: outcome.execution_outcome.into(),
+            receipt: outcome.receipt.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionOutcomeWithReceipt {
     pub execution_outcome: views::ExecutionOutcomeWithIdView,
     pub receipt: views::ReceiptView,
+}
+
+impl From<near_indexer_primitives::IndexerExecutionOutcomeWithReceipt>
+    for ExecutionOutcomeWithReceipt
+{
+    fn from(outcome: near_indexer_primitives::IndexerExecutionOutcomeWithReceipt) -> Self {
+        Self {
+            execution_outcome: outcome.execution_outcome.into(),
+            receipt: outcome.receipt.into(),
+        }
+    }
 }
