@@ -369,7 +369,7 @@ impl From<near_indexer_primitives::IndexerChunkView> for ChunkView {
                 .into_iter()
                 .map(TransactionWithOutcome::from)
                 .collect(),
-            receipts: chunk.receipts.into(),
+            receipts: chunk.receipts,
         }
     }
 }
@@ -383,7 +383,7 @@ pub struct TransactionWithOutcome {
 impl From<near_indexer_primitives::IndexerTransactionWithOutcome> for TransactionWithOutcome {
     fn from(transaction: near_indexer_primitives::IndexerTransactionWithOutcome) -> Self {
         Self {
-            transaction: transaction.transaction.into(),
+            transaction: transaction.transaction,
             outcome: transaction.outcome.into(),
         }
     }
@@ -400,8 +400,8 @@ impl From<near_indexer_primitives::IndexerExecutionOutcomeWithOptionalReceipt>
 {
     fn from(outcome: near_indexer_primitives::IndexerExecutionOutcomeWithOptionalReceipt) -> Self {
         Self {
-            execution_outcome: outcome.execution_outcome.into(),
-            receipt: outcome.receipt.into(),
+            execution_outcome: outcome.execution_outcome,
+            receipt: outcome.receipt,
         }
     }
 }
@@ -417,8 +417,8 @@ impl From<near_indexer_primitives::IndexerExecutionOutcomeWithReceipt>
 {
     fn from(outcome: near_indexer_primitives::IndexerExecutionOutcomeWithReceipt) -> Self {
         Self {
-            execution_outcome: outcome.execution_outcome.into(),
-            receipt: outcome.receipt.into(),
+            execution_outcome: outcome.execution_outcome,
+            receipt: outcome.receipt,
         }
     }
 }
