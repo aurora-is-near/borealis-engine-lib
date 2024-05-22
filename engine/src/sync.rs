@@ -44,7 +44,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .flat_map(|chunk| chunk.receipts.as_slice())
         .for_each(|r| {
             if r.receiver_id.as_str() == engine_account_id.as_ref() {
-                if let near_primitives::views::ReceiptEnumView::Data { data_id, data } = &r.receipt
+                if let near_primitives::views::ReceiptEnumView::Data { data_id, data, .. } =
+                    &r.receipt
                 {
                     data_id_mapping.put(*data_id, data.clone());
                 }
