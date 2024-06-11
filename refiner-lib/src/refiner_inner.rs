@@ -32,6 +32,7 @@ use engine_standalone_storage::sync::{
 use engine_standalone_storage::Storage;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::io::Write;
 use std::str::FromStr;
 use triehash_ethereum::ordered_trie_root;
@@ -947,7 +948,6 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .s(U256::zero())
 }
 
-#[derive(Debug)]
 enum RefinerError {
     /// Fail building transaction. Most likely some arguments missing
     BuilderError(AuroraTransactionBuilderError),
@@ -957,6 +957,17 @@ enum RefinerError {
     ParseMetadata(rlp::DecoderError),
     /// NEAR transaction failed
     FailNearTx,
+}
+
+impl fmt::Debug for RefinerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BuilderError(err) => write!(f, "BuilderError: {:?}", err),
+            Self::ParseTransaction(err) => write!(f, "ParseTransaction: {:?}", err),
+            Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
+            Self::FailNearTx => write!(f, "FailNearTx"),
+        }
+    }
 }
 
 fn get_log_blooms(log: &ResultLog) -> Bloom {
