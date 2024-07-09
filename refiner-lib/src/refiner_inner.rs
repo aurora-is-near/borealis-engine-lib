@@ -95,12 +95,6 @@ struct PartialState {
     seen_receipts: HashSet<CryptoHash>,
 }
 
-/// Data computed by the refiner and passed to the callback
-#[derive(Debug)]
-pub struct RefinerItem {
-    pub block: AuroraBlock,
-}
-
 impl Refiner {
     pub fn new(chain_id: u64, engine_account_id: AccountId) -> Self {
         Self {

@@ -17,6 +17,7 @@ aurora-engine.workspace = true
 aurora-engine-sdk.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
+borsh.workspace = true
 derive_builder.workspace = true
 fixed-hash.workspace = true
 impl-serde.workspace = true
