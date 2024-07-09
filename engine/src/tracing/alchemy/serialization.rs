@@ -4,7 +4,7 @@ use crate::tracing::alchemy::{
     AlchemySuicideType, AlchemyTraceTemplate,
 };
 use aurora_engine_types::{types::Address, H256, U256};
-use std::{borrow::Cow, str::FromStr, string::ToString};
+use std::{borrow::Cow, fmt, str::FromStr, string::ToString};
 
 pub const ALCHEMY_CREATE_TYPE_TAG: &str = "create";
 pub const ALCHEMY_SUICIDE_TYPE_TAG: &str = "suicide";
@@ -374,16 +374,18 @@ impl TryFrom<&Option<SerializableAlchemyTraceResult>> for AlchemyCallResult {
     }
 }
 
-impl ToString for AlchemyCallKind {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Call => ALCHEMY_CALL_KIND_CALL_TAG.into(),
-            Self::DelegateCall => ALCHEMY_CALL_KIND_DELEGATE_CALL_TAG.into(),
-            Self::CallCode => ALCHEMY_CALL_KIND_CALL_CODE_TAG.into(),
-            Self::StaticCall => ALCHEMY_CALL_KIND_STATIC_CALL_TAG.into(),
-        }
+impl fmt::Display for AlchemyCallKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Call => ALCHEMY_CALL_KIND_CALL_TAG,
+            Self::DelegateCall => ALCHEMY_CALL_KIND_DELEGATE_CALL_TAG,
+            Self::CallCode => ALCHEMY_CALL_KIND_CALL_CODE_TAG,
+            Self::StaticCall => ALCHEMY_CALL_KIND_STATIC_CALL_TAG,
+        };
+        write!(f, "{}", s)
     }
 }
+
 impl FromStr for AlchemyCallKind {
     type Err = anyhow::Error;
 
@@ -398,11 +400,12 @@ impl FromStr for AlchemyCallKind {
     }
 }
 
-impl ToString for AlchemyCreateType {
-    fn to_string(&self) -> String {
-        ALCHEMY_CREATE_TYPE_TAG.into()
+impl fmt::Display for AlchemyCreateType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", ALCHEMY_CREATE_TYPE_TAG)
     }
 }
+
 impl FromStr for AlchemyCreateType {
     type Err = anyhow::Error;
 
@@ -418,11 +421,12 @@ impl FromStr for AlchemyCreateType {
     }
 }
 
-impl ToString for AlchemyCallType {
-    fn to_string(&self) -> String {
-        ALCHEMY_CALL_TYPE_TAG.into()
+impl fmt::Display for AlchemyCallType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", ALCHEMY_CALL_TYPE_TAG)
     }
 }
+
 impl FromStr for AlchemyCallType {
     type Err = anyhow::Error;
 
@@ -438,11 +442,12 @@ impl FromStr for AlchemyCallType {
     }
 }
 
-impl ToString for AlchemySuicideType {
-    fn to_string(&self) -> String {
-        ALCHEMY_SUICIDE_TYPE_TAG.into()
+impl fmt::Display for AlchemySuicideType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", ALCHEMY_SUICIDE_TYPE_TAG)
     }
 }
+
 impl FromStr for AlchemySuicideType {
     type Err = anyhow::Error;
 
