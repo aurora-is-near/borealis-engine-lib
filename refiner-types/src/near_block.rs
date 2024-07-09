@@ -1,14 +1,15 @@
-use near_crypto::Signature;
+use borsh::BorshSerialize;
+use near_crypto::{PublicKey, Signature};
 use near_primitives::challenge::ChallengesResult;
 use near_primitives::hash::CryptoHash;
 use near_primitives::serialize::dec_format;
 use near_primitives::types::{
-    AccountId, Balance, BlockHeight, Gas, NumBlocks, ProtocolVersion, ShardId, StateRoot,
+    AccountId, Balance, BlockHeight, Gas, Nonce, NumBlocks, ProtocolVersion, ShardId, StateRoot,
 };
 use near_primitives::views;
 use near_primitives::views::validator_stake_view::ValidatorStakeView;
 use near_primitives::views::{
-    StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
+    ActionView, StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
 };
 use serde::{Deserialize, Serialize};
 
@@ -330,23 +331,73 @@ pub struct ChunkView {
     pub author: AccountId,
     pub header: ChunkHeaderView,
     pub transactions: Vec<TransactionWithOutcome>,
-    pub receipts: Vec<views::ReceiptView>,
+    pub receipts: Vec<ReceiptView>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionWithOutcome {
-    pub transaction: views::SignedTransactionView,
+    pub transaction: SignedTransactionView,
     pub outcome: ExecutionOutcomeWithOptionalReceipt,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionOutcomeWithOptionalReceipt {
     pub execution_outcome: views::ExecutionOutcomeWithIdView,
-    pub receipt: Option<views::ReceiptView>,
+    pub receipt: Option<ReceiptView>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionOutcomeWithReceipt {
     pub execution_outcome: views::ExecutionOutcomeWithIdView,
-    pub receipt: views::ReceiptView,
+    pub receipt: ReceiptView,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SignedTransactionView {
+    pub signer_id: AccountId,
+    pub public_key: PublicKey,
+    pub nonce: Nonce,
+    pub receiver_id: AccountId,
+    pub actions: Vec<ActionView>,
+    #[serde(default)]
+    pub priority_fee: u64,
+    pub signature: Signature,
+    pub hash: CryptoHash,
+}
+
+impl From<views::SignedTransactionView> for SignedTransactionView {
+    fn from(value: views::SignedTransactionView) -> Self {
+        Self {
+            signer_id: value.signer_id,
+            public_key: value.public_key,
+            nonce: value.nonce,
+            receiver_id: value.receiver_id,
+            actions: value.actions.clone(),
+            priority_fee: value.priority_fee,
+            signature: value.signature,
+            hash: value.hash,
+        }
+    }
+}
+
+#[derive(Clone, Debug, BorshSerialize, Serialize, Deserialize)]
+pub struct ReceiptView {
+    pub predecessor_id: AccountId,
+    pub receiver_id: AccountId,
+    pub receipt_id: CryptoHash,
+    pub receipt: views::ReceiptEnumView,
+    #[serde(default)]
+    pub priority: u64,
+}
+
+impl From<views::ReceiptView> for ReceiptView {
+    fn from(value: views::ReceiptView) -> Self {
+        Self {
+            predecessor_id: value.predecessor_id,
+            receiver_id: value.receiver_id,
+            receipt_id: value.receipt_id,
+            receipt: value.receipt.clone(),
+            priority: value.priority,
+        }
+    }
 }
