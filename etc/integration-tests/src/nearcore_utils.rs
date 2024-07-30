@@ -84,13 +84,12 @@ pub async fn create_localnet_configs(
             "--home",
             nearcore_home,
             "localnet",
-            "--non-validators",
+            "--non-validators-archival",
             "1",
             "--validators",
             "1",
             "--shards",
             "1",
-            "--archival-nodes",
         ])
         .status()
         .await?;
