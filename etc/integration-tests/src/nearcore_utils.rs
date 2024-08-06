@@ -84,7 +84,7 @@ pub async fn create_localnet_configs(
             "--home",
             nearcore_home,
             "localnet",
-            "--non-validators-archival",
+            "--non-validators",
             "1",
             "--validators",
             "1",
