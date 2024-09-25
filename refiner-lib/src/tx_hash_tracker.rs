@@ -106,8 +106,8 @@ const CACHE_SIZE: usize = 1_000_000;
 const PERSISTENT_HISTORY_SIZE: u64 = 432_000;
 
 /// Range delete operations are cheap to write (they are essentially one tombstone key in the DB),
-/// however they are expsensive to resolve during compaction. We cannot write one pruning
-/// operation per block and keep reasonable performance of the DB when compation happens.
+/// however they are expensive to resolve during compaction. We cannot write one pruning
+/// operation per block and keep reasonable performance of the DB when compaction happens.
 /// Therefore, we will only prune old data once every `PRUNE_FREQUENCY` blocks. This means the
 /// DB may grow a little larger than `PERSISTENT_HISTORY_SIZE` sometimes.
 const PRUNE_FREQUENCY: u64 = 50_000;

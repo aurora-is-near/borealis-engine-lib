@@ -27,7 +27,7 @@ pub fn get_nearcore_stream(
 
     tokio::spawn(async move {
         while let Some(block) = stream.recv().await {
-            // TODO: Slow converstion between types. Fix
+            // TODO: Slow conversion between types. Fix
             sender
                 .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
                 .await

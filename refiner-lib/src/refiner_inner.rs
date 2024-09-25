@@ -42,20 +42,26 @@ use triehash_ethereum::ordered_trie_root;
 /// the amount of gas "paid for every transaction" (see Appendix G of the Yellow Paper).
 const MIN_EVM_GAS: u64 = 21_000;
 
-fn compute_block_hash_preimage(height: BlockHeight, chain_id: u64) -> Vec<u8> {
-    let account_id = "aurora";
-
-    let mut buffer = Vec::with_capacity(25 + 8 + account_id.len() + 8);
+fn compute_block_hash_preimage(
+    height: BlockHeight,
+    engine_account_id: &str,
+    chain_id: u64,
+) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(25 + 8 + engine_account_id.len() + 8);
     let _ = buffer.write(&[0; 25]);
     let _ = buffer.write_u64::<BigEndian>(chain_id);
-    let _ = buffer.write(account_id.as_bytes());
+    let _ = buffer.write(engine_account_id.as_bytes());
     let _ = buffer.write_u64::<BigEndian>(height);
 
     buffer
 }
 
-fn compute_block_hash(height: BlockHeight, chain_id: u64) -> H256 {
-    sha256(&compute_block_hash_preimage(height, chain_id))
+fn compute_block_hash(height: BlockHeight, engine_account_id: &str, chain_id: u64) -> H256 {
+    sha256(&compute_block_hash_preimage(
+        height,
+        engine_account_id,
+        chain_id,
+    ))
 }
 
 struct TxExtraData {
@@ -120,8 +126,12 @@ impl Refiner {
         AuroraBlock {
             chain_id: self.chain_id,
             engine_account_id: self.engine_account_id.clone(),
-            hash: compute_block_hash(height, self.chain_id),
-            parent_hash: compute_block_hash(height - 1, self.chain_id),
+            hash: compute_block_hash(height, self.engine_account_id.as_str(), self.chain_id),
+            parent_hash: compute_block_hash(
+                height - 1,
+                self.engine_account_id.as_str(),
+                self.chain_id,
+            ),
             height,
             miner: near_account_to_evm_address(b""),
             timestamp: next_block.block.header.timestamp,
@@ -301,8 +311,16 @@ impl Refiner {
         let aurora_block = AuroraBlock {
             chain_id: self.chain_id,
             engine_account_id: self.engine_account_id.clone(),
-            hash: compute_block_hash(block.header.height, self.chain_id),
-            parent_hash: compute_block_hash(block.header.height - 1, self.chain_id),
+            hash: compute_block_hash(
+                block.header.height,
+                self.engine_account_id.as_str(),
+                self.chain_id,
+            ),
+            parent_hash: compute_block_hash(
+                block.header.height - 1,
+                self.engine_account_id.as_str(),
+                self.chain_id,
+            ),
             height: block.header.height,
             miner: near_account_to_evm_address(block.author.as_bytes()),
             timestamp: block.header.timestamp,
@@ -547,9 +565,18 @@ fn build_transaction(
 
     let hash;
     let receipt_id = near_metadata.receipt_hash;
+    let account_id = storage.get_engine_account_id();
+    let engine_account_id = account_id
+        .as_ref()
+        .map(|id| id.as_ref())
+        .unwrap_or("aurora");
 
     let mut tx = AuroraTransactionBuilder::default()
-        .block_hash(compute_block_hash(near_block.header.height, chain_id))
+        .block_hash(compute_block_hash(
+            near_block.header.height,
+            engine_account_id,
+            chain_id,
+        ))
         .block_height(near_block.header.height)
         .chain_id(chain_id)
         .transaction_index(transaction_index)
@@ -860,7 +887,9 @@ fn build_transaction(
             tx = tx
                 .hash(virtual_receipt_id.0.into())
                 .from(near_account_to_evm_address(predecessor_id.as_bytes()))
-                .to(Some(near_account_to_evm_address(b"aurora")))
+                .to(Some(near_account_to_evm_address(
+                    engine_account_id.as_bytes(),
+                )))
                 .contract_address(None)
                 .nonce(0)
                 .gas_limit(0)
@@ -980,7 +1009,7 @@ mod tests {
     #[test]
     fn test_block_hash_preimage() {
         assert_eq!(
-            compute_block_hash_preimage(62482103, 1313161554),
+            compute_block_hash_preimage(62482103, "aurora", 1313161554),
             vec![
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 78, 69, 65, 82, 97, 117, 114, 111, 114, 97, 0, 0, 0, 0, 3, 185, 102, 183,
@@ -992,7 +1021,7 @@ mod tests {
     fn test_block_hash() {
         // Example of block: https://explorer.mainnet.aurora.dev/block/62482103/transactions
         assert_eq!(
-            hex::encode(compute_block_hash(62482103, 1313161554).as_bytes()),
+            hex::encode(compute_block_hash(62482103, "aurora", 1313161554).as_bytes()),
             "97ccface51e97c896591c88ecb8106c4f48816493e1f7b1172245fb333a0e782"
         );
     }
