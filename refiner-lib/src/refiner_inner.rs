@@ -116,7 +116,7 @@ impl Refiner {
 }
 
 impl Refiner {
-    pub fn on_block_skip(&mut self, height: u64, next_block: &NEARBlock) -> AuroraBlock {
+    pub fn on_block_skip(&self, height: u64, next_block: &NEARBlock) -> AuroraBlock {
         AuroraBlock {
             chain_id: self.chain_id,
             engine_account_id: self.engine_account_id.clone(),
@@ -137,7 +137,7 @@ impl Refiner {
         }
     }
 
-    pub fn on_block_start(&mut self, block: &NEARBlock) {
+    pub fn on_block_start(&self, block: &NEARBlock) {
         let NEARBlock { block, shards, .. } = &block;
         // Check if all chunks were parsed
         tracing::trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);

@@ -178,7 +178,7 @@ impl TxHashTrackerImpl {
         }
     }
 
-    fn commit_write_batch(&mut self, batch: rocksdb::WriteBatch) -> anyhow::Result<()> {
+    fn commit_write_batch(&self, batch: rocksdb::WriteBatch) -> anyhow::Result<()> {
         self.persistent_storage.write(batch)?;
 
         Ok(())
