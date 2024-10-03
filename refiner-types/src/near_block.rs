@@ -262,7 +262,7 @@ impl Clone for Shard {
                             StateChangeCauseView::ValidatorAccountsUpdate
                         }
                         StateChangeCauseView::Migration => StateChangeCauseView::Migration,
-                        StateChangeCauseView::Resharding => StateChangeCauseView::Resharding,
+                        StateChangeCauseView::ReshardingV2 => StateChangeCauseView::ReshardingV2,
                     },
                     value: match &v.value {
                         StateChangeValueView::AccountUpdate {
