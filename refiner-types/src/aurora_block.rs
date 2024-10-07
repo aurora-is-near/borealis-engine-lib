@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::bloom::Bloom;
 
-/// Similar to Ethereum blocks, but only contains information relevant for Aurora. In addition
+/// Similar to Ethereum blocks, but only contains information relevant for Aurora. In addition,
 /// it contains extra metadata to map it into a NEAR block.
 ///
 /// ## Fields from Ethereum blocks not included:
