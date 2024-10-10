@@ -11,7 +11,12 @@ use tokio::process::Command;
 pub async fn clone_nearcore(nearcore_root: &Path, tag: &str) -> anyhow::Result<PathBuf> {
     let status = Command::new("git")
         .current_dir(nearcore_root)
-        .args(["clone", "https://github.com/near/nearcore.git"])
+        .args([
+            "clone",
+            "https://github.com/near/nearcore.git",
+            "--branch",
+            tag,
+        ])
         .status()
         .await?;
 
@@ -24,18 +29,6 @@ pub async fn clone_nearcore(nearcore_root: &Path, tag: &str) -> anyhow::Result<P
     if !expected_path.exists() {
         return Err(anyhow::Error::msg(
             "nearcore repository not created in the expected location",
-        ));
-    }
-
-    let status = Command::new("git")
-        .current_dir(&expected_path)
-        .args(["checkout", tag])
-        .status()
-        .await?;
-
-    if !status.success() {
-        return Err(anyhow::Error::msg(
-            "Failed to checkout current nearcore version",
         ));
     }
 

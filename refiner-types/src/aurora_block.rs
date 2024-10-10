@@ -240,6 +240,20 @@ pub enum ResultStatusTag {
     OutOfFund,
     OutOfOffset,
     CallTooDeep,
+    StackUnderflow,
+    StackOverflow,
+    InvalidJump,
+    InvalidRange,
+    DesignatedInvalid,
+    CreateCollision,
+    CreateContractLimit,
+    InvalidCode(u8),
+    PCUnderflow,
+    CreateEmpty,
+    MaxNonce,
+    UsizeOverflow,
+    CreateContractStartingWithEF,
+    Other(String),
 }
 
 impl From<&TransactionStatus> for ResultStatusTag {
@@ -251,6 +265,20 @@ impl From<&TransactionStatus> for ResultStatusTag {
             TransactionStatus::OutOfFund => Self::OutOfFund,
             TransactionStatus::OutOfOffset => Self::OutOfOffset,
             TransactionStatus::CallTooDeep => Self::CallTooDeep,
+            TransactionStatus::StackUnderflow => Self::StackUnderflow,
+            TransactionStatus::StackOverflow => Self::StackOverflow,
+            TransactionStatus::InvalidJump => Self::InvalidJump,
+            TransactionStatus::InvalidRange => Self::InvalidRange,
+            TransactionStatus::DesignatedInvalid => Self::DesignatedInvalid,
+            TransactionStatus::CreateCollision => Self::CreateCollision,
+            TransactionStatus::CreateContractLimit => Self::CreateContractLimit,
+            TransactionStatus::InvalidCode(code) => Self::InvalidCode(*code),
+            TransactionStatus::PCUnderflow => Self::PCUnderflow,
+            TransactionStatus::CreateEmpty => Self::CreateEmpty,
+            TransactionStatus::MaxNonce => Self::MaxNonce,
+            TransactionStatus::UsizeOverflow => Self::UsizeOverflow,
+            TransactionStatus::Other(msg) => Self::Other(msg.to_string()),
+            TransactionStatus::CreateContractStartingWithEF => Self::CreateContractStartingWithEF,
         }
     }
 }
@@ -268,8 +296,8 @@ mod tests {
         let computed_block_json = {
             let mut tmp = serde_json::to_value(block).unwrap();
             // The gas limit field used to be equal to `U256::MAX`, however we now represent that
-            // field as a u64, so it is automatically coerced down to u64::MAX when deserializing.
-            // Therefore we expect the value now to be `0xffffffffffffffff`, but it used to be
+            // field as `u64`, so it is automatically coerced down to `u64::MAX` when deserializing.
+            // Therefore, we expect the value now to be `0xffffffffffffffff`, but it used to be
             // `0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`, so we change it back
             // to be able to compare with the original given block.
             assert_eq!(

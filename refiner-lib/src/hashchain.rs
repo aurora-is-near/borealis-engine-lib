@@ -166,6 +166,22 @@ fn tag_to_status(tag: &ResultStatusTag, transaction: &AuroraTransaction) -> Tran
         ResultStatusTag::OutOfFund => TransactionStatus::OutOfFund,
         ResultStatusTag::OutOfOffset => TransactionStatus::OutOfOffset,
         ResultStatusTag::CallTooDeep => TransactionStatus::CallTooDeep,
+        ResultStatusTag::StackUnderflow => TransactionStatus::StackUnderflow,
+        ResultStatusTag::StackOverflow => TransactionStatus::StackOverflow,
+        ResultStatusTag::InvalidJump => TransactionStatus::InvalidJump,
+        ResultStatusTag::InvalidRange => TransactionStatus::InvalidRange,
+        ResultStatusTag::DesignatedInvalid => TransactionStatus::DesignatedInvalid,
+        ResultStatusTag::CreateCollision => TransactionStatus::CreateCollision,
+        ResultStatusTag::CreateContractLimit => TransactionStatus::CreateContractLimit,
+        ResultStatusTag::InvalidCode(code) => TransactionStatus::InvalidCode(*code),
+        ResultStatusTag::PCUnderflow => TransactionStatus::PCUnderflow,
+        ResultStatusTag::CreateEmpty => TransactionStatus::CreateEmpty,
+        ResultStatusTag::MaxNonce => TransactionStatus::MaxNonce,
+        ResultStatusTag::UsizeOverflow => TransactionStatus::UsizeOverflow,
+        ResultStatusTag::CreateContractStartingWithEF => {
+            TransactionStatus::CreateContractStartingWithEF
+        }
+        ResultStatusTag::Other(msg) => TransactionStatus::Other(Cow::Owned(msg.clone())),
     }
 }
 
