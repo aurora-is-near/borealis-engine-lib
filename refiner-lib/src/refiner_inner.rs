@@ -487,7 +487,7 @@ fn normalize_output(
             // However, the NEP-141 protocol must still be followed, therefore the on-chain
             // output cannot be a `SubmitResult`. But the Standalone Engine can still capture
             // the `SubmitResult` from the execution. Hence, in this case we combine the
-            // Standalone's result with the the on-chain output to get a complete picture.
+            // Standalone's result with the on-chain output to get a complete picture.
             if tx_kind == TransactionKindTag::FtOnTransfer {
                 return Ok((engine_output, near_output.1, near_output.2));
             }
