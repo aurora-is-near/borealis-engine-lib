@@ -113,7 +113,11 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
-    use aurora_engine_types::account_id::AccountId;
+    use aurora_engine_types::{
+        account_id::AccountId,
+        types::{Address, Wei},
+        U256,
+    };
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches};
@@ -348,6 +352,43 @@ pub mod tests {
             aurora_blocks[0].near_metadata,
             NearBlock::ExistingBlock(..)
         ));
+    }
+
+    #[tokio::test]
+    async fn test_block_128945880_contains_token_mint() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let near_block = read_block("tests/res/block_128945880.json");
+
+        let aurora_blocks = stream.next_block(&near_block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 128945880);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // Expected values from base64 decoded args:
+        // echo eyJzZW5kZXJfaWQiOiJhdXJvcmEiLCJhbW91bnQiOiIxMDAwMDAwMDAwMDAwMDAwMDAiLCJtc2ciOiIwYzdlMWYwM2Q2NzFiMTE4NWJlYTZmYjA2ZjExNGEwYmQ4YmJhMmY4In0X|base64 -D
+        // {"sender_id":"aurora","amount":"100000000000000000","msg":"0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8"}%
+        let expected_sender = Address::zero(); // but `sender_id` is "aurora"
+        let expected_recipient =
+            Address::decode("0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8").unwrap();
+        let expected_amount = Wei::new(U256::from_dec_str("100000000000000000").unwrap());
+
+        let aurora_block = aurora_blocks.first().unwrap();
+        let ft_on_transfer_tx = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to == Some(expected_recipient)
+                && tx.value == expected_amount
+        });
+
+        assert!(
+            ft_on_transfer_tx.is_some(),
+            "Expected ft_on_transfer transaction not found in block"
+        );
     }
 
     pub fn read_block(path: &str) -> NEARBlock {

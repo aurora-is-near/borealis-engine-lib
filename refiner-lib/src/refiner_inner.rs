@@ -3,7 +3,7 @@ use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
 use aurora_engine::engine::create_legacy_address;
 use aurora_engine::parameters::{
-    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
+    CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
 };
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
@@ -11,7 +11,7 @@ use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::types::{Wei, WeiU256};
+use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AdditionalSubmitArgs, AuroraBlock, AuroraTransaction, AuroraTransactionBuilder,
@@ -222,7 +222,7 @@ impl Refiner {
                     match build_transaction(
                         block,
                         action,
-                        &execution_outcome.receipt.predecessor_id,
+                        execution_outcome,
                         near_metadata,
                         status,
                         self.chain_id,
@@ -552,7 +552,7 @@ fn fill_hashchain_metadata(
 fn build_transaction(
     near_block: &BlockView,
     action: &ActionView,
-    predecessor_id: &AccountId,
+    execution_outcome: &ExecutionOutcomeWithReceipt,
     near_metadata: NearTransaction,
     execution_status: Option<&ExecutionStatusView>,
     chain_id: u64,
@@ -564,6 +564,7 @@ fn build_transaction(
     let mut bloom = Bloom::default();
 
     let hash;
+    let predecessor_id = &execution_outcome.receipt.predecessor_id;
     let receipt_id = near_metadata.receipt_hash;
     let account_id = storage.get_engine_account_id();
     let engine_account_id = account_id
@@ -856,6 +857,65 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
+                TransactionKindTag::FtOnTransfer
+                    if is_ft_on_transfer_and_mint(
+                        &execution_outcome.execution_outcome.outcome.logs,
+                    ) =>
+                {
+                    hash = virtual_receipt_id.0.into();
+                    tx = tx.hash(hash);
+
+                    if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                        let from_address = Address::zero();
+                        let to = Address::decode(&args.msg).ok(); // msg contains destination address
+                        let value = Wei::new(U256::from(args.amount.as_u128()));
+                        let nonce = storage
+                            .with_engine_access(
+                                near_block.header.height,
+                                transaction_index.try_into().unwrap_or(u16::MAX),
+                                &[],
+                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            )
+                            .result;
+
+                        tx = tx
+                            .from(from_address)
+                            .to(to)
+                            .value(value)
+                            .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
+                            .gas_limit(u64::MAX)
+                            .max_priority_fee_per_gas(U256::zero())
+                            .max_fee_per_gas(U256::zero())
+                            .input(raw_input.clone())
+                            .access_list(vec![])
+                            .tx_type(0xff)
+                            .contract_address(None)
+                            .v(0)
+                            .r(U256::zero())
+                            .s(U256::zero());
+                    } else {
+                        let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                        tx = tx.from(from_address);
+                        tx = fill_tx(tx, raw_input.clone());
+                    };
+
+                    let (result, output_kind, raw_output) = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
+                        txs.get(&hash),
+                    )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
+                    fill_with_submit_result(tx, result, &mut bloom)
+                }
                 _ => {
                     hash = virtual_receipt_id.0.into();
                     tx = tx
@@ -969,6 +1029,13 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .v(0)
         .r(U256::zero())
         .s(U256::zero())
+}
+
+///  Returns `true` if the logs contain both a "ft_on_transfer" call and a "Mint" event, otherwise returns `false`
+fn is_ft_on_transfer_and_mint(logs: &[String]) -> bool {
+    let has_ft_on_transfer = logs.iter().any(|log| log.contains("Call ft_on_transfer"));
+    let has_mint_tokens = logs.iter().any(|log| log.contains("Mint"));
+    has_ft_on_transfer && has_mint_tokens
 }
 
 enum RefinerError {
