@@ -857,16 +857,19 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::FtOnTransfer
-                    if is_ft_on_transfer_and_mint(
-                        &execution_outcome.execution_outcome.outcome.logs,
-                    ) =>
-                {
+                TransactionKindTag::FtOnTransfer => {
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
                     if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
-                        let from_address = Address::zero();
+                        let from_address = match get_token_mint_kind(
+                            &execution_outcome.execution_outcome.outcome.logs,
+                        ) {
+                            TokenMintKind::Eth => Address::zero(),
+                            TokenMintKind::ERC20 => {
+                                near_account_to_evm_address(predecessor_id.as_bytes())
+                            }
+                        };
                         let to = Address::decode(&args.msg).ok(); // msg contains destination address
                         let value = Wei::new(U256::from(args.amount.as_u128()));
                         let nonce = storage
@@ -886,7 +889,7 @@ fn build_transaction(
                             .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
-                            .input(raw_input.clone())
+                            .input(vec![])
                             .access_list(vec![])
                             .tx_type(0xff)
                             .contract_address(None)
@@ -1031,11 +1034,26 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .s(U256::zero())
 }
 
-///  Returns `true` if the logs contain both a "ft_on_transfer" call and a "Mint" event, otherwise returns `false`
-fn is_ft_on_transfer_and_mint(logs: &[String]) -> bool {
-    let has_ft_on_transfer = logs.iter().any(|log| log.contains("Call ft_on_transfer"));
-    let has_mint_tokens = logs.iter().any(|log| log.contains("Mint"));
-    has_ft_on_transfer && has_mint_tokens
+/// Describes the type of a specific mint transaction.
+enum TokenMintKind {
+    Eth,
+    ERC20,
+}
+
+/// Returns the type of token minted in an `ft_on_transfer` transaction (either ETH or ERC20).
+///
+/// NOTE: This function assumes the presence of a "Mint" event in the logs.
+/// Currently, ETH transactions lack a "Mint" log entry, so this function explicitly returns `TokenMintKind::ETH` in such cases.
+/// This will be updated once the corresponding transaction logs are available in the aurora-engine workspace.
+fn get_token_mint_kind(logs: &[String]) -> TokenMintKind {
+    let has_mint_eth_tokens = logs
+        .iter()
+        .any(|log| log.contains("Mint") && log.contains("ETH"));
+    if has_mint_eth_tokens {
+        TokenMintKind::Eth
+    } else {
+        TokenMintKind::ERC20
+    }
 }
 
 enum RefinerError {
