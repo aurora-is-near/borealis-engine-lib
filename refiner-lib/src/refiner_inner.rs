@@ -1076,7 +1076,7 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
 /// Describes the type of a specific mint transaction.
 enum TokenMintKind {
     Eth,
-    ERC20,
+    Erc20,
 }
 
 /// Returns the type of token minted in an `ft_on_transfer` transaction (either ETH or ERC20).
