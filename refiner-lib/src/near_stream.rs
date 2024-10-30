@@ -109,6 +109,14 @@ impl NearStream {
 
         blocks
     }
+
+    pub async fn next_explicit_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
+        let mut blocks = vec![];
+        let block = self.handle_block(near_block).await;
+        blocks.push(block);
+        PROCESSED_BLOCKS.inc();
+        blocks
+    }
 }
 
 #[cfg(test)]
@@ -370,12 +378,12 @@ pub mod tests {
             NearBlock::ExistingBlock(..)
         ));
 
-        // Expected values from base64 decoded args:
+        // Expected values from base64-decoded args:
         // echo eyJzZW5kZXJfaWQiOiJhdXJvcmEiLCJhbW91bnQiOiIxMDAwMDAwMDAwMDAwMDAwMDAiLCJtc2ciOiIwYzdlMWYwM2Q2NzFiMTE4NWJlYTZmYjA2ZjExNGEwYmQ4YmJhMmY4In0=|base64 -D
         // {"sender_id":"aurora","amount":"100000000000000000","msg":"0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8"}%
-        let expected_sender = Address::zero(); // but `sender_id` is "aurora"
+        let expected_sender = Address::decode("4444588443c3a91288c5002483449aba1054192b").unwrap(); // `sender_id` is near_account_to_evm_address("aurora")
         let expected_recipient =
-            Address::decode("0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8").unwrap();
+            Address::decode("0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8").unwrap(); // The recipient is the address from the args-decoded msg field
         let expected_amount = Wei::new(U256::from_dec_str("100000000000000000").unwrap());
 
         let aurora_block = aurora_blocks.first().unwrap();
@@ -397,9 +405,19 @@ pub mod tests {
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let near_block = read_block("tests/res/block_125229395.json");
+        // Read the block where the wNEAR contract is created to obtain a state that contains a key-value pair representing the wrap.near and ERC20 addresses.
+        let near_block_wnear_contract_create = read_block("tests/res/block_42598892.json");
+        let aurora_blocks = stream.next_block(&near_block_wnear_contract_create).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 42598892);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
 
-        let aurora_blocks = stream.next_block(&near_block).await;
+        // Read the block that contains the ERC20 token mint transaction.
+        let near_block = read_block("tests/res/block_125229395.json");
+        let aurora_blocks = stream.next_explicit_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 125229395);
         assert!(matches!(
@@ -407,12 +425,16 @@ pub mod tests {
             NearBlock::ExistingBlock(..)
         ));
 
-        // Expected values from base64 decoded args:
+        // `sender_id` is near_account_to_evm_address("aurora")
+        let expected_sender = Address::decode("4444588443c3a91288c5002483449aba1054192b").unwrap();
+
+        // "wrap.near" -> nep141_account_id -> aurora_engine::engine::get_erc20_from_nep141
+        let expected_recipient =
+            Address::decode("c42c30ac6cc15fac9bd938618bcaa1a1fae8501d").unwrap();
+
+        // Expected amount from base64-decoded args:
         // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
         // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
-        let expected_sender = Address::decode("13896015e525a44360de29d4b1b55b47c28ce746").unwrap(); // near_account_to_evm_address("wrap.near");
-        let expected_recipient =
-            Address::decode("0fe957e6acbb4fd935cee5ba033e00088df86adb").unwrap();
         let expected_amount = Wei::new(U256::from_dec_str("11633748708758676689950").unwrap());
 
         let aurora_block = aurora_blocks.first().unwrap();

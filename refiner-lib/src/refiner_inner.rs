@@ -861,16 +861,15 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
+                    println!("ft_on_transfer detected. Decoding arguments...");
                     if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
-                        let from_address = match get_token_mint_kind(
-                            &execution_outcome.execution_outcome.outcome.logs,
-                        ) {
-                            TokenMintKind::Eth => Address::zero(),
-                            TokenMintKind::ERC20 => {
-                                near_account_to_evm_address(predecessor_id.as_bytes())
-                            }
-                        };
-                        let to = Address::decode(&args.msg).ok(); // msg contains destination address
+                        let (from_address, to) = determine_ft_on_transfer_addresses(
+                            execution_outcome,
+                            &args,
+                            storage,
+                            near_block,
+                            transaction_index,
+                        );
                         let value = Wei::new(U256::from(args.amount.as_u128()));
                         let nonce = storage
                             .with_engine_access(
@@ -995,6 +994,46 @@ fn build_transaction(
         transaction: tx.build().map_err(RefinerError::BuilderError)?,
         transaction_hash,
     })
+}
+
+fn determine_ft_on_transfer_addresses(
+    execution_outcome: &ExecutionOutcomeWithReceipt,
+    args: &NEP141FtOnTransferArgs,
+    storage: &Storage,
+    near_block: &BlockView,
+    transaction_index: u32,
+) -> (Address, Option<Address>) {
+    // For now, we use `aurora` as the `from address` for both ETH and ERC-20 tokens.
+    // Later, when the engine and ethconnector split is deployed on mainnet,
+    // this will be changed to the address of ethconnector.
+    let from_address = near_account_to_evm_address(b"aurora");
+    let to = match get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs) {
+        TokenMintKind::Eth => Address::decode(&args.msg).ok(), // msg contains a destination address,
+        TokenMintKind::ERC20 => {
+            let predecessor_id = &execution_outcome.receipt.predecessor_id;
+            Some(
+                storage
+                    .with_engine_access(
+                        near_block.header.height,
+                        transaction_index.try_into().unwrap_or(u16::MAX),
+                        &[],
+                        |io| {
+                            let from_address_nep141 =
+                                aurora_engine_types::account_id::AccountId::new(
+                                    predecessor_id.as_str(),
+                                )
+                                .unwrap_or_default();
+                            aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
+                        },
+                    )
+                    .result
+                    .ok()
+                    .and_then(|bytes| Address::try_from_slice(&bytes).ok())
+                    .unwrap_or(Address::zero()),
+            )
+        }
+    };
+    (from_address, to)
 }
 
 fn fill_with_submit_result(
