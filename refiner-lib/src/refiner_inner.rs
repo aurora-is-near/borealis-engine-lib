@@ -861,9 +861,13 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
-                    println!("ft_on_transfer detected. Decoding arguments...");
                     if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
-                        let (from_address, to) = determine_ft_on_transfer_addresses(
+                        // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
+                        // Later, when the engine and ethconnector split is deployed on mainnet,
+                        // this will be changed to the address of ethconnector.
+                        let from_address =
+                            near_account_to_evm_address(engine_account_id.as_bytes());
+                        let to = determine_ft_on_transfer_addresses(
                             execution_outcome,
                             &args,
                             storage,
@@ -1002,14 +1006,10 @@ fn determine_ft_on_transfer_addresses(
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
-) -> (Address, Option<Address>) {
-    // For now, we use `aurora` as the `from address` for both ETH and ERC-20 tokens.
-    // Later, when the engine and ethconnector split is deployed on mainnet,
-    // this will be changed to the address of ethconnector.
-    let from_address = near_account_to_evm_address(b"aurora");
-    let to = match get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs) {
+) -> Option<Address> {
+    match get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs) {
         TokenMintKind::Eth => Address::decode(&args.msg).ok(), // msg contains a destination address,
-        TokenMintKind::ERC20 => {
+        TokenMintKind::Erc20 => {
             let predecessor_id = &execution_outcome.receipt.predecessor_id;
             Some(
                 storage
@@ -1032,8 +1032,7 @@ fn determine_ft_on_transfer_addresses(
                     .unwrap_or(Address::zero()),
             )
         }
-    };
-    (from_address, to)
+    }
 }
 
 fn fill_with_submit_result(
@@ -1091,7 +1090,7 @@ fn get_token_mint_kind(logs: &[String]) -> TokenMintKind {
     if has_mint_eth_tokens {
         TokenMintKind::Eth
     } else {
-        TokenMintKind::ERC20
+        TokenMintKind::Erc20
     }
 }
 
