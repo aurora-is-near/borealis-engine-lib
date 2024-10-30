@@ -867,7 +867,7 @@ fn build_transaction(
                         // this will be changed to the address of ethconnector.
                         let from_address =
                             near_account_to_evm_address(engine_account_id.as_bytes());
-                        let to = determine_ft_on_transfer_addresses(
+                        let to = determine_ft_on_transfer_to_address(
                             execution_outcome,
                             &args,
                             storage,
@@ -1000,7 +1000,7 @@ fn build_transaction(
     })
 }
 
-fn determine_ft_on_transfer_addresses(
+fn determine_ft_on_transfer_to_address(
     execution_outcome: &ExecutionOutcomeWithReceipt,
     args: &NEP141FtOnTransferArgs,
     storage: &Storage,
