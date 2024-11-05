@@ -863,12 +863,15 @@ fn build_transaction(
                     tx = tx.hash(hash);
 
                     if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                        let token_mint_kind =
+                            get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
                         // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
                         // Later, when the engine and ethconnector split is deployed on mainnet,
                         // this will be changed to the address of ethconnector.
                         let from_address =
                             near_account_to_evm_address(engine_account_id.as_bytes());
                         let to = determine_ft_on_transfer_recipient(
+                            &token_mint_kind,
                             execution_outcome,
                             &args,
                             storage,
@@ -885,9 +888,7 @@ fn build_transaction(
                             .result;
 
                         // Differentiate between ETH and ERC-20 for setting transaction value and input
-                        let (value, aurora_tx_input) = match get_token_mint_kind(
-                            &execution_outcome.execution_outcome.outcome.logs,
-                        ) {
+                        let (value, aurora_tx_input) = match token_mint_kind {
                             // For ETH mint transactions, set value in WEI and clear input
                             TokenMintKind::Eth => (Wei::new_u128(args.amount.as_u128()), vec![]),
                             // For ERC-20 transactions, encode the amount as part of the input, not value
@@ -1014,13 +1015,14 @@ fn build_transaction(
 }
 
 fn determine_ft_on_transfer_recipient(
+    token_mint_kind: &TokenMintKind,
     execution_outcome: &ExecutionOutcomeWithReceipt,
     args: &NEP141FtOnTransferArgs,
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
 ) -> Address {
-    match get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs) {
+    match token_mint_kind {
         TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
             .map(|msg_data| msg_data.recipient)
             .unwrap_or(Address::zero()),
