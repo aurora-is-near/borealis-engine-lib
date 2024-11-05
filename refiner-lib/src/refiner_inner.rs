@@ -1,7 +1,8 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
-use aurora_engine::engine::create_legacy_address;
+use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
+use aurora_engine::engine::{create_legacy_address, GetErc20FromNep141Error};
 use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
 };
@@ -867,14 +868,13 @@ fn build_transaction(
                         // this will be changed to the address of ethconnector.
                         let from_address =
                             near_account_to_evm_address(engine_account_id.as_bytes());
-                        let to = determine_ft_on_transfer_to_address(
+                        let to = determine_ft_on_transfer_recipient(
                             execution_outcome,
                             &args,
                             storage,
                             near_block,
                             transaction_index,
                         );
-                        let value = Wei::new(U256::from(args.amount.as_u128()));
                         let nonce = storage
                             .with_engine_access(
                                 near_block.header.height,
@@ -884,15 +884,30 @@ fn build_transaction(
                             )
                             .result;
 
+                        // Differentiate between ETH and ERC-20 for setting transaction value and input
+                        let (value, aurora_tx_input) = match get_token_mint_kind(
+                            &execution_outcome.execution_outcome.outcome.logs,
+                        ) {
+                            // For ETH mint transactions, set value in WEI and clear input
+                            TokenMintKind::Eth => {
+                                (Wei::new(U256::from(args.amount.as_u128())), vec![])
+                            }
+                            // For ERC-20 transactions, encode the amount as part of the input, not value
+                            TokenMintKind::Erc20 => (
+                                Wei::zero(),
+                                aurora_engine::engine::setup_receive_erc20_tokens_input(&args, &to),
+                            ),
+                        };
+
                         tx = tx
                             .from(from_address)
-                            .to(to)
+                            .to(Some(to))
                             .value(value)
                             .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                             .gas_limit(u64::MAX)
                             .max_priority_fee_per_gas(U256::zero())
                             .max_fee_per_gas(U256::zero())
-                            .input(vec![])
+                            .input(aurora_tx_input)
                             .access_list(vec![])
                             .tx_type(0xff)
                             .contract_address(None)
@@ -1000,37 +1015,38 @@ fn build_transaction(
     })
 }
 
-fn determine_ft_on_transfer_to_address(
+fn determine_ft_on_transfer_recipient(
     execution_outcome: &ExecutionOutcomeWithReceipt,
     args: &NEP141FtOnTransferArgs,
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
-) -> Option<Address> {
+) -> Address {
     match get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs) {
-        TokenMintKind::Eth => Address::decode(&args.msg).ok(), // msg contains a destination address,
+        TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
+            .map(|msg_data| msg_data.recipient)
+            .unwrap_or(Address::zero()),
         TokenMintKind::Erc20 => {
             let predecessor_id = &execution_outcome.receipt.predecessor_id;
-            Some(
-                storage
-                    .with_engine_access(
-                        near_block.header.height,
-                        transaction_index.try_into().unwrap_or(u16::MAX),
-                        &[],
-                        |io| {
-                            let from_address_nep141 =
-                                aurora_engine_types::account_id::AccountId::new(
-                                    predecessor_id.as_str(),
-                                )
-                                .unwrap_or_default();
-                            aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
-                        },
-                    )
-                    .result
-                    .ok()
-                    .and_then(|bytes| Address::try_from_slice(&bytes).ok())
-                    .unwrap_or(Address::zero()),
-            )
+            storage
+                .with_engine_access(
+                    near_block.header.height,
+                    transaction_index.try_into().unwrap_or(u16::MAX),
+                    &[],
+                    |io| {
+                        let from_address_nep141 = aurora_engine_types::account_id::AccountId::new(
+                            predecessor_id.as_str(),
+                        )
+                        .unwrap_or_default();
+                        aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
+                    },
+                )
+                .result
+                .and_then(|bytes| {
+                    Address::try_from_slice(&bytes)
+                        .map_err(|_| GetErc20FromNep141Error::InvalidAddress)
+                })
+                .unwrap_or(Address::zero())
         }
     }
 }

@@ -109,14 +109,6 @@ impl NearStream {
 
         blocks
     }
-
-    pub async fn next_explicit_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
-        let mut blocks = vec![];
-        let block = self.handle_block(near_block).await;
-        blocks.push(block);
-        PROCESSED_BLOCKS.inc();
-        blocks
-    }
 }
 
 #[cfg(test)]
@@ -415,9 +407,11 @@ pub mod tests {
             NearBlock::ExistingBlock(..)
         ));
 
+        // Directly setting the height, we ensure the stream will process the target block (125229395)
+        stream.last_block_height = Some(125229394);
         // Read the block that contains the ERC20 token mint transaction.
         let near_block = read_block("tests/res/block_125229395.json");
-        let aurora_blocks = stream.next_explicit_block(&near_block).await;
+        let aurora_blocks = stream.next_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 125229395);
         assert!(matches!(
