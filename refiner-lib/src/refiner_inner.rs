@@ -890,7 +890,7 @@ fn build_transaction(
                         ) {
                             // For ETH mint transactions, set value in WEI and clear input
                             TokenMintKind::Eth => {
-                                (Wei::new(U256::from(args.amount.as_u128())), vec![])
+                                (Wei::new_u128(args.amount.as_u128()), vec![])
                             }
                             // For ERC-20 transactions, encode the amount as part of the input, not value
                             TokenMintKind::Erc20 => (
