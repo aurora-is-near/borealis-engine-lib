@@ -68,8 +68,8 @@ async fn main() -> anyhow::Result<()> {
             })?;
 
             aurora_refiner_lib::storage::init_storage(
-                engine_path.to_path_buf(),
-                config.refiner.engine_account_id.clone(),
+                engine_path,
+                &config.refiner.engine_account_id,
                 config.refiner.chain_id,
             );
 
