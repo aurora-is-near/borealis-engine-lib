@@ -159,8 +159,11 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         {
-            let storage = stream.context.storage.read().await;
-            let result = storage
+            let result = stream
+                .context
+                .storage
+                .read()
+                .await
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -168,8 +171,11 @@ pub mod tests {
 
         let block = read_block("tests/res/block_131407300.json");
         let _ = stream.next_block(&block).await;
-        let storage = stream.context.storage.read().await;
-        let chain_id_from_state = storage
+        let chain_id_from_state = stream
+            .context
+            .storage
+            .read()
+            .await
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -560,7 +566,7 @@ pub mod tests {
             self
         }
 
-        pub fn with_chain_id(mut self, chain_id: u64) -> Self {
+        pub const fn with_chain_id(mut self, chain_id: u64) -> Self {
             self.chain_id = chain_id;
             self
         }
