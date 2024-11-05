@@ -113,6 +113,7 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
+    use aurora_engine::state::EngineStateError;
     use aurora_engine_types::{
         account_id::AccountId,
         types::{Address, Wei},
@@ -142,6 +143,38 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn test_block_131407300() {
+        // The block 131407300 contains a receipt with batch of actions, one of which inits silo
+        // contract. The test checks that init action in the batch is processed correctly and
+        // initializes the borealis engine's state.
+        let db_dir = tempfile::tempdir().unwrap();
+        let chain_id = 1313161566;
+        let ctx = TestContextBuilder::new()
+            .with_account_id("0x4e45415e.c.aurora")
+            .with_chain_id(chain_id)
+            .build(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        {
+            let storage = stream.context.storage.read().await;
+            let result = storage
+                .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
+                .result;
+            assert!(matches!(result, Err(EngineStateError::NotFound)));
+        }
+
+        let block = read_block("tests/res/block_131407300.json");
+        let _ = stream.next_block(&block).await;
+        let storage = stream.context.storage.read().await;
+        let chain_id_from_state = storage
+            .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
+            .result
+            .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
+            .unwrap();
+        assert_eq!(chain_id_from_state, chain_id);
+    }
+
+    #[tokio::test]
     async fn test_block_89402026() {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
@@ -159,7 +192,7 @@ pub mod tests {
 
     #[tokio::test]
     async fn test_block_84423722() {
-        // The block at hight 84423722 contains a transaction with zero actions.
+        // The block at height 84423722 contains a transaction with zero actions.
         // The refiner should be able to process such a block without crashing.
 
         let db_dir = tempfile::tempdir().unwrap();
@@ -459,13 +492,20 @@ pub mod tests {
 
     impl TestContext {
         pub fn new(db_dir: &tempfile::TempDir) -> Self {
+            TestContextBuilder::new().build(db_dir)
+        }
+
+        pub fn new_with_args(
+            db_dir: &tempfile::TempDir,
+            account_id: AccountId,
+            chain_id: u64,
+        ) -> Self {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
-            let chain_id = 1313161554_u64;
-            let account_id: AccountId = "aurora".parse().unwrap();
-            crate::storage::init_storage(engine_path.clone(), account_id.clone(), chain_id);
+            crate::storage::init_storage(&engine_path, &account_id, chain_id);
             let engine_context = EngineContext::new(&engine_path, account_id, chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
+
             Self {
                 chain_id,
                 engine_context,
@@ -484,6 +524,40 @@ pub mod tests {
 
         pub fn create_stream(self) -> NearStream {
             NearStream::new(self.chain_id, None, self.engine_context, self.tx_tracker)
+        }
+    }
+
+    pub struct TestContextBuilder {
+        chain_id: u64,
+        account_id: AccountId,
+    }
+
+    impl TestContextBuilder {
+        pub fn new() -> Self {
+            Self {
+                chain_id: 1313161554,
+                account_id: "aurora".parse().unwrap(),
+            }
+        }
+
+        pub fn with_account_id(mut self, account_id: &str) -> Self {
+            self.account_id = account_id.parse().unwrap();
+            self
+        }
+
+        pub fn with_chain_id(mut self, chain_id: u64) -> Self {
+            self.chain_id = chain_id;
+            self
+        }
+
+        pub fn build(self, db_dir: &tempfile::TempDir) -> TestContext {
+            TestContext::new_with_args(db_dir, self.account_id, self.chain_id)
+        }
+    }
+
+    impl Default for TestContextBuilder {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }

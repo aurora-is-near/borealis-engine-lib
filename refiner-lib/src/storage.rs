@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use aurora_engine_types::{account_id::AccountId, H256, U256};
 use engine_standalone_storage::{Storage, StoragePrefix};
@@ -8,12 +8,12 @@ const VERSION: u8 = 0;
 /// Write to the DB in batches of 100k heights at a time
 const BATCH_SIZE: usize = 100_000;
 
-pub fn init_storage(storage_path: PathBuf, account_id: AccountId, chain_id: u64) {
-    let mut storage = migrate_block_hash(storage_path, &account_id, chain_id);
+pub fn init_storage<P: AsRef<Path>>(storage_path: P, account_id: &AccountId, chain_id: u64) {
+    let mut storage = migrate_block_hash(storage_path, account_id, chain_id);
 
     match storage.get_engine_account_id() {
         Ok(stored_id) => {
-            if stored_id != account_id {
+            if &stored_id != account_id {
                 panic!(
                     "Provided engine_account_id={} is not equal to account_id_stored={}",
                     account_id, stored_id
@@ -25,7 +25,7 @@ pub fn init_storage(storage_path: PathBuf, account_id: AccountId, chain_id: u64)
                 "No engine_account_id set in DB. Setting to configured engine_account_id={}",
                 account_id
             );
-            storage.set_engine_account_id(&account_id).unwrap();
+            storage.set_engine_account_id(account_id).unwrap();
         }
         Err(engine_standalone_storage::Error::EngineAccountIdCorrupted) => {
             panic!("Fatal error, cannot read engine_account_id from DB. The DB may be corrupted.");
@@ -36,9 +36,13 @@ pub fn init_storage(storage_path: PathBuf, account_id: AccountId, chain_id: u64)
     };
 }
 
-fn migrate_block_hash(storage_path: PathBuf, account_id: &AccountId, chain_id: u64) -> Storage {
+fn migrate_block_hash<P: AsRef<Path>>(
+    storage_path: P,
+    account_id: &AccountId,
+    chain_id: u64,
+) -> Storage {
     let chain_id = aurora_engine_types::types::u256_to_arr(&U256::from(chain_id));
-    let mut storage = Storage::open(storage_path.clone()).unwrap();
+    let mut storage = Storage::open(&storage_path).unwrap();
     let (block_hash, block_height) = match storage.get_latest_block() {
         Ok(x) => x,
         // If there are no blocks then there is nothing to migrate
@@ -53,7 +57,7 @@ fn migrate_block_hash(storage_path: PathBuf, account_id: &AccountId, chain_id: u
         // Close the current storage instance because we're going to need low-level access to the DB.
         let (_, mut block_height) = storage.get_earliest_block().unwrap();
         drop(storage);
-        let db = rocksdb::DB::open_default(storage_path.clone()).unwrap();
+        let db = rocksdb::DB::open_default(&storage_path).unwrap();
 
         while let MigrationStatus::Continue(height) =
             block_hash_migration_batch(&db, block_height, account_id.as_bytes(), chain_id)
