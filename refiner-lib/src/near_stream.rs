@@ -113,15 +113,18 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
-    use aurora_engine::state::EngineStateError;
+    use aurora_engine::{
+        engine::setup_receive_erc20_tokens_input, parameters::NEP141FtOnTransferArgs,
+        state::EngineStateError,
+    };
     use aurora_engine_types::{
         account_id::AccountId,
-        types::{Address, Wei},
+        types::{Address, Balance, Wei},
         U256,
     };
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
-    use std::{collections::HashSet, matches};
+    use std::{collections::HashSet, matches, str::FromStr};
 
     use super::*;
 
@@ -459,16 +462,28 @@ pub mod tests {
         let expected_recipient =
             Address::decode("c42c30ac6cc15fac9bd938618bcaa1a1fae8501d").unwrap();
 
-        // Expected amount from base64-decoded args:
-        // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
-        // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
-        let expected_amount = Wei::new(U256::from_dec_str("11633748708758676689950").unwrap());
+        let expected_amount = Wei::zero();
+        let expected_input = {
+            // Expected arguments are extracted from the base64-encoded string of the NEAR receipt id "D4PhVsM2PFNgyc73mjR5oLYpz6rNAwBSy4rRo1Aariea"
+            // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
+            // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
+            let args = NEP141FtOnTransferArgs {
+                sender_id: AccountId::from_str(
+                    "66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e",
+                )
+                .unwrap(),
+                amount: Balance::new(11633748708758676689950),
+                msg: "0fe957e6acbb4fd935cee5ba033e00088df86adb".to_string(),
+            };
+            setup_receive_erc20_tokens_input(&args, &expected_recipient)
+        };
 
         let aurora_block = aurora_blocks.first().unwrap();
         let ft_on_transfer_erc20_tx = aurora_block.transactions.iter().find(|tx| {
             tx.from == expected_sender
                 && tx.to == Some(expected_recipient)
                 && tx.value == expected_amount
+                && tx.input == expected_input
         });
 
         assert!(
