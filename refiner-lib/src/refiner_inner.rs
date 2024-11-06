@@ -1,9 +1,10 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
 use crate::utils::{as_h256, keccak256, TxMetadata};
-use aurora_engine::engine::create_legacy_address;
+use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
+use aurora_engine::engine::{create_legacy_address, GetErc20FromNep141Error};
 use aurora_engine::parameters::{
-    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
+    CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
 };
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
@@ -11,7 +12,7 @@ use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::types::{Wei, WeiU256};
+use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
     AdditionalSubmitArgs, AuroraBlock, AuroraTransaction, AuroraTransactionBuilder,
@@ -222,7 +223,7 @@ impl Refiner {
                     match build_transaction(
                         block,
                         action,
-                        &execution_outcome.receipt.predecessor_id,
+                        execution_outcome,
                         near_metadata,
                         status,
                         self.chain_id,
@@ -552,7 +553,7 @@ fn fill_hashchain_metadata(
 fn build_transaction(
     near_block: &BlockView,
     action: &ActionView,
-    predecessor_id: &AccountId,
+    execution_outcome: &ExecutionOutcomeWithReceipt,
     near_metadata: NearTransaction,
     execution_status: Option<&ExecutionStatusView>,
     chain_id: u64,
@@ -564,6 +565,7 @@ fn build_transaction(
     let mut bloom = Bloom::default();
 
     let hash;
+    let predecessor_id = &execution_outcome.receipt.predecessor_id;
     let receipt_id = near_metadata.receipt_hash;
     let account_id = storage.get_engine_account_id();
     let engine_account_id = account_id
@@ -856,6 +858,84 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
+                TransactionKindTag::FtOnTransfer => {
+                    hash = virtual_receipt_id.0.into();
+                    tx = tx.hash(hash);
+
+                    if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                        let token_mint_kind =
+                            get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
+                        // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
+                        // Later, when the engine and ethconnector split is deployed on mainnet,
+                        // this will be changed to the address of ethconnector.
+                        let from_address =
+                            near_account_to_evm_address(engine_account_id.as_bytes());
+                        let to = determine_ft_on_transfer_recipient(
+                            &token_mint_kind,
+                            execution_outcome,
+                            &args,
+                            storage,
+                            near_block,
+                            transaction_index,
+                        );
+                        let nonce = storage
+                            .with_engine_access(
+                                near_block.header.height,
+                                transaction_index.try_into().unwrap_or(u16::MAX),
+                                &[],
+                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            )
+                            .result;
+
+                        // Differentiate between ETH and ERC-20 for setting transaction value and input
+                        let (value, aurora_tx_input) = match token_mint_kind {
+                            // For ETH mint transactions, set value in WEI and clear input
+                            TokenMintKind::Eth => (Wei::new_u128(args.amount.as_u128()), vec![]),
+                            // For ERC-20 transactions, encode the amount as part of the input, not value
+                            TokenMintKind::Erc20 => (
+                                Wei::zero(),
+                                aurora_engine::engine::setup_receive_erc20_tokens_input(&args, &to),
+                            ),
+                        };
+
+                        tx = tx
+                            .from(from_address)
+                            .to(Some(to))
+                            .value(value)
+                            .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
+                            .gas_limit(u64::MAX)
+                            .max_priority_fee_per_gas(U256::zero())
+                            .max_fee_per_gas(U256::zero())
+                            .input(aurora_tx_input)
+                            .access_list(vec![])
+                            .tx_type(0xff)
+                            .contract_address(None)
+                            .v(0)
+                            .r(U256::zero())
+                            .s(U256::zero());
+                    } else {
+                        let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                        tx = tx.from(from_address);
+                        tx = fill_tx(tx, raw_input.clone());
+                    };
+
+                    let (result, output_kind, raw_output) = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
+                        txs.get(&hash),
+                    )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
+                    fill_with_submit_result(tx, result, &mut bloom)
+                }
                 _ => {
                     hash = virtual_receipt_id.0.into();
                     tx = tx
@@ -934,6 +1014,43 @@ fn build_transaction(
     })
 }
 
+fn determine_ft_on_transfer_recipient(
+    token_mint_kind: &TokenMintKind,
+    execution_outcome: &ExecutionOutcomeWithReceipt,
+    args: &NEP141FtOnTransferArgs,
+    storage: &Storage,
+    near_block: &BlockView,
+    transaction_index: u32,
+) -> Address {
+    match token_mint_kind {
+        TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
+            .map(|msg_data| msg_data.recipient)
+            .unwrap_or(Address::zero()),
+        TokenMintKind::Erc20 => {
+            let predecessor_id = &execution_outcome.receipt.predecessor_id;
+            storage
+                .with_engine_access(
+                    near_block.header.height,
+                    transaction_index.try_into().unwrap_or(u16::MAX),
+                    &[],
+                    |io| {
+                        let from_address_nep141 = aurora_engine_types::account_id::AccountId::new(
+                            predecessor_id.as_str(),
+                        )
+                        .unwrap_or_default();
+                        aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
+                    },
+                )
+                .result
+                .and_then(|bytes| {
+                    Address::try_from_slice(&bytes)
+                        .map_err(|_| GetErc20FromNep141Error::InvalidAddress)
+                })
+                .unwrap_or(Address::zero())
+        }
+    }
+}
+
 fn fill_with_submit_result(
     mut tx: AuroraTransactionBuilder,
     result: SubmitResult,
@@ -969,6 +1086,28 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .v(0)
         .r(U256::zero())
         .s(U256::zero())
+}
+
+/// Describes the type of a specific mint transaction.
+enum TokenMintKind {
+    Eth,
+    Erc20,
+}
+
+/// Returns the type of token minted in an `ft_on_transfer` transaction (either ETH or ERC20).
+///
+/// NOTE: This function assumes the presence of a "Mint" event in the logs.
+/// Currently, ETH transactions lack a "Mint" log entry, so this function explicitly returns `TokenMintKind::ETH` in such cases.
+/// This will be updated once the corresponding transaction logs are available in the aurora-engine workspace.
+fn get_token_mint_kind(logs: &[String]) -> TokenMintKind {
+    let has_mint_eth_tokens = logs
+        .iter()
+        .any(|log| log.contains("Mint") && log.contains("ETH"));
+    if has_mint_eth_tokens {
+        TokenMintKind::Eth
+    } else {
+        TokenMintKind::Erc20
+    }
 }
 
 enum RefinerError {

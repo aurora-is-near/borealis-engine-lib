@@ -113,12 +113,18 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
-    use aurora_engine::state::EngineStateError;
-    use aurora_engine_types::account_id::AccountId;
-    use aurora_engine_types::U256;
+    use aurora_engine::{
+        engine::setup_receive_erc20_tokens_input, parameters::NEP141FtOnTransferArgs,
+        state::EngineStateError,
+    };
+    use aurora_engine_types::{
+        account_id::AccountId,
+        types::{Address, Balance, Wei},
+        U256,
+    };
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
-    use std::{collections::HashSet, matches};
+    use std::{collections::HashSet, matches, str::FromStr};
 
     use super::*;
 
@@ -153,8 +159,11 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         {
-            let storage = stream.context.storage.read().await;
-            let result = storage
+            let result = stream
+                .context
+                .storage
+                .read()
+                .await
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -162,8 +171,11 @@ pub mod tests {
 
         let block = read_block("tests/res/block_131407300.json");
         let _ = stream.next_block(&block).await;
-        let storage = stream.context.storage.read().await;
-        let chain_id_from_state = storage
+        let chain_id_from_state = stream
+            .context
+            .storage
+            .read()
+            .await
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -384,6 +396,108 @@ pub mod tests {
         ));
     }
 
+    #[tokio::test]
+    async fn test_block_128945880_contains_eth_token_mint() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let near_block = read_block("tests/res/block_128945880.json");
+
+        let aurora_blocks = stream.next_block(&near_block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 128945880);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // Expected values from base64-decoded args:
+        // echo eyJzZW5kZXJfaWQiOiJhdXJvcmEiLCJhbW91bnQiOiIxMDAwMDAwMDAwMDAwMDAwMDAiLCJtc2ciOiIwYzdlMWYwM2Q2NzFiMTE4NWJlYTZmYjA2ZjExNGEwYmQ4YmJhMmY4In0=|base64 -D
+        // {"sender_id":"aurora","amount":"100000000000000000","msg":"0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8"}%
+        let expected_sender = Address::decode("4444588443c3a91288c5002483449aba1054192b").unwrap(); // `sender_id` is near_account_to_evm_address("aurora")
+        let expected_recipient =
+            Address::decode("0c7e1f03d671b1185bea6fb06f114a0bd8bba2f8").unwrap(); // The recipient is the address from the args-decoded msg field
+        let expected_amount = Wei::new(U256::from_dec_str("100000000000000000").unwrap());
+
+        let aurora_block = aurora_blocks.first().unwrap();
+        let ft_on_transfer_eth_tx = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to == Some(expected_recipient)
+                && tx.value == expected_amount
+        });
+
+        assert!(
+            ft_on_transfer_eth_tx.is_some(),
+            "Expected ft_on_transfer ETH mint transaction not found in block 128945880"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_block_125229395_contains_erc20_token_mint() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        // Read the block where the wNEAR contract is created to obtain a state that contains a key-value pair representing the wrap.near and ERC20 addresses.
+        let near_block_wnear_contract_create = read_block("tests/res/block_42598892.json");
+        let aurora_blocks = stream.next_block(&near_block_wnear_contract_create).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 42598892);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // Directly setting the height, we ensure the stream will process the target block (125229395)
+        stream.last_block_height = Some(125229394);
+        // Read the block that contains the ERC20 token mint transaction.
+        let near_block = read_block("tests/res/block_125229395.json");
+        let aurora_blocks = stream.next_block(&near_block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 125229395);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // `sender_id` is near_account_to_evm_address("aurora")
+        let expected_sender = Address::decode("4444588443c3a91288c5002483449aba1054192b").unwrap();
+
+        // "wrap.near" -> nep141_account_id -> aurora_engine::engine::get_erc20_from_nep141
+        let expected_recipient =
+            Address::decode("c42c30ac6cc15fac9bd938618bcaa1a1fae8501d").unwrap();
+
+        let expected_amount = Wei::zero();
+        let expected_input = {
+            // Expected arguments are extracted from the base64-encoded string of the NEAR receipt id "D4PhVsM2PFNgyc73mjR5oLYpz6rNAwBSy4rRo1Aariea"
+            // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
+            // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
+            let args = NEP141FtOnTransferArgs {
+                sender_id: AccountId::from_str(
+                    "66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e",
+                )
+                .unwrap(),
+                amount: Balance::new(11633748708758676689950),
+                msg: "0fe957e6acbb4fd935cee5ba033e00088df86adb".to_string(),
+            };
+            setup_receive_erc20_tokens_input(&args, &expected_recipient)
+        };
+
+        let aurora_block = aurora_blocks.first().unwrap();
+        let ft_on_transfer_erc20_tx = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to == Some(expected_recipient)
+                && tx.value == expected_amount
+                && tx.input == expected_input
+        });
+
+        assert!(
+            ft_on_transfer_erc20_tx.is_some(),
+            "Expected ft_on_transfer ERC20 mint transaction not found in block 125229395"
+        );
+    }
+
     pub fn read_block(path: &str) -> NEARBlock {
         let data = std::fs::read_to_string(path).unwrap();
         serde_json::from_str(&data).unwrap_or_else(|e| {
@@ -452,7 +566,7 @@ pub mod tests {
             self
         }
 
-        pub fn with_chain_id(mut self, chain_id: u64) -> Self {
+        pub const fn with_chain_id(mut self, chain_id: u64) -> Self {
             self.chain_id = chain_id;
             self
         }
