@@ -4,8 +4,7 @@ use std::path::Path;
 /// A helper object for tracking the NEAR transaction hash that caused each NEAR receipt
 /// to be produced (potentially indirectly via a number of other receipts).
 ///
-/// The main interface
-/// includes the `get_tx_hash` function to query the helper for the transaction hash associated
+/// The main interface includes the `get_tx_hash` function to query the helper for the transaction hash associated
 /// with a given receipt hash, and two functions to mutate the tracker's state:
 /// `consume_near_block` and `on_block_end`. The purpose of `consume_near_block` is to update
 /// the tracker's state with the new receipts that are created in that block. The purpose of

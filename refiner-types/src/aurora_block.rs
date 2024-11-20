@@ -89,8 +89,7 @@ pub struct NearBlockHeader {
 
 /// Similar to Ethereum transaction but only contains information relevant for Aurora.
 ///
-/// It includes
-/// the information of the receipt after executing the transaction as well. In addition it contains
+/// It includes the information of the receipt after executing the transaction as well. In addition it contains
 /// extra metadata to map it into a NEAR transaction.
 ///
 /// ## Fields from Ethereum transactions and receipts not included:
