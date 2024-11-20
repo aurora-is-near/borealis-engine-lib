@@ -5,6 +5,7 @@ const U64_MAX: U256 = U256([u64::MAX, 0, 0, 0]);
 
 pub mod u64_hex_serde {
     //! This module provides serde serialization for u64 numbers with hexadecimal encoding.
+    //!
     //! It can be used with the field attribute `#[serde(with = "u64_hex_serde")]` on u64
     //! inside structs deriving serde Serialize and Deserialize traits.
     //! Note: if a number is larger than U256::MAX then the deserializing will fail with an error.
@@ -38,6 +39,7 @@ pub mod u64_hex_serde {
 
 pub mod u128_dec_serde {
     //! This module provides serde serialization for optional u128 numbers with base-10 strings.
+    //!
     //! It can be used with the field attribute `#[serde(with = "u128_dec_serde")]` on u128 fields
     //! inside structs deriving serde Serialize and Deserialize traits.
 

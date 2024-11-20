@@ -114,7 +114,7 @@ async fn handle_msg(
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     match msg
         .get("method")
-        .ok_or(JsonRpcError {
+        .ok_or_else(|| JsonRpcError {
             code: -32600,
             message: "Invalid Request".into(),
             data: Some("no method defined".into()),

@@ -263,7 +263,9 @@ impl Clone for Shard {
                         }
                         StateChangeCauseView::Migration => StateChangeCauseView::Migration,
                         StateChangeCauseView::ReshardingV2 => StateChangeCauseView::ReshardingV2,
-                        StateChangeCauseView::BandwidthSchedulerStateUpdate => StateChangeCauseView::BandwidthSchedulerStateUpdate
+                        StateChangeCauseView::BandwidthSchedulerStateUpdate => {
+                            StateChangeCauseView::BandwidthSchedulerStateUpdate
+                        }
                     },
                     value: match &v.value {
                         StateChangeValueView::AccountUpdate {
