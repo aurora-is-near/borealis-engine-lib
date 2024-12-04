@@ -23,22 +23,30 @@ engine-standalone-storage.workspace = true
 
 anyhow.workspace = true
 borsh.workspace = true
-triehash-ethereum.workspace = true
 byteorder.workspace = true
+const_format.workspace = true
 derive_builder.workspace = true
+fixed-hash.workspace = true
 hex.workspace = true
+http-body-util.workspace = true
+hyper-util = { workspace = true, features = [ "server-auto", "server-graceful" ] }
+hyper.workspace = true
+impl-serde.workspace = true
 lazy_static.workspace = true
 lru.workspace = true
 prometheus.workspace = true
 rlp.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-sha3.workspace = true
-tracing.workspace = true
-fixed-hash.workspace = true
-impl-serde.workspace = true
-tokio = { workspace = true, features = ["sync", "macros"] }
 rocksdb.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+sha3.workspace = true
+tokio = { workspace = true, features = ["sync", "macros"] }
+tracing.workspace = true
+triehash-ethereum.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+vergen = "7.0.0"
 
 [dev-dependencies]
 serde_json.workspace = true
