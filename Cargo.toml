@@ -29,11 +29,15 @@ engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-en
 engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.7.0", default-features = false, features = ["impl-serde"] }
 borsh = { version = "1", features = ["borsh-derive"] }
 byteorder = "1"
+const_format = "0.2"
 clap = { version = "4", features = ["derive"] }
 derive_builder = "0.20"
 fixed-hash = "0.8"
 futures = "0.3"
 hex = "0.4"
+http-body-util = "0.1"
+hyper = "1.4"
+hyper-util = "0.1"
 impl-serde = "0.5"
 lazy_static = "1"
 lru = "0.12"

@@ -1,3 +1,4 @@
+use const_format::{concatcp, str_index};
 use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
 use prometheus::{
@@ -5,6 +6,14 @@ use prometheus::{
 };
 
 lazy_static! {
+    pub static ref PROCESS_ID: IntGauge = gauge(
+        "process_id",
+        "Process ID of the refiner process",
+    );
+    pub static ref HTTP_PROMETHEUS_REQUESTS_COUNT: IntCounter = counter(
+        "refiner_http_prometheus_requests_count",
+        "Number of HTTP requests received by the refiner"
+    );
     pub static ref MISSING_SHARDS: IntCounter = counter(
         "refiner_missing_shards",
         "Blocks that are missing shards"
@@ -389,9 +398,42 @@ fn gauge(name: &str, help: &str) -> IntGauge {
 }
 
 fn opts(name: &str, help: &str) -> Opts {
-    opts!(
-        name,
-        help,
-        labels! {"version" => env!("CARGO_PKG_VERSION") }
-    )
+    opts!(name, help, labels! { "version" => version() })
+}
+
+/// Outputs {CARGO_PKG_VERSION}-{GIT_SHA}
+/// Example: 1.3.2-a746bfc
+pub const fn version() -> &'static str {
+    if option_env!("VERGEN_GIT_SHA").is_some() {
+        concatcp!(
+            concat!(env!("CARGO_PKG_VERSION"), "-"),
+            str_index!(env!("VERGEN_GIT_SHA"), ..7)
+        )
+    } else {
+        env!("CARGO_PKG_VERSION")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use prometheus::{Encoder, TextEncoder};
+
+    use super::*;
+
+    #[test]
+    fn test_version_in_metrics() {
+        let version = version();
+        let _counter_metric = counter("counter_metric", "Counter Metric");
+        let _gauge_metric = gauge("gauge_metric", "Gauge Metric");
+        let registry = prometheus::default_registry();
+        let metrics = registry.gather();
+        let mut buffer = Vec::new();
+        let encoder = TextEncoder::new();
+
+        encoder.encode(&metrics, &mut buffer).unwrap();
+        let output = String::from_utf8(buffer).unwrap();
+
+        assert!(output.contains(&format!("counter_metric{{version=\"{version}\"}} 0",)));
+        assert!(output.contains(&format!("gauge_metric{{version=\"{version}\"}} 0")));
+    }
 }

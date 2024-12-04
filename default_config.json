@@ -3,7 +3,8 @@
         "chain_id": 1313161554,
         "engine_path": "output/engine",
         "tx_tracker_path": "output/tx_tracker",
-        "engine_account_id": "aurora"
+        "engine_account_id": "aurora",
+        "prometheus_address": "0.0.0.0:8042"
     },
     "input_mode": {
         "DataLake": {
