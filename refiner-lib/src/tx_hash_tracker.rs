@@ -212,7 +212,7 @@ struct TxHashTrackerWriteBatch<'a> {
     write_batch: rocksdb::WriteBatch,
 }
 
-impl<'a> TxHashTrackerWriteBatch<'a> {
+impl TxHashTrackerWriteBatch<'_> {
     fn get_tx_hash(&mut self, rx_hash: &CryptoHash) -> Option<CryptoHash> {
         self.cache.get(rx_hash).copied()
     }
