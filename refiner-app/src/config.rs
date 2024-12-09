@@ -21,6 +21,7 @@ pub struct Refiner {
     pub engine_account_id: AccountId,
     #[serde(default)]
     pub tx_tracker_path: Option<PathBuf>,
+    pub prometheus_address: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -88,7 +89,8 @@ mod tests {
             r#"{
             "chain_id": 0,
             "engine_path": "test",
-            "engine_account_id": "some_near_id"
+            "engine_account_id": "some_near_id",
+            "prometheus_address": "0.0.0.0:8042"
         }"#,
         )
         .unwrap();

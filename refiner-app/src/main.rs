@@ -5,6 +5,7 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
+use aurora_refiner_lib::prometheus;
 use std::{borrow::Cow, fs, path::Path};
 
 use clap::Parser;
@@ -90,6 +91,7 @@ async fn main() -> anyhow::Result<()> {
             // create a broadcast channel for sending a stop signal
             let (tx, mut rx1) = tokio::sync::broadcast::channel(1);
             let mut rx2 = tx.subscribe();
+            let prometheus_rx = tx.subscribe();
 
             tokio::join!(
                 // listen to ctrl-c for shutdown
@@ -120,6 +122,14 @@ async fn main() -> anyhow::Result<()> {
                     last_block,
                     &mut rx2,
                 ),
+                // Run Prometheus
+                async {
+                    if let Err(err) =
+                        prometheus::run(&config.refiner.prometheus_address, prometheus_rx).await
+                    {
+                        tracing::error!("Prometheus stopped with error: {err}");
+                    }
+                }
             );
         }
     }
