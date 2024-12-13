@@ -524,7 +524,7 @@ pub mod tests {
         let aurora_block = aurora_blocks.first().unwrap();
         let deploy_erc20_token = aurora_block.transactions.iter().find(|tx| {
             tx.from == expected_sender
-                && tx.to == None
+                && tx.to.is_none()
                 && tx.value == expected_amount
                 && tx.input == expected_input
         });
