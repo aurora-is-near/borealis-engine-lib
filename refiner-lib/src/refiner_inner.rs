@@ -811,7 +811,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::Deploy | TransactionKindTag::DeployErc20 => {
+                TransactionKindTag::Deploy => {
                     hash = virtual_receipt_id.0.into();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
                     let nonce = storage
@@ -852,6 +852,57 @@ fn build_transaction(
                         near_metadata,
                         method_name.clone(),
                         &raw_input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
+                    fill_with_submit_result(tx, result, &mut bloom)
+                }
+                TransactionKindTag::DeployErc20 => {
+                    hash = virtual_receipt_id.0.into();
+                    let input = aurora_engine::engine::setup_deploy_erc20_input(
+                        &engine_account_id.parse().unwrap(),
+                        None,
+                    );
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                    let nonce = storage
+                        .with_engine_access(
+                            near_block.header.height,
+                            transaction_index.try_into().unwrap_or(u16::MAX),
+                            &[],
+                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                        )
+                        .result;
+                    let contract_address = create_legacy_address(&from_address, &nonce);
+
+                    tx = tx.hash(hash).from(from_address);
+
+                    tx = tx
+                        .to(None)
+                        .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
+                        .gas_limit(u64::MAX)
+                        .max_priority_fee_per_gas(U256::zero())
+                        .max_fee_per_gas(U256::zero())
+                        .value(Wei::zero())
+                        .input(input.clone())
+                        .access_list(vec![])
+                        .tx_type(0xff)
+                        .contract_address(Some(contract_address))
+                        .v(0)
+                        .r(U256::zero())
+                        .s(U256::zero());
+
+                    let (result, output_kind, raw_output) = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
+                        txs.get(&hash),
+                    )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &input,
                         &raw_output,
                         HashchainInputKind::Explicit,
                         output_kind,
