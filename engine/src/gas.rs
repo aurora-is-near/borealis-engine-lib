@@ -371,9 +371,7 @@ pub struct EngineStateOverride<'db, 'input, 'output, 'state> {
     pub state_override: &'state HashMap<H160, HashMap<H256, H256>>,
 }
 
-impl<'db, 'input: 'db, 'output: 'db, 'state> IO
-    for EngineStateOverride<'db, 'input, 'output, 'state>
-{
+impl<'db, 'input: 'db, 'output: 'db> IO for EngineStateOverride<'db, 'input, 'output, '_> {
     type StorageValue = EngineStorageValue<'db>;
 
     fn read_input(&self) -> Self::StorageValue {

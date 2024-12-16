@@ -12,7 +12,7 @@ pub struct BatchIO<'db, 'local> {
     pub current_diff: &'local RefCell<Diff>,
 }
 
-impl<'db, 'local> IO for BatchIO<'db, 'local> {
+impl<'db> IO for BatchIO<'db, '_> {
     type StorageValue = EngineStorageValue<'db>;
 
     fn read_input(&self) -> Self::StorageValue {
