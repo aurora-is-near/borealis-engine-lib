@@ -18,22 +18,15 @@ aurora-standalone-engine = { path = "../engine" }
 engine-standalone-storage.workspace = true
 engine-standalone-tracing.workspace = true
 
+actix.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 clap.workspace = true
-
+near-lake-framework.workspace = true
+tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
-
-futures.workspace = true
-tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
-tokio-stream.workspace = true
-
-actix.workspace = true
-
-# NEAR Lake Framework
-near-lake-framework.workspace = true
 
 [dev-dependencies]
 aurora-engine-sdk.workspace = true
