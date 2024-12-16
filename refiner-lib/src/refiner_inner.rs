@@ -1263,10 +1263,10 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
         .filter_map(|shard| shard.chunk.as_ref().map(|chunk| &chunk.receipts))
         .flatten()
         .filter_map(|outcome| match &outcome.receipt {
-            ReceiptEnumView::Data { data_id, data, .. } if ids.contains(data_id) => {
-                let idx = ids.iter().position(|id| id == data_id).unwrap();
-                Some((idx, data.clone()))
-            }
+            ReceiptEnumView::Data { data_id, data, .. } => ids
+                .iter()
+                .position(|id| id == data_id)
+                .map(|idx| (idx, data.clone())),
             _ => None,
         })
         .for_each(|(idx, data)| result.insert(idx, data));
