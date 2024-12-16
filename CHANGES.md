@@ -140,6 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.10.0] 
 
 [Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.0-2.4.0...main
+[0.30.0-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.29.0-2.3.0...0.30.0-2.4.0
 [0.29.0-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.2-2.3.0...0.29.0-2.3.0
 [0.28.2-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.1-1.39.1...0.28.2-2.3.0
 [0.28.1-1.39.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/v0.10.0...0.28.1-1.39.1
