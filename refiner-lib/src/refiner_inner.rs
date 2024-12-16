@@ -892,7 +892,7 @@ fn build_transaction(
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
                         .value(Wei::zero())
-                        .input(input.clone())
+                        .input(input)
                         .access_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
@@ -910,7 +910,7 @@ fn build_transaction(
                         tx,
                         near_metadata,
                         method_name.clone(),
-                        &input,
+                        &raw_input,
                         &raw_output,
                         HashchainInputKind::Explicit,
                         output_kind,
@@ -944,7 +944,7 @@ fn build_transaction(
                         .max_priority_fee_per_gas(U256::zero())
                         .max_fee_per_gas(U256::zero())
                         .value(Wei::zero())
-                        .input(input.clone())
+                        .input(input)
                         .access_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
@@ -962,7 +962,7 @@ fn build_transaction(
                         tx,
                         near_metadata,
                         method_name.clone(),
-                        &input,
+                        &raw_input,
                         &raw_output,
                         HashchainInputKind::Explicit,
                         output_kind,
