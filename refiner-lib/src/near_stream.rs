@@ -118,6 +118,7 @@ pub mod tests {
         state::EngineStateError,
     };
     use aurora_engine_sdk::types::near_account_to_evm_address;
+    use aurora_engine_types::parameters::connector::Erc20Metadata;
     use aurora_engine_types::{
         account_id::AccountId,
         types::{Address, Balance, Wei},
@@ -532,6 +533,49 @@ pub mod tests {
         assert!(
             deploy_erc20_token.is_some(),
             "Expected deploy_erc20_token transaction not found in block 182018895"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_block_134585465_contains_mirror_erc20_token_callback() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContextBuilder::new()
+            .with_chain_id(1313161554)
+            .with_account_id("0x4e45415f.c.aurora")
+            .build(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let block = read_block("tests/res/block-134585465.json");
+        let aurora_blocks = stream.next_block(&block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 134585465);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        let expected_sender = near_account_to_evm_address(b"0x4e45415f.c.aurora");
+        let expected_amount = Wei::zero();
+        let expected_input = aurora_engine::engine::setup_deploy_erc20_input(
+            &"0x4e45415f.c.aurora".parse().unwrap(),
+            Some(Erc20Metadata {
+                name: "USDC".to_string(),
+                symbol: "USDC".to_string(),
+                decimals: 6,
+            }),
+        );
+
+        let aurora_block = aurora_blocks.first().unwrap();
+        let deployed_erc20_token = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to.is_none()
+                && tx.value == expected_amount
+                && tx.input == expected_input
+        });
+
+        assert!(
+            deployed_erc20_token.is_some(),
+            "Expected mirror_erc20_token_callback transaction not found in block 134585465"
         );
     }
 

@@ -12,6 +12,7 @@ use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
 use aurora_engine_types::borsh::BorshDeserialize;
+use aurora_engine_types::parameters::connector::Erc20Metadata;
 use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -20,7 +21,7 @@ use aurora_refiner_types::aurora_block::{
     HashchainOutputKind, NearBlock, NearBlockHeader, NearTransaction,
 };
 use aurora_refiner_types::bloom::Bloom;
-use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock};
+use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock, Shard};
 use aurora_refiner_types::near_primitives::hash::CryptoHash;
 use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
 use aurora_refiner_types::near_primitives::views::{
@@ -167,7 +168,7 @@ impl Refiner {
         txs: &HashMap<H256, TransactionIncludedOutcome>,
         storage: &Storage,
     ) {
-        let NEARBlock { block, .. } = &block;
+        let NEARBlock { block, shards } = &block;
 
         if self
             .partial_state
@@ -181,7 +182,11 @@ impl Refiner {
         }
 
         match &execution_outcome.receipt.receipt {
-            ReceiptEnumView::Action { actions, .. } => {
+            ReceiptEnumView::Action {
+                actions,
+                input_data_ids, // Results of the promises execution.
+                ..
+            } => {
                 crate::metrics::TRANSACTIONS.inc();
 
                 // Receipts with multiple actions are atomic; they either entirely succeed or
@@ -219,6 +224,7 @@ impl Refiner {
                         index as u32,
                         num_actions as u32,
                     );
+                    let promises_results = find_promises_results(shards, input_data_ids);
 
                     match build_transaction(
                         block,
@@ -230,6 +236,7 @@ impl Refiner {
                         self.partial_state.transactions.len() as u32,
                         virtual_receipt_id,
                         txs,
+                        promises_results,
                         storage,
                     ) {
                         Ok(tx) => {
@@ -560,6 +567,7 @@ fn build_transaction(
     transaction_index: u32,
     virtual_receipt_id: CryptoHash,
     txs: &HashMap<H256, TransactionIncludedOutcome>,
+    promises_result: Vec<Option<Vec<u8>>>,
     storage: &Storage,
 ) -> Result<BuiltTransaction, RefinerError> {
     let mut bloom = Bloom::default();
@@ -909,6 +917,58 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
+                TransactionKindTag::MirrorErc20TokenCallback => {
+                    hash = virtual_receipt_id.0.into();
+                    let erc20_metadata = get_erc20_metadata_from_promises(&promises_result)?;
+                    let input = aurora_engine::engine::setup_deploy_erc20_input(
+                        &engine_account_id.parse().unwrap(),
+                        Some(erc20_metadata),
+                    );
+                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+                    let nonce = storage
+                        .with_engine_access(
+                            near_block.header.height,
+                            transaction_index.try_into().unwrap_or(u16::MAX),
+                            &[],
+                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                        )
+                        .result;
+                    let contract_address = create_legacy_address(&from_address, &nonce);
+
+                    tx = tx.hash(hash).from(from_address);
+
+                    tx = tx
+                        .to(None)
+                        .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
+                        .gas_limit(u64::MAX)
+                        .max_priority_fee_per_gas(U256::zero())
+                        .max_fee_per_gas(U256::zero())
+                        .value(Wei::zero())
+                        .input(input.clone())
+                        .access_list(vec![])
+                        .tx_type(0xff)
+                        .contract_address(Some(contract_address))
+                        .v(0)
+                        .r(U256::zero())
+                        .s(U256::zero());
+
+                    let (result, output_kind, raw_output) = normalize_output(
+                        &receipt_id,
+                        raw_tx_kind,
+                        execution_status,
+                        txs.get(&hash),
+                    )?;
+                    tx = fill_hashchain_metadata(
+                        tx,
+                        near_metadata,
+                        method_name.clone(),
+                        &input,
+                        &raw_output,
+                        HashchainInputKind::Explicit,
+                        output_kind,
+                    );
+                    fill_with_submit_result(tx, result, &mut bloom)
+                }
                 TransactionKindTag::FtOnTransfer => {
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
@@ -1170,6 +1230,8 @@ enum RefinerError {
     ParseMetadata(rlp::DecoderError),
     /// NEAR transaction failed
     FailNearTx,
+    /// Could not get data from the promise result
+    PromiseResultError,
 }
 
 impl fmt::Debug for RefinerError {
@@ -1179,6 +1241,7 @@ impl fmt::Debug for RefinerError {
             Self::ParseTransaction(err) => write!(f, "ParseTransaction: {:?}", err),
             Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
             Self::FailNearTx => write!(f, "FailNearTx"),
+            Self::PromiseResultError => write!(f, "PromiseResultError"),
         }
     }
 }
@@ -1192,9 +1255,43 @@ fn get_log_blooms(log: &ResultLog) -> Bloom {
     bloom
 }
 
+fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec<u8>>> {
+    let mut result = Vec::with_capacity(ids.len());
+
+    shards
+        .iter()
+        .filter_map(|shard| shard.chunk.as_ref().map(|chunk| &chunk.receipts))
+        .flatten()
+        .filter_map(|outcome| match &outcome.receipt {
+            ReceiptEnumView::Data { data_id, data, .. } if ids.contains(data_id) => {
+                let idx = ids.iter().position(|id| id == data_id).unwrap();
+                Some((idx, data.clone()))
+            }
+            _ => None,
+        })
+        .for_each(|(idx, data)| result.insert(idx, data));
+
+    result
+}
+
+fn get_erc20_metadata_from_promises(
+    promises_result: &[Option<Vec<u8>>],
+) -> Result<Erc20Metadata, RefinerError> {
+    promises_result
+        .get(1) // The second promise result is the serialized ERC-20 metadata
+        .and_then(|maybe_data| maybe_data.as_ref())
+        .map(|data| serde_json::from_slice(data))
+        .ok_or(RefinerError::PromiseResultError)?
+        .map_err(|_| RefinerError::PromiseResultError)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{compute_block_hash, compute_block_hash_preimage};
+    use crate::near_stream::tests::read_block;
+    use aurora_refiner_types::near_primitives::hash::CryptoHash;
+    use aurora_refiner_types::near_primitives::serialize::from_base64;
+    use std::str::FromStr;
 
     #[test]
     fn test_block_hash_preimage() {
@@ -1214,5 +1311,29 @@ mod tests {
             hex::encode(compute_block_hash(62482103, "aurora", 1313161554).as_bytes()),
             "97ccface51e97c896591c88ecb8106c4f48816493e1f7b1172245fb333a0e782"
         );
+    }
+
+    #[test]
+    fn test_find_promises_result() {
+        let block = read_block("tests/res/block-134585465.json");
+        let input_data_ids = &[
+            CryptoHash::from_str("J5GehrK5EwaSa2QBwZjhJzZfMu44tVwaedP4ECvvVpuN").unwrap(),
+            CryptoHash::from_str("9AuxSvd6WtSKZHaqYMzQKKSLRgwoEhNM4xiF53oNRwUK").unwrap(),
+        ];
+        let expected_result = vec![
+            Some(from_base64("No67RqymuNB4fJaysgvTzD8sRfc=").unwrap()),
+            Some(
+                from_base64("eyJuYW1lIjoiVVNEQyIsInN5bWJvbCI6IlVTREMiLCJkZWNpbWFscyI6Nn0=")
+                    .unwrap(),
+            ),
+        ];
+
+        let promises_results = super::find_promises_results(&block.shards, input_data_ids);
+        assert_eq!(promises_results, expected_result);
+
+        let erc20_metadata = super::get_erc20_metadata_from_promises(&promises_results).unwrap();
+        assert_eq!(erc20_metadata.name, "USDC");
+        assert_eq!(erc20_metadata.symbol, "USDC");
+        assert_eq!(erc20_metadata.decimals, 6);
     }
 }
