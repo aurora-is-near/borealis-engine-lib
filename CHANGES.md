@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0-2.4.0] 2024-12-17
+
+### Changes
+
+* chore: bump nearcore to 2.4.0 by [@alexander-borodulya] in [#188]
+
+### Fixes
+
+* fix: use rand feature for near-primitives by [@aleksuss] in [#184]
+* fix: processing deploy_erc20_token and mirror_erc20_token_callback by refiner by [@aleksuss] in [189]
+
+[#184]: https://github.com/aurora-is-near/borealis-engine-lib/pull/184
+[#188]: https://github.com/aurora-is-near/borealis-engine-lib/pull/188
+[#189]: https://github.com/aurora-is-near/borealis-engine-lib/pull/189
+
 ## [0.29.0-2.3.0] 2024-11-07
 
 ### Changes
@@ -124,7 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.29.0-2.3.0...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.0-2.4.0...main
+[0.30.0-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.29.0-2.3.0...0.30.0-2.4.0
 [0.29.0-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.2-2.3.0...0.29.0-2.3.0
 [0.28.2-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.1-1.39.1...0.28.2-2.3.0
 [0.28.1-1.39.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/v0.10.0...0.28.1-1.39.1
