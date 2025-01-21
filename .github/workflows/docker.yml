@@ -11,7 +11,7 @@ on:
     
 jobs:
   build-and-push:
-    runs-on: github-hosted-heavy-runner
+    runs-on: k8s-infrastructure-dind
     steps:
 
     - name: Set up Docker Buildx
@@ -37,6 +37,7 @@ jobs:
       with:
         file: Dockerfile
         push: true
+        platforms: linux/amd64,linux/arm64
         tags: ${{ env.TAGS }}
         build-args: |
           RELEASE_TAG=${{ github.event.release.tag_name }}
