@@ -15,20 +15,18 @@ env:
 
 jobs:
   create-pr:
-    if: ${{ false }} # pause execution
-    # runs-on: [ self-hosted, heavy ]
-    runs-on: ubuntu-latest
+    runs-on: k8s-infrastructure-dind
 
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      # - name: Install GitHub CLI
-      #   run: |
-      #     if ! command -v gh &> /dev/null; then
-      #       sudo apt update && sudo apt install gh -y
-      #     fi
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &> /dev/null; then
+            sudo apt update && sudo apt install gh -y
+          fi
 
       - name: Checkout repository
         uses: actions/checkout@v4
