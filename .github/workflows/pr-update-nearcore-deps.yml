@@ -1,0 +1,53 @@
+name: Update nearcore dependencies via PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'VERSION'
+        required: true
+  repository_dispatch:
+    types: [pr-update-nearcore-deps]
+
+env:
+  REGISTRY: ghcr.io
+  VERSION: ${{ github.event.inputs.version || github.event.client_payload.version || '2.4.0' }}
+
+jobs:
+  create-pr:
+    runs-on: k8s-infrastructure-dind
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &> /dev/null; then
+            sudo apt update && sudo apt install gh -y
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create new branch for nearcore update
+        run: |
+          NEW_BRANCH="chore/nearcore-${{ env.VERSION }}"
+          git checkout -b "$NEW_BRANCH"
+
+      - name: Verify build
+        run: cargo check
+
+      - name: Create Pull Request
+        run: |
+          gh pr create \
+            --title "chore: update nearcore to ${{ env.VERSION }}" \
+            --body "Automated PR to update nearcore dependency to ${{ env.VERSION }}." \
+            --base main \
+            --head "chore/nearcore-${{ env.VERSION }}" \
+            --label "dependencies, nearcore"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

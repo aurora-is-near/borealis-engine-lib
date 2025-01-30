@@ -1,0 +1,57 @@
+name: Check nearcore releases
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Restore last checked release
+        id: nearcore-release-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .nearcore_last_checked_release
+          key: nearcore-release-cache
+
+      - name: Check for new nearcore release
+        id: check-release
+        run: |
+          latest_release=$(curl -s https://api.github.com/repos/near/nearcore/releases | jq -r '.[0].tag_name')
+          echo "Latest release: $latest_release"
+
+          last_checked_release=$(cat .nearcore_last_checked_release 2>/dev/null || echo "")
+          echo "Last checked release: $last_checked_release"
+
+          if [[ "$latest_release" != "$last_checked_release" ]]; then
+            echo "New release found: $latest_release"
+            echo "$latest_release" > .nearcore_last_checked_release
+            echo "new_release=$latest_release" >> $GITHUB_OUTPUT
+          else
+            echo "No new release found."
+            echo "new_release=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Save last checked release
+        id: nearcore-release-save
+        uses: actions/cache/save@v4
+        with:
+            path: .nearcore_last_checked_release
+            key: ${{ steps.nearcore-release-restore.outputs.cache-primary-key }}-${{ github.run_id }}
+
+      - name: Trigger PR update in borealis-engine-lib
+        if: steps.check-release.outputs.new_release
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/aurora-is-near/borealis-engine-lib/dispatches \
+            -d '{"event_type":"pr-update-nearcore-deps","client_payload":{"version":"'"${{ env.VERSION }}"'"}}'
+            
+      - name: Summary
+        run: |
+          echo "## Nearcore Release Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Latest Release: ${{ steps.check-release.outputs.latest_release }}" >> $GITHUB_STEP_SUMMARY
+          echo "Build Triggered: ${{ steps.check-release.outputs.new_release != '' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          echo "Job summary generated at run-time" >> $GITHUB_STEP_SUMMARY
