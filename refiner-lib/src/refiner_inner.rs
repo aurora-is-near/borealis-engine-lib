@@ -869,7 +869,11 @@ fn build_transaction(
                 TransactionKindTag::DeployErc20 => {
                     hash = virtual_receipt_id.0.into();
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse().unwrap(),
+                        &engine_account_id.parse()
+                        .map_err(|err| {
+                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
+                            RefinerError::BuildAuroraTransactionError
+                        })?,
                         None,
                     );
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
@@ -921,7 +925,11 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.into();
                     let erc20_metadata = get_erc20_metadata_from_promises(&promises_result)?;
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse().unwrap(),
+                        &engine_account_id.parse()
+                        .map_err(|err| {
+                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
+                            RefinerError::BuildAuroraTransactionError
+                        })?,
                         Some(erc20_metadata),
                     );
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
@@ -1073,7 +1081,10 @@ fn build_transaction(
             }
         }
         action => {
-            let input = borsh::to_vec(&action).unwrap();
+            let input = borsh::to_vec(&action).map_err(|err| {
+                tracing::error!("Failed to serialize action: {err}");
+                RefinerError::BuildAuroraTransactionError
+            })?;
 
             tx = tx
                 .hash(virtual_receipt_id.0.into())
@@ -1105,7 +1116,12 @@ fn build_transaction(
                     tx = tx.output(vec![]).status(false);
                 }
                 Some(ExecutionStatusView::Failure(err)) => {
-                    tx = tx.output(borsh::to_vec(err).unwrap()).status(false);
+                    tx = tx
+                        .output(borsh::to_vec(err).map_err(|err| {
+                            tracing::error!("Failed to serialize execution failure: {err}");
+                            RefinerError::BuildAuroraTransactionError
+                        })?)
+                        .status(false);
                 }
                 Some(ExecutionStatusView::SuccessValue(value)) => {
                     tx = tx.output(value.clone()).status(true);
@@ -1250,6 +1266,8 @@ enum RefinerError {
     FailNearTx,
     /// Could not get data from the promise result
     PromiseResultError,
+    /// The error while building Aurora transaction in the scope of the build_transaction function
+    BuildAuroraTransactionError,
 }
 
 impl fmt::Debug for RefinerError {
@@ -1260,6 +1278,7 @@ impl fmt::Debug for RefinerError {
             Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
             Self::FailNearTx => write!(f, "FailNearTx"),
             Self::PromiseResultError => write!(f, "PromiseResultError"),
+            Self::BuildAuroraTransactionError => write!(f, "BuildAuroraTransactionError"),
         }
     }
 }
