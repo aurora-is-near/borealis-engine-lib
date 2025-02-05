@@ -11,6 +11,7 @@ use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
+use aurora_engine_types::account_id::ParseAccountError;
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::parameters::connector::Erc20Metadata;
 use aurora_engine_types::types::{Address, Wei, WeiU256};
@@ -869,7 +870,11 @@ fn build_transaction(
                 TransactionKindTag::DeployErc20 => {
                     hash = virtual_receipt_id.0.into();
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse().unwrap(),
+                        &engine_account_id.parse()
+                        .map_err(|err: ParseAccountError| {
+                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
+                            RefinerError::BuildAuroraTransactionError(err.to_string())
+                        })?,
                         None,
                     );
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
@@ -921,7 +926,11 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.into();
                     let erc20_metadata = get_erc20_metadata_from_promises(&promises_result)?;
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse().unwrap(),
+                        &engine_account_id.parse()
+                        .map_err(|err: ParseAccountError| {
+                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
+                            RefinerError::BuildAuroraTransactionError(err.to_string())
+                        })?,
                         Some(erc20_metadata),
                     );
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
@@ -1073,7 +1082,10 @@ fn build_transaction(
             }
         }
         action => {
-            let input = borsh::to_vec(&action).unwrap();
+            let input = borsh::to_vec(&action).map_err(|err| {
+                tracing::error!("Failed to serialize action: {err}");
+                RefinerError::BuildAuroraTransactionError(err.to_string())
+            })?;
 
             tx = tx
                 .hash(virtual_receipt_id.0.into())
@@ -1105,7 +1117,12 @@ fn build_transaction(
                     tx = tx.output(vec![]).status(false);
                 }
                 Some(ExecutionStatusView::Failure(err)) => {
-                    tx = tx.output(borsh::to_vec(err).unwrap()).status(false);
+                    tx = tx
+                        .output(borsh::to_vec(err).map_err(|err| {
+                            tracing::error!("Failed to serialize execution failure: {err}");
+                            RefinerError::BuildAuroraTransactionError(err.to_string())
+                        })?)
+                        .status(false);
                 }
                 Some(ExecutionStatusView::SuccessValue(value)) => {
                     tx = tx.output(value.clone()).status(true);
@@ -1136,28 +1153,46 @@ fn determine_ft_on_transfer_recipient(
     match token_mint_kind {
         TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
             .map(|msg_data| msg_data.recipient)
-            .unwrap_or(Address::zero()),
+            .unwrap_or_else(|err| {
+                tracing::error!(
+                    "Failed to parse NEP141FtOnTransferArgs message: {err:?}. Raw msg: '{}'. Falling back to Address::zero()",
+                    args.msg
+                );
+                Address::zero()
+            }),
         TokenMintKind::Erc20 => {
             let predecessor_id = &execution_outcome.receipt.predecessor_id;
             storage
                 .with_engine_access(
                     near_block.header.height,
-                    transaction_index.try_into().unwrap_or(u16::MAX),
+                    transaction_index.try_into().unwrap_or_else(|err| {
+                        tracing::error!("Failed to convert transaction index: {transaction_index} to u16. Error: {err}. Falling back to u16::MAX");
+                        u16::MAX
+                    }),
                     &[],
                     |io| {
                         let from_address_nep141 = aurora_engine_types::account_id::AccountId::new(
                             predecessor_id.as_str(),
                         )
-                        .unwrap_or_default();
+                        .unwrap_or_else(|err| {
+                            tracing::error!("Error parsing predecessor_id: {predecessor_id:?}. Error: {err}. Falling back to aurora_engine_types::account_id::AccountId::default()");
+                            aurora_engine_types::account_id::AccountId::default()
+                        });
                         aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
                     },
                 )
                 .result
                 .and_then(|bytes| {
                     Address::try_from_slice(&bytes)
-                        .map_err(|_| GetErc20FromNep141Error::InvalidAddress)
+                        .map_err(|err| {
+                            tracing::error!("Error parsing ERC20 address: {bytes:?}. Error: {err}");
+                            GetErc20FromNep141Error::InvalidAddress
+                        })
                 })
-                .unwrap_or(Address::zero())
+                .unwrap_or_else(|err| {
+                    tracing::error!("Error getting ERC20 from NEP141: {err:?}. Falling back to Address::zero()");
+                    Address::zero()
+                })
         }
     }
 }
@@ -1232,6 +1267,8 @@ enum RefinerError {
     FailNearTx,
     /// Could not get data from the promise result
     PromiseResultError,
+    /// The error while building Aurora transaction in the scope of the build_transaction function
+    BuildAuroraTransactionError(String),
 }
 
 impl fmt::Debug for RefinerError {
@@ -1242,6 +1279,9 @@ impl fmt::Debug for RefinerError {
             Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
             Self::FailNearTx => write!(f, "FailNearTx"),
             Self::PromiseResultError => write!(f, "PromiseResultError"),
+            Self::BuildAuroraTransactionError(msg) => {
+                write!(f, "BuildAuroraTransactionError: {msg}")
+            }
         }
     }
 }
