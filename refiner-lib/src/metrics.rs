@@ -340,7 +340,7 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
             TRANSACTION_TYPE_ADD_RELAYER_KEY.inc();
         }
         TransactionKindTag::StoreRelayerKeyCallback => {
-            TRANSACTION_TYPE_STORE_RELAYER_KEY_CALLBACK.inc();   
+            TRANSACTION_TYPE_STORE_RELAYER_KEY_CALLBACK.inc();
         }
         TransactionKindTag::RemoveRelayerKey => {
             TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
