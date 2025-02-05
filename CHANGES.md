@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.1-2.4.0] 2025-02-05
+
+### Changes
+* Support ghcr, arm64 and update runner by [@spilin] in [#191]
+* Upgrade flow automation - Init workflows by [@alexander-borodulya] in [#192]
+
+### Fixes
+* Print `determine_ft_on_transfer_recipient` error messages by [@alexander-borodulya] in [#193]
+
+[#191]: https://github.com/aurora-is-near/borealis-engine-lib/pull/191
+[#192]: https://github.com/aurora-is-near/borealis-engine-lib/pull/192
+[#193]: https://github.com/aurora-is-near/borealis-engine-lib/pull/193
+
 ## [0.30.0-2.4.0] 2024-12-17
 
 ### Changes
@@ -139,7 +152,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.0-2.4.0...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.1-2.4.0...main
+[0.30.1-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.0-2.4.0...0.30.1-2.4.0
 [0.30.0-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.29.0-2.3.0...0.30.0-2.4.0
 [0.29.0-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.2-2.3.0...0.29.0-2.3.0
 [0.28.2-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.1-1.39.1...0.28.2-2.3.0
