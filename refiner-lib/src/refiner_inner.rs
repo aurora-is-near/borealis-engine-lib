@@ -1267,7 +1267,7 @@ enum RefinerError {
     /// Could not get data from the promise result
     PromiseResultError,
     /// The error while building Aurora transaction in the scope of the build_transaction function
-    BuildAuroraTransactionError,
+    BuildAuroraTransactionError(String),
 }
 
 impl fmt::Debug for RefinerError {
