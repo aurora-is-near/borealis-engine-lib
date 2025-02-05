@@ -185,6 +185,10 @@ lazy_static! {
         "refiner_tx_type_add_relayer_key",
         "Number of transactions of type: add_relayer_key"
     );
+    pub static ref TRANSACTION_TYPE_STORE_RELAYER_KEY_CALLBACK: IntCounter = counter(
+        "refiner_tx_type_store_relayer_key_callback",
+        "Number of transactions of type: store_relayer_key_callback"
+    );
     pub static ref TRANSACTION_TYPE_REMOVE_RELAYER_KEY: IntCounter = counter(
         "refiner_tx_type_remove_relayer_key",
         "Number of transactions of type: remove_relayer_key"
@@ -334,6 +338,9 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::AddRelayerKey => {
             TRANSACTION_TYPE_ADD_RELAYER_KEY.inc();
+        }
+        TransactionKindTag::StoreRelayerKeyCallback => {
+            TRANSACTION_TYPE_STORE_RELAYER_KEY_CALLBACK.inc();   
         }
         TransactionKindTag::RemoveRelayerKey => {
             TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
