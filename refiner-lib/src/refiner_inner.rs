@@ -1279,7 +1279,7 @@ impl fmt::Debug for RefinerError {
             Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
             Self::FailNearTx => write!(f, "FailNearTx"),
             Self::PromiseResultError => write!(f, "PromiseResultError"),
-            Self::BuildAuroraTransactionError(msg) => write!(f, "BuildAuroraTransactionError{msg}"),
+            Self::BuildAuroraTransactionError(msg) => write!(f, "BuildAuroraTransactionError: {msg}"),
         }
     }
 }
