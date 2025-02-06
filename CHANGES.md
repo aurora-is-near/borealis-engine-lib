@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changes
 * Support ghcr, arm64 and update runner by [@spilin] in [#191]
 * Upgrade flow automation - Init workflows by [@alexander-borodulya] in [#192]
+* chore: Bump aurora-engine to 3.8.0 by [@alexander-borodulya] in [#195]
 
 ### Fixes
 * Print `determine_ft_on_transfer_recipient` error messages by [@alexander-borodulya] in [#193]
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#191]: https://github.com/aurora-is-near/borealis-engine-lib/pull/191
 [#192]: https://github.com/aurora-is-near/borealis-engine-lib/pull/192
 [#193]: https://github.com/aurora-is-near/borealis-engine-lib/pull/193
+[#195]: https://github.com/aurora-is-near/borealis-engine-lib/pull/195
 
 ## [0.30.0-2.4.0] 2024-12-17
 
