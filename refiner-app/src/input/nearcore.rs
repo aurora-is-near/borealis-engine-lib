@@ -16,6 +16,7 @@ pub fn get_nearcore_stream(
         home_dir: std::path::PathBuf::from(&config.path),
         sync_mode: near_indexer::SyncModeEnum::BlockHeight(block_height),
         await_for_node_synced: near_indexer::AwaitForNodeSyncedEnum::StreamWhileSyncing,
+        finality: near_indexer::near_primitives::types::Finality::Final,
         validate_genesis: true,
     };
 
