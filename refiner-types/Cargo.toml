@@ -30,4 +30,5 @@ sha3.workspace = true
 serde_json.workspace = true
 
 [features]
+dev = [] # Required by the construct_fixed_hash macro
 ext-connector = ["aurora-engine/ext-connector"]
