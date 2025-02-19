@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner"
-version = "0.30.1-2.5.0-rc.2"
+version = "0.30.1-2.5.0-rc.3"
 dependencies = [
  "actix",
  "anyhow",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-app-integration-tests"
-version = "0.30.1-2.5.0-rc.2"
+version = "0.30.1-2.5.0-rc.3"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-lib"
-version = "0.30.1-2.5.0-rc.2"
+version = "0.30.1-2.5.0-rc.3"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -653,7 +653,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-types"
-version = "0.30.1-2.5.0-rc.2"
+version = "0.30.1-2.5.0-rc.3"
 dependencies = [
  "aurora-engine",
  "aurora-engine-sdk",
@@ -663,8 +663,8 @@ dependencies = [
  "derive_builder 0.20.2",
  "fixed-hash 0.8.0",
  "impl-serde 0.5.0",
- "near-crypto 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
  "serde",
  "serde_json",
  "sha3",
@@ -672,7 +672,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-standalone-engine"
-version = "0.30.1-2.5.0-rc.2"
+version = "0.30.1-2.5.0-rc.3"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -4330,8 +4330,8 @@ dependencies = [
 
 [[package]]
 name = "near-async"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "derive_more 1.0.0",
@@ -4339,7 +4339,7 @@ dependencies = [
  "near-async-derive",
  "near-o11y",
  "near-performance-metrics",
- "near-time 2.5.0-rc.2",
+ "near-time 2.5.0-rc.3",
  "once_cell",
  "serde",
  "serde_json",
@@ -4350,8 +4350,8 @@ dependencies = [
 
 [[package]]
 name = "near-async-derive"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4360,16 +4360,16 @@ dependencies = [
 
 [[package]]
 name = "near-cache"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "lru 0.12.5",
 ]
 
 [[package]]
 name = "near-chain"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "anyhow",
@@ -4388,17 +4388,17 @@ dependencies = [
  "near-chain-configs",
  "near-chain-primitives",
  "near-client-primitives",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-epoch-manager",
  "near-mainnet-res",
  "near-network",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
  "near-performance-metrics",
  "near-performance-metrics-macros",
  "near-pool",
- "near-primitives 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "near-store",
  "near-vm-runner",
  "node-runtime",
@@ -4418,19 +4418,19 @@ dependencies = [
 
 [[package]]
 name = "near-chain-configs"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "anyhow",
  "bytesize",
  "chrono",
  "derive_more 1.0.0",
- "near-config-utils 2.5.0-rc.2",
- "near-crypto 2.5.0-rc.2",
+ "near-config-utils 2.5.0-rc.3",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "num-rational 0.3.2",
  "serde",
  "serde_json",
@@ -4442,12 +4442,12 @@ dependencies = [
 
 [[package]]
 name = "near-chain-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
- "near-crypto 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "thiserror 2.0.11",
  "time",
  "tracing",
@@ -4455,8 +4455,8 @@ dependencies = [
 
 [[package]]
 name = "near-chunks"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "borsh 1.5.5",
@@ -4469,14 +4469,14 @@ dependencies = [
  "near-chain",
  "near-chain-configs",
  "near-chunks-primitives",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-epoch-manager",
  "near-network",
  "near-o11y",
  "near-performance-metrics",
  "near-performance-metrics-macros",
  "near-pool",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "near-store",
  "rand 0.8.5",
  "reed-solomon-erasure",
@@ -4487,17 +4487,17 @@ dependencies = [
 
 [[package]]
 name = "near-chunks-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "near-chain-primitives",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
 ]
 
 [[package]]
 name = "near-client"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "actix-rt",
@@ -4518,16 +4518,16 @@ dependencies = [
  "near-chain-primitives",
  "near-chunks",
  "near-client-primitives",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-dyn-configs",
  "near-epoch-manager",
  "near-network",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
  "near-performance-metrics",
  "near-performance-metrics-macros",
  "near-pool",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "near-store",
  "near-telemetry",
  "near-vm-runner",
@@ -4556,17 +4556,17 @@ dependencies = [
 
 [[package]]
 name = "near-client-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "chrono",
  "near-chain-configs",
  "near-chain-primitives",
  "near-chunks-primitives",
- "near-crypto 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "serde",
  "serde_json",
  "strum 0.24.1",
@@ -4589,8 +4589,8 @@ dependencies = [
 
 [[package]]
 name = "near-config-utils"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "anyhow",
  "json_comments",
@@ -4625,8 +4625,8 @@ dependencies = [
 
 [[package]]
 name = "near-crypto"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "blake2",
  "borsh 1.5.5",
@@ -4636,9 +4636,9 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "near-account-id",
- "near-config-utils 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
- "near-stdx 2.5.0-rc.2",
+ "near-config-utils 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
+ "near-stdx 2.5.0-rc.3",
  "primitive-types 0.10.1",
  "rand 0.8.5",
  "secp256k1",
@@ -4650,15 +4650,15 @@ dependencies = [
 
 [[package]]
 name = "near-dyn-configs"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "anyhow",
  "near-chain-configs",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-primitives 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "prometheus",
  "serde",
  "serde_json",
@@ -4669,18 +4669,18 @@ dependencies = [
 
 [[package]]
 name = "near-epoch-manager"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "borsh 1.5.5",
  "itertools 0.12.1",
  "near-cache",
  "near-chain-configs",
  "near-chain-primitives",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-primitives 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "near-store",
  "num-bigint 0.3.3",
  "num-rational 0.3.2",
@@ -4704,30 +4704,30 @@ dependencies = [
 
 [[package]]
 name = "near-fmt"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
- "near-primitives-core 2.5.0-rc.2",
+ "near-primitives-core 2.5.0-rc.3",
 ]
 
 [[package]]
 name = "near-indexer"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "anyhow",
  "futures",
  "near-chain-configs",
  "near-client",
- "near-config-utils 2.5.0-rc.2",
- "near-crypto 2.5.0-rc.2",
+ "near-config-utils 2.5.0-rc.3",
+ "near-crypto 2.5.0-rc.3",
  "near-dyn-configs",
  "near-epoch-manager",
- "near-indexer-primitives 2.5.0-rc.2",
+ "near-indexer-primitives 2.5.0-rc.3",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
  "near-store",
  "nearcore",
  "node-runtime",
@@ -4751,18 +4751,18 @@ dependencies = [
 
 [[package]]
 name = "near-indexer-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "near-jsonrpc"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "actix-cors",
@@ -4780,7 +4780,7 @@ dependencies = [
  "near-jsonrpc-primitives",
  "near-network",
  "near-o11y",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "serde",
  "serde_json",
  "serde_with",
@@ -4791,29 +4791,29 @@ dependencies = [
 
 [[package]]
 name = "near-jsonrpc-client"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix-http",
  "awc",
  "futures",
  "near-jsonrpc-primitives",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "near-jsonrpc-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "arbitrary",
  "near-chain-configs",
  "near-client-primitives",
- "near-crypto 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "serde",
  "serde_json",
  "thiserror 2.0.11",
@@ -4848,19 +4848,19 @@ dependencies = [
 
 [[package]]
 name = "near-mainnet-res"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "near-account-id",
  "near-chain-configs",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "serde_json",
 ]
 
 [[package]]
 name = "near-network"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "anyhow",
@@ -4880,13 +4880,13 @@ dependencies = [
  "lru 0.12.5",
  "near-async",
  "near-chain-configs",
- "near-crypto 2.5.0-rc.2",
- "near-fmt 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-fmt 2.5.0-rc.3",
  "near-o11y",
  "near-performance-metrics",
  "near-performance-metrics-macros",
- "near-primitives 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "near-store",
  "opentelemetry",
  "parking_lot 0.12.3",
@@ -4911,14 +4911,14 @@ dependencies = [
 
 [[package]]
 name = "near-o11y"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "base64 0.21.7",
  "clap",
- "near-crypto 2.5.0-rc.2",
- "near-primitives-core 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-primitives-core 2.5.0-rc.3",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
@@ -4955,14 +4955,14 @@ dependencies = [
 
 [[package]]
 name = "near-parameters"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "borsh 1.5.5",
  "enum-map",
  "near-account-id",
- "near-primitives-core 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-primitives-core 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "num-rational 0.3.2",
  "serde",
  "serde_repr",
@@ -4973,8 +4973,8 @@ dependencies = [
 
 [[package]]
 name = "near-performance-metrics"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "bitflags 1.3.2",
@@ -4988,8 +4988,8 @@ dependencies = [
 
 [[package]]
 name = "near-performance-metrics-macros"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "quote",
  "syn 2.0.98",
@@ -4997,13 +4997,13 @@ dependencies = [
 
 [[package]]
 name = "near-pool"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "borsh 1.5.5",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "rand 0.8.5",
 ]
 
@@ -5048,8 +5048,8 @@ dependencies = [
 
 [[package]]
 name = "near-primitives"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "arbitrary",
  "base64 0.21.7",
@@ -5064,13 +5064,13 @@ dependencies = [
  "enum-map",
  "hex",
  "itertools 0.12.1",
- "near-crypto 2.5.0-rc.2",
- "near-fmt 2.5.0-rc.2",
- "near-parameters 2.5.0-rc.2",
- "near-primitives-core 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
- "near-stdx 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-fmt 2.5.0-rc.3",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives-core 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
+ "near-stdx 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "num-rational 0.3.2",
  "ordered-float",
  "primitive-types 0.10.1",
@@ -5111,8 +5111,8 @@ dependencies = [
 
 [[package]]
 name = "near-primitives-core"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "arbitrary",
  "base64 0.21.7",
@@ -5121,7 +5121,7 @@ dependencies = [
  "derive_more 1.0.0",
  "enum-map",
  "near-account-id",
- "near-schema-checker-lib 2.5.0-rc.2",
+ "near-schema-checker-lib 2.5.0-rc.3",
  "num-rational 0.3.2",
  "serde",
  "serde_repr",
@@ -5131,8 +5131,8 @@ dependencies = [
 
 [[package]]
 name = "near-rosetta-rpc"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "actix-cors",
@@ -5146,11 +5146,11 @@ dependencies = [
  "near-chain-configs",
  "near-client",
  "near-client-primitives",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-network",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
  "node-runtime",
  "paperclip",
  "serde",
@@ -5168,8 +5168,8 @@ checksum = "03541d1dadd0b5dd0a2e1ae1fbe5735fdab79332ed556af36cdcbe50d4b8cf04"
 
 [[package]]
 name = "near-schema-checker-core"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 
 [[package]]
 name = "near-schema-checker-lib"
@@ -5183,11 +5183,11 @@ dependencies = [
 
 [[package]]
 name = "near-schema-checker-lib"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
- "near-schema-checker-core 2.5.0-rc.2",
- "near-schema-checker-macro 2.5.0-rc.2",
+ "near-schema-checker-core 2.5.0-rc.3",
+ "near-schema-checker-macro 2.5.0-rc.3",
 ]
 
 [[package]]
@@ -5198,8 +5198,8 @@ checksum = "a1bca8c93ff0ad17138c147323a07f036d11c9e1602e3bc2ac9d29c3cf78b89d"
 
 [[package]]
 name = "near-schema-checker-macro"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 
 [[package]]
 name = "near-stdx"
@@ -5209,13 +5209,13 @@ checksum = "427b4e4af5e32f682064772da8b1a7558b3f090e6151c8804cff24ee6c5c4966"
 
 [[package]]
 name = "near-stdx"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 
 [[package]]
 name = "near-store"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "actix-rt",
@@ -5232,14 +5232,14 @@ dependencies = [
  "lru 0.12.5",
  "near-chain-configs",
  "near-chain-primitives",
- "near-crypto 2.5.0-rc.2",
- "near-fmt 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
+ "near-fmt 2.5.0-rc.3",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
- "near-stdx 2.5.0-rc.2",
- "near-time 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
+ "near-stdx 2.5.0-rc.3",
+ "near-time 2.5.0-rc.3",
  "near-vm-runner",
  "num_cpus",
  "rand 0.8.5",
@@ -5259,8 +5259,8 @@ dependencies = [
 
 [[package]]
 name = "near-telemetry"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "awc",
@@ -5269,7 +5269,7 @@ dependencies = [
  "near-o11y",
  "near-performance-metrics",
  "near-performance-metrics-macros",
- "near-time 2.5.0-rc.2",
+ "near-time 2.5.0-rc.3",
  "openssl",
  "serde",
  "serde_json",
@@ -5288,8 +5288,8 @@ dependencies = [
 
 [[package]]
 name = "near-time"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "serde",
  "time",
@@ -5298,8 +5298,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-compiler"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "enumset",
  "finite-wasm",
@@ -5314,8 +5314,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-compiler-singlepass"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "dynasm 2.0.0",
  "dynasmrt 2.0.0",
@@ -5334,8 +5334,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-engine"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "backtrace",
  "cfg-if 1.0.0",
@@ -5356,8 +5356,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-runner"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "anyhow",
  "blst",
@@ -5368,12 +5368,12 @@ dependencies = [
  "finite-wasm",
  "lru 0.12.5",
  "memoffset 0.8.0",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives-core 2.5.0-rc.2",
- "near-schema-checker-lib 2.5.0-rc.2",
- "near-stdx 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives-core 2.5.0-rc.3",
+ "near-schema-checker-lib 2.5.0-rc.3",
+ "near-stdx 2.5.0-rc.3",
  "near-vm-compiler",
  "near-vm-compiler-singlepass",
  "near-vm-engine",
@@ -5412,8 +5412,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-types"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "indexmap 2.7.1",
  "num-traits",
@@ -5423,8 +5423,8 @@ dependencies = [
 
 [[package]]
 name = "near-vm-vm"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "backtrace",
  "cc",
@@ -5444,18 +5444,18 @@ dependencies = [
 
 [[package]]
 name = "near-wallet-contract"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "anyhow",
- "near-primitives-core 2.5.0-rc.2",
+ "near-primitives-core 2.5.0-rc.3",
  "near-vm-runner",
 ]
 
 [[package]]
 name = "nearcore"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "actix",
  "actix-rt",
@@ -5480,8 +5480,8 @@ dependencies = [
  "near-chunks",
  "near-client",
  "near-client-primitives",
- "near-config-utils 2.5.0-rc.2",
- "near-crypto 2.5.0-rc.2",
+ "near-config-utils 2.5.0-rc.3",
+ "near-crypto 2.5.0-rc.3",
  "near-dyn-configs",
  "near-epoch-manager",
  "near-jsonrpc",
@@ -5489,10 +5489,10 @@ dependencies = [
  "near-mainnet-res",
  "near-network",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
  "near-performance-metrics",
  "near-pool",
- "near-primitives 2.5.0-rc.2",
+ "near-primitives 2.5.0-rc.3",
  "near-rosetta-rpc",
  "near-store",
  "near-telemetry",
@@ -5545,17 +5545,17 @@ dependencies = [
 
 [[package]]
 name = "node-runtime"
-version = "2.5.0-rc.2"
-source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.2#380afacf9181dcbad39c751c886eafb0655c78ff"
+version = "2.5.0-rc.3"
+source = "git+https://github.com/near/nearcore?tag=2.5.0-rc.3#aa803039d4e5a6a5ee2b42cab0ea026acfb19f36"
 dependencies = [
  "borsh 1.5.5",
  "bytesize",
  "itertools 0.12.1",
- "near-crypto 2.5.0-rc.2",
+ "near-crypto 2.5.0-rc.3",
  "near-o11y",
- "near-parameters 2.5.0-rc.2",
- "near-primitives 2.5.0-rc.2",
- "near-primitives-core 2.5.0-rc.2",
+ "near-parameters 2.5.0-rc.3",
+ "near-primitives 2.5.0-rc.3",
+ "near-primitives-core 2.5.0-rc.3",
  "near-store",
  "near-vm-runner",
  "near-wallet-contract",
