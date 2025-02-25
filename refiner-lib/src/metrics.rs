@@ -1,7 +1,7 @@
 use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
 use prometheus::{
-    self, labels, opts, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts,
+    self, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts,
 };
 
 lazy_static! {
@@ -396,9 +396,24 @@ fn gauge(name: &str, help: &str) -> IntGauge {
 }
 
 fn opts(name: &str, help: &str) -> Opts {
-    opts!(
-        name,
-        help,
-        labels! {"version" => env!("CARGO_PKG_VERSION") }
-    )
+    Opts::new(name, help).const_label("version", version())
+}
+
+/// Outputs {BOREALIS_SERVICE_VERSION}-{VERGEN_GIT_SHA}
+/// If VERGEN_GIT_SHA not set, use BOREALIS_SERVICE_VERSION as is.
+/// If BOREALIS_SERVICE_VERSION not set, falls back to CARGO_PKG_VERSION, otherwise "unknown" value is set.
+///
+/// Example: 1.4.7-2.5.0-a746bfc
+fn version() -> String {
+    let borealis_service_version = std::env::var("BOREALIS_SERVICE_VERSION")
+        .or_else(|_| std::env::var("CARGO_PKG_VERSION"))
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    match std::env::var("VERGEN_GIT_SHA") {
+        Ok(git_sha) => {
+            let git_sha = &git_sha[..7];
+            format!("{borealis_service_version}-{git_sha}")
+        }
+        Err(_) => borealis_service_version, // 
+    }
 }
