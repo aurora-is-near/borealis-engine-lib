@@ -461,9 +461,7 @@ mod tests {
         let comparator = &version_req.comparators[0];
 
         // If the version string includes a hyphen, we expect a pre-release segment that holds our build hash.
-        if version_str.contains('-') {
-            let parts: Vec<&str> = version_str.splitn(2, '-').collect();
-            let expected_pre = parts[1];
+        if let Some((_, expected_pre)) = version_str.split_once('-') {
             assert!(
                 !expected_pre.is_empty(),
                 "Expected non-empty pre-release (build hash) from the version string"
