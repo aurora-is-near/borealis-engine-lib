@@ -643,6 +643,7 @@ dependencies = [
  "prometheus",
  "rlp 0.6.1",
  "rocksdb",
+ "semver 1.0.25",
  "serde",
  "serde_json",
  "tempfile",
