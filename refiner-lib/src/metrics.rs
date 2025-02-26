@@ -1,8 +1,6 @@
 use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
-use prometheus::{
-    self, labels, opts, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts,
-};
+use prometheus::{self, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts};
 
 lazy_static! {
     pub static ref MISSING_SHARDS: IntCounter = counter(
@@ -396,9 +394,89 @@ fn gauge(name: &str, help: &str) -> IntGauge {
 }
 
 fn opts(name: &str, help: &str) -> Opts {
-    opts!(
-        name,
-        help,
-        labels! {"version" => env!("CARGO_PKG_VERSION") }
-    )
+    let version = version();
+    prometheus::opts!(name, help, prometheus::labels! {"version" => &version })
+}
+
+/// Outputs `{CARGO_PKG_VERSION}-{VERGEN_GIT_SHA}`
+///
+/// If `CARGO_PKG_VERSION` is not set at runtime, falls back to the `CARGO_PKG_VERSION` available at compile time.
+/// If `VERGEN_GIT_SHA` is not set, uses `CARGO_PKG_VERSION` as is.
+///
+/// Example: 1.4.7-2.5.0-a746bfc
+fn version() -> String {
+    let pkg_ver = std::env::var("CARGO_PKG_VERSION")
+        .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
+
+    if let Some(git_sha_full) = option_env!("VERGEN_GIT_SHA") {
+        let len = git_sha_full.len().min(7);
+        let git_sha = &git_sha_full[..len];
+        format!("{pkg_ver}-{git_sha}")
+    } else {
+        pkg_ver
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use prometheus::{Encoder, TextEncoder};
+    use semver::VersionReq;
+
+    use super::*;
+
+    #[test]
+    fn test_version_in_metrics() {
+        let version = version();
+        let _counter_metric = counter("counter_metric_with_network", "Counter Metric With Network");
+        let _gauge_metric = gauge("gauge_metric_with_network", "Gauge Metric With Network");
+        let registry = prometheus::default_registry();
+        let metrics = registry.gather();
+        let mut buffer = Vec::new();
+        let encoder = TextEncoder::new();
+
+        encoder.encode(&metrics, &mut buffer).unwrap();
+        let output = String::from_utf8(buffer).unwrap();
+
+        assert!(output.contains(&format!(
+            "counter_metric_with_network{{version=\"{version}\"}} 0",
+        )));
+        assert!(output.contains(&format!(
+            "gauge_metric_with_network{{version=\"{version}\"}} 0",
+        )));
+    }
+
+    #[test]
+    fn test_version_in_semver_format() {
+        let version_str = version();
+        println!("Parsed version string: {}", version_str);
+
+        let version_req = VersionReq::parse(&version_str).unwrap();
+
+        // There should be exactly one comparator in an exact version requirement.
+        assert_eq!(
+            version_req.comparators.len(),
+            1,
+            "Expected one comparator in the version requirement"
+        );
+        let comparator = &version_req.comparators[0];
+
+        // If the version string includes a hyphen, we expect a pre-release segment that holds our build hash.
+        if let Some((_, expected_pre)) = version_str.split_once('-') {
+            assert!(
+                !expected_pre.is_empty(),
+                "Expected non-empty pre-release (build hash) from the version string"
+            );
+            assert_eq!(
+                comparator.pre.as_str(),
+                expected_pre,
+                "Pre-release part does not match the expected build hash"
+            );
+        } else {
+            // Otherwise, no pre-release should be present.
+            assert!(
+                comparator.pre.is_empty(),
+                "Expected an empty pre-release part when no build hash is present"
+            );
+        }
+    }
 }

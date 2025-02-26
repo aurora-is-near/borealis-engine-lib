@@ -36,9 +36,14 @@ tracing.workspace = true
 tokio = { workspace = true, features = ["sync", "macros"] }
 rocksdb.workspace = true
 
+[build-dependencies]
+anyhow.workspace = true
+vergen-git2 = { workspace = true, features = ["build"] }
+
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
+semver.workspace = true
 
 [features]
 ext-connector = ["aurora-engine/ext-connector", "engine-standalone-storage/ext-connector", "aurora-refiner-types/ext-connector", "aurora-standalone-engine/ext-connector"]
