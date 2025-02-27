@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.2-2.5.0-rc.3] 2025-02-27
+
+## Changeds
+
+* Disable build for arm64 due to qemu failure by [@spilin] in [#199]
+* Use input tag to checkout proper release by [@spilin] in [#201]
+
+## Fixes
+
+* chore: Bump nearcore to 2.5.0-rc.3 by [@alexander-borodulya] in [#200]
+* Read proper package version as a source of the service version by [@alexander-borodulya] in [#202]
+
+[#199]: https://github.com/aurora-is-near/borealis-engine-lib/pull/199
+[#201]: https://github.com/aurora-is-near/borealis-engine-lib/pull/201
+[#200]: https://github.com/aurora-is-near/borealis-engine-lib/pull/200
+[#202]: https://github.com/aurora-is-near/borealis-engine-lib/pull/202
+
 ## [0.30.1-2.4.0] 2025-02-05
 
 ### Changes
@@ -45,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
-* Fix handling mint transactions in aurora block processing by [@alexander_borodulya] in [#174]
+* Fix handling mint transactions in aurora block processing by [@alexander-borodulya] in [#174]
 
 [#174]: https://github.com/aurora-is-near/borealis-engine-lib/pull/174
 [#179]: https://github.com/aurora-is-near/borealis-engine-lib/pull/179
@@ -154,7 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.1-2.4.0...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.2-2.5.0-rc.3...main
+[0.30.2-2.5.0-rc.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.1-2.4.0...0.30.2-2.5.0-rc.3
 [0.30.1-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.0-2.4.0...0.30.1-2.4.0
 [0.30.0-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.29.0-2.3.0...0.30.0-2.4.0
 [0.29.0-2.3.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.28.2-2.3.0...0.29.0-2.3.0
@@ -170,4 +188,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [@raventid]: https://github.com/raventid
 [@RomanHodulak]: https://github.com/RomanHodulak
 [@spilin]: https://github.com/spilin
-[@alexander_borodulya]: https://github.com/alexander-borodulya
+[@alexander-borodulya]: https://github.com/alexander-borodulya
