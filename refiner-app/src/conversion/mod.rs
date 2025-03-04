@@ -9,7 +9,7 @@ pub fn convert(block: StreamerMessage) -> NEARBlock {
             .shards
             .into_iter()
             .map(|shard| Shard {
-                shard_id: shard.shard_id.into(),
+                shard_id: ch_json(shard.shard_id),
                 chunk: shard.chunk.map(|chunk| ChunkView {
                     author: ch_json(chunk.author),
                     header: ChunkHeaderView {
