@@ -116,7 +116,6 @@ pub async fn neard_path() -> anyhow::Result<PathBuf> {
     crate::refiner_utils::get_repository_root()
         .await
         .map(|dir| dir.join("target").join("release").join("neard"))
-        .map_err(Into::into)
 }
 
 async fn create_dirs() -> anyhow::Result<()> {

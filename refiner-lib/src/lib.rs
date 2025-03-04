@@ -1,3 +1,5 @@
+#![allow(clippy::literal_string_with_formatting_args)]
+
 pub mod hashchain;
 mod metrics;
 pub mod near_stream;
