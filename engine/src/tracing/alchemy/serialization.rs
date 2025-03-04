@@ -3,7 +3,7 @@ use crate::tracing::alchemy::{
     AlchemyCreateResult, AlchemyCreateType, AlchemySuicideAction, AlchemySuicideResult,
     AlchemySuicideType, AlchemyTraceTemplate,
 };
-use aurora_engine_types::{types::Address, H256, U256};
+use aurora_engine_types::{H256, U256, types::Address};
 use std::{borrow::Cow, fmt, str::FromStr, string::ToString};
 
 pub const ALCHEMY_CREATE_TYPE_TAG: &str = "create";

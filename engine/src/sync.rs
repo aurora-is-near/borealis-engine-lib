@@ -2,7 +2,7 @@ use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::{account_id::AccountId, H256};
+use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
@@ -10,12 +10,11 @@ use aurora_refiner_types::near_primitives::{
 };
 use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
-    sync::{
-        self,
-        types::{self, Message},
-        ConsumeMessageOutcome, TransactionExecutionResult, TransactionIncludedOutcome,
-    },
     BlockMetadata, Diff, Storage,
+    sync::{
+        self, ConsumeMessageOutcome, TransactionExecutionResult, TransactionIncludedOutcome,
+        types::{self, Message},
+    },
 };
 use lru::LruCache;
 use std::{cell::RefCell, collections::HashMap};
@@ -260,13 +259,13 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                 );
                             }
                         }
-                        Err(_) => warn!(
-                             "Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",
-                        ),
+                        Err(_) => {
+                            warn!("Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",)
+                        }
                     }
                 }
                 None => warn!(
-                     "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
+                    "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
                 ),
             }
         }

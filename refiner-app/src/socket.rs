@@ -2,8 +2,8 @@ use std::io;
 use std::path::Path;
 
 use aurora_standalone_engine::{
-    gas::{estimate_gas, EthCallRequest},
-    tracing::lib::{trace_transaction, DebugTraceTransactionRequest},
+    gas::{EthCallRequest, estimate_gas},
+    tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
 };
 use engine_standalone_storage::Storage;
 use engine_standalone_tracing::types::call_tracer::SerializableCallFrame;

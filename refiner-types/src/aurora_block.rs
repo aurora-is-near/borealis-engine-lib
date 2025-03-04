@@ -1,4 +1,4 @@
-use crate::utils::{u128_dec_serde, u64_hex_serde};
+use crate::utils::{u64_hex_serde, u128_dec_serde};
 use aurora_engine::parameters::{ResultLog, TransactionStatus};
 use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::types::{Address, Wei};

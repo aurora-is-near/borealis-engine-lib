@@ -1,6 +1,6 @@
 use aurora_refiner_types::near_block::{ChunkHeaderView, ChunkView, NEARBlock, Shard};
 use near_lake_framework::near_indexer_primitives::StreamerMessage;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 pub fn convert(block: StreamerMessage) -> NEARBlock {
     NEARBlock {

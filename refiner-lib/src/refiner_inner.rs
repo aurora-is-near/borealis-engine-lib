@@ -1,8 +1,8 @@
 use crate::legacy::decode_submit_result;
-use crate::metrics::{record_metric, LATEST_BLOCK_PROCESSED};
-use crate::utils::{as_h256, keccak256, TxMetadata};
+use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
+use crate::utils::{TxMetadata, as_h256, keccak256};
 use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
-use aurora_engine::engine::{create_legacy_address, GetErc20FromNep141Error};
+use aurora_engine::engine::{GetErc20FromNep141Error, create_legacy_address};
 use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
 };
@@ -29,10 +29,10 @@ use aurora_refiner_types::near_primitives::views::{
     ActionView, ExecutionStatusView, ReceiptEnumView,
 };
 use byteorder::{BigEndian, WriteBytesExt};
-use engine_standalone_storage::sync::{
-    types::TransactionKindTag, TransactionExecutionResult, TransactionIncludedOutcome,
-};
 use engine_standalone_storage::Storage;
+use engine_standalone_storage::sync::{
+    TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
+};
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -503,7 +503,9 @@ fn normalize_output(
             // We have a result from both sources, so we should compare them to
             // make sure they match. Log a warning and use the Near output if they don't.
             if near_output.0 != engine_output {
-                tracing::warn!("Mismatch between Near and Engine outputs. The internal Engine instance may not have the correct state.");
+                tracing::warn!(
+                    "Mismatch between Near and Engine outputs. The internal Engine instance may not have the correct state."
+                );
             }
             Ok(near_output)
         }

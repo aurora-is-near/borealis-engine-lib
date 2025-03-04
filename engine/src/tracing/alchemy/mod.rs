@@ -1,4 +1,4 @@
-use aurora_engine_types::{types::Address, H256, U256};
+use aurora_engine_types::{H256, U256, types::Address};
 
 pub mod conversion;
 pub mod serialization;

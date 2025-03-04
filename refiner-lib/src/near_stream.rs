@@ -120,9 +120,9 @@ pub mod tests {
     use aurora_engine_sdk::types::near_account_to_evm_address;
     use aurora_engine_types::parameters::connector::Erc20Metadata;
     use aurora_engine_types::{
+        U256,
         account_id::AccountId,
         types::{Address, Balance, Wei},
-        U256,
     };
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
