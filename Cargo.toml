@@ -11,7 +11,7 @@ resolver = "2"
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
 version = "0.30.2-2.5.0"
-edition = "2021"
+edition = "2024"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
 license = "CC0-1.0"
