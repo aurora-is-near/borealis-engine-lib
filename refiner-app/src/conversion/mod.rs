@@ -1,6 +1,6 @@
 use aurora_refiner_types::near_block::{ChunkHeaderView, ChunkView, NEARBlock, Shard};
 use near_lake_framework::near_indexer_primitives::StreamerMessage;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 pub fn convert(block: StreamerMessage) -> NEARBlock {
     NEARBlock {
@@ -9,7 +9,7 @@ pub fn convert(block: StreamerMessage) -> NEARBlock {
             .shards
             .into_iter()
             .map(|shard| Shard {
-                shard_id: shard.shard_id.into(),
+                shard_id: ch_json(shard.shard_id),
                 chunk: shard.chunk.map(|chunk| ChunkView {
                     author: ch_json(chunk.author),
                     header: ChunkHeaderView {

@@ -71,11 +71,7 @@ pub mod u128_dec_serde {
 
 /// Cast a U256 value down to u64; if the value is too large then return u64::MAX.
 pub fn saturating_cast(x: U256) -> u64 {
-    if x < U64_MAX {
-        x.as_u64()
-    } else {
-        u64::MAX
-    }
+    if x < U64_MAX { x.as_u64() } else { u64::MAX }
 }
 
 pub fn keccak256(input: &[u8]) -> H256 {
@@ -86,7 +82,7 @@ pub fn keccak256(input: &[u8]) -> H256 {
 
 #[cfg(test)]
 mod tests {
-    use super::{u128_dec_serde, u64_hex_serde};
+    use super::{u64_hex_serde, u128_dec_serde};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]

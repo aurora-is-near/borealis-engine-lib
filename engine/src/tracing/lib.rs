@@ -1,8 +1,8 @@
 use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::H256;
 use engine_standalone_storage::{
-    sync::{self, TransactionIncludedOutcome},
     Storage,
+    sync::{self, TransactionIncludedOutcome},
 };
 use engine_standalone_tracing::{sputnik, types::call_tracer::CallTracer};
 

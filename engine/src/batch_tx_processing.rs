@@ -1,7 +1,7 @@
 use aurora_engine_sdk::io::IO;
 use engine_standalone_storage::{
-    engine_state::{EngineStateAccess, EngineStorageValue},
     Diff,
+    engine_state::{EngineStateAccess, EngineStorageValue},
 };
 use std::cell::RefCell;
 

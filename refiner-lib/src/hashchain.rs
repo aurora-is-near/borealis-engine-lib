@@ -5,8 +5,8 @@ use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, FunctionCallArgsV2, SubmitArgs, SubmitResult, TransactionStatus,
 };
 use aurora_engine_hashchain::merkle::StreamCompactMerkleTree;
-use aurora_engine_transactions::{eip_1559, eip_2930, legacy, EthTransactionKind};
-use aurora_engine_types::{types::u256_to_arr, H256};
+use aurora_engine_transactions::{EthTransactionKind, eip_1559, eip_2930, legacy};
+use aurora_engine_types::{H256, types::u256_to_arr};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, CallArgsVersion, HashchainInputKind, HashchainOutputKind,
     ResultStatusTag,
@@ -257,7 +257,7 @@ pub enum ValidationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::near_stream::tests::{read_block, TestContext};
+    use crate::near_stream::tests::{TestContext, read_block};
 
     // All transactions in test blocks should pass `validate_tx_hashchain`.
     // I.e. the method of reproducing the original Near input and output

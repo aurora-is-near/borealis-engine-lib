@@ -4,7 +4,7 @@ use crate::tracing::alchemy::{
     AlchemySuicideAction, AlchemySuicideResult, AlchemySuicideTrace, AlchemySuicideType,
     AlchemyTrace,
 };
-use aurora_engine_types::{types::Address, H256, U256};
+use aurora_engine_types::{H256, U256, types::Address};
 use engine_standalone_tracing::types::call_tracer::{CallFrame, CallType};
 use std::collections::VecDeque;
 

@@ -1,12 +1,10 @@
 use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
-use prometheus::{self, register_int_counter, register_int_gauge, IntCounter, IntGauge, Opts};
+use prometheus::{self, IntCounter, IntGauge, Opts, register_int_counter, register_int_gauge};
 
 lazy_static! {
-    pub static ref MISSING_SHARDS: IntCounter = counter(
-        "refiner_missing_shards",
-        "Blocks that are missing shards"
-    );
+    pub static ref MISSING_SHARDS: IntCounter =
+        counter("refiner_missing_shards", "Blocks that are missing shards");
     pub static ref BATCHED_ACTIONS: IntCounter = counter(
         "refiner_batched_actions",
         "Transactions that uses batched actions"
@@ -19,10 +17,8 @@ lazy_static! {
         "refiner_number_of_latest_block_processed",
         "Height of last block processed. Can be slightly out of sync with the actual height given multiple process"
     );
-    pub static ref FAILING_NEAR_TRANSACTION: IntCounter = counter(
-        "refiner_near_transaction_failed",
-        "NEAR Transaction failed"
-    );
+    pub static ref FAILING_NEAR_TRANSACTION: IntCounter =
+        counter("refiner_near_transaction_failed", "NEAR Transaction failed");
     pub static ref TRANSACTIONS: IntCounter = counter(
         "refiner_transactions",
         "Number of transactions after filter"
@@ -191,27 +187,27 @@ lazy_static! {
         "refiner_tx_type_remove_relayer_key",
         "Number of transactions of type: remove_relayer_key"
     );
-    pub static ref TRANSACTION_TYPE_START_HASHCHAIN : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_START_HASHCHAIN: IntCounter = counter(
         "refiner_tx_type_start_hashchain",
         "Number of transactions of type: start_hashchain"
     );
-    pub static ref TRANSACTION_TYPE_SET_ERC20_METADATA : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_SET_ERC20_METADATA: IntCounter = counter(
         "refiner_tx_type_set_erc20_metadata",
         "Number of transactions of type: set_erc20_metadata"
     );
-    pub static ref TRANSACTION_TYPE_EXIT_TO_NEAR : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_EXIT_TO_NEAR: IntCounter = counter(
         "refiner_tx_type_exit_to_near",
         "Number of transactions of type: exit_to_near"
     );
-    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_SET_FIXED_GAS: IntCounter = counter(
         "refiner_tx_type_set_fixed_gas",
         "Number of transactions of type: set_fixed_gas"
     );
-    pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_SET_SILO_PARAMS: IntCounter = counter(
         "refiner_tx_type_set_silo_params",
         "Number of transactions of type: set_silo_params"
     );
-    pub static ref TRANSACTION_TYPE_SET_ETH_CONNECTOR_CONTRACT_ACCOUNT : IntCounter = counter(
+    pub static ref TRANSACTION_TYPE_SET_ETH_CONNECTOR_CONTRACT_ACCOUNT: IntCounter = counter(
         "refiner_tx_type_set_eth_connector_contract_account",
         "Number of transactions of type: set_eth_connector_contract_account"
     );
