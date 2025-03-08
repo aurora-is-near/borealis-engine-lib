@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.3-2.5.1] 2025-03-08
+
+## Changes
+
+### Fixes
+
+* Temporary pin the `tempfile` crate to version 3.14 due to [issue 12944](https://github.com/near/nearcore/issues/12944#issuecomment-2707438357)
+
 ## [0.30.2-2.5.0-rc.3] 2025-02-27
 
-## Changeds
+## Changes
 
 * Disable build for arm64 due to qemu failure by [@spilin] in [#199]
 * Use input tag to checkout proper release by [@spilin] in [#201]
@@ -171,7 +179,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.2-2.5.0-rc.3...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.3-2.5.1...main
+[0.30.3-2.5.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.0...0.30.2-2.5.1
+[0.30.2-2.5.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.0-rc.3...0.30.2-2.5.0
 [0.30.2-2.5.0-rc.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.1-2.4.0...0.30.2-2.5.0-rc.3
 [0.30.1-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.0-2.4.0...0.30.1-2.4.0
 [0.30.0-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.29.0-2.3.0...0.30.0-2.4.0
