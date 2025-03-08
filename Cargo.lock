@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner"
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 dependencies = [
  "actix",
  "anyhow",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-app-integration-tests"
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-lib"
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -655,7 +655,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-types"
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 dependencies = [
  "aurora-engine",
  "aurora-engine-sdk",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-standalone-engine"
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 dependencies = [
  "anyhow",
  "aurora-engine",
@@ -8068,13 +8068,12 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "tempfile"
-version = "3.17.1"
+version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22e5a0acb1f3f55f65cc4a866c361b2fb2a0ff6366785ae6fbb5f85df07ba230"
+checksum = "28cce251fcbc87fac86a866eeb0d6c2d536fc16d06f184bb61aeae11aa4cee0c"
 dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
- "getrandom 0.3.1",
  "once_cell",
  "rustix",
  "windows-sys 0.59.0",

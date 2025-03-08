@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
-version = "0.30.2-2.5.1"
+version = "0.30.3-2.5.1"
 edition = "2024"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
@@ -47,7 +47,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 semver = "1.0.25"
 sha3 = "0.10"
-tempfile = "3"
+# Based on: https://github.com/near/nearcore/issues/12944#issuecomment-2707438357
+tempfile = "=3.14.0"
 tokio = "1"
 toml = "0.8"
 tracing = "0.1"
