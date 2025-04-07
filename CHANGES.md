@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 
-* chore: bump aurora-engine to 3.9.0 by [@alexander-borodulya] in [#208]
+* chore: bump aurora-engine to 3.9.0 and nearcore to 2.6.0-rc.1 by [@alexander-borodulya] in [#208]
 
 [#208]: https://github.com/aurora-is-near/borealis-engine-lib/pull/208
 
