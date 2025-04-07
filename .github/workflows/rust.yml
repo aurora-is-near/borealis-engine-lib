@@ -93,6 +93,7 @@ jobs:
       - name: Run tests
         run: |
           rustup target add wasm32-unknown-unknown
+          rustup component add rust-src
           cargo test -p aurora-refiner-app-integration-tests
           cargo test -p aurora-refiner-app-integration-tests --features ext-connector
       - name: Save cache
