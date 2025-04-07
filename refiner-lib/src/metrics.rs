@@ -235,6 +235,15 @@ lazy_static! {
         "refiner_tx_type_withdraw_wnear_to_router",
         "Number of transactions of type: withdraw_wnear_to_router"
     );
+    pub static ref TRANSACTION_TYPE_SET_ERC20_FALLBACK_ADDRESS: IntCounter = counter(
+        "refiner_tx_type_set_erc20_fallback_address",
+        "Number of transactions of type: set_erc20_fallback_address"
+    );
+    // TransactionKindTag::SetWhitelistsStatuses
+    pub static ref TRANSACTION_TYPE_SET_WHITELIST_STATUSES: IntCounter = counter(
+        "refiner_tx_type_set_whitelist_statuses",
+        "Number of transactions of type: set_whitelist_statuses"
+    );
 }
 
 pub fn record_metric(tx_kind: &TransactionKindTag) {
@@ -377,6 +386,12 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::WithdrawWnearToRouter => {
             TRANSACTION_TYPE_WITHDRAW_WNEAR_TO_ROUTER.inc();
+        }
+        TransactionKindTag::SetErc20FallbackAddress => {
+            TRANSACTION_TYPE_SET_ERC20_FALLBACK_ADDRESS.inc();
+        }
+        TransactionKindTag::SetWhitelistsStatuses => {
+            TRANSACTION_TYPE_SET_WHITELIST_STATUSES.inc();
         }
     }
 }

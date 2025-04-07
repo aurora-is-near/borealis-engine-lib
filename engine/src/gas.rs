@@ -7,7 +7,7 @@ use aurora_engine_sdk::io::IO;
 use aurora_engine_transactions::NormalizedEthTransaction;
 use aurora_engine_types::{
     H160, H256, U256, storage,
-    types::{Address, Wei},
+    types::{Address, NearGas, Wei},
 };
 use engine_standalone_storage::{
     Storage,
@@ -297,7 +297,8 @@ fn eth_call(
         block_timestamp: block_metadata.timestamp,
         attached_deposit: 1,
         random_seed: block_metadata.random_seed,
-        prepaid_gas: aurora_engine_types::types::NearGas::new(300),
+        prepaid_gas: NearGas::new(300),
+        used_gas: NearGas::new(0),
     };
     storage
         .with_engine_access(block_height + 1, 0, &[], |io| {
