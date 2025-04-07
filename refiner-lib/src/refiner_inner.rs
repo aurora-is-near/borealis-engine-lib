@@ -282,13 +282,8 @@ impl Refiner {
                     data_id,
                 )
             }
-            ReceiptEnumView::GlobalContractDistribution { id, .. } => {
-                crate::metrics::GLOBAL_CONTRACT_DISTRIBUTION.inc();
-                tracing::warn!(target: "transactions",
-                    "Ignore receipt data. Receipt Id: {}, GlobalContractIdentifier: {:?}",
-                    execution_outcome.receipt.receipt_id, id
-                )
-            }
+            // Safe to ignore as it doesn't impact Aurora state
+            ReceiptEnumView::GlobalContractDistribution { .. } => {}
         }
     }
 

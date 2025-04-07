@@ -31,10 +31,6 @@ lazy_static! {
         "refiner_transaction_data",
         "Number of receipts that are of type Data"
     );
-    pub static ref GLOBAL_CONTRACT_DISTRIBUTION: IntCounter = counter(
-        "refiner_global_contract_distribution",
-        "Number of receipts that are of type GlobalContractDistribution"
-    );
     pub static ref TRANSACTION_TYPE_SUBMIT: IntCounter = counter(
         "refiner_tx_type_submit",
         "Number of transactions of type: submit"
