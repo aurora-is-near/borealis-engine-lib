@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.4-2.5.2] 2025-04-07
+
+### Changes
+
+* chore: bump aurora-engine to 3.9.0 and nearcore to 2.6.0-rc.1 by [@alexander-borodulya] in [#208]
+
+[#208]: https://github.com/aurora-is-near/borealis-engine-lib/pull/208
+
 ## [0.30.3-2.5.2] 2025-04-02
 
 ### Changes
@@ -185,9 +193,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.3-2.5.2...main
-[0.30.3-2.5.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.1...0.30.2-2.5.2
-[0.30.3-2.5.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.0...0.30.2-2.5.1
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.4-2.5.2...main
+[0.30.4-2.5.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.3-2.5.2...0.30.4-2.5.2
+[0.30.3-2.5.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.3-2.5.1...0.30.3-2.5.2
+[0.30.3-2.5.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.0...0.30.3-2.5.1
 [0.30.2-2.5.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.2-2.5.0-rc.3...0.30.2-2.5.0
 [0.30.2-2.5.0-rc.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.1-2.4.0...0.30.2-2.5.0-rc.3
 [0.30.1-2.4.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.0-2.4.0...0.30.1-2.4.0

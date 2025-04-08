@@ -282,6 +282,8 @@ impl Refiner {
                     data_id,
                 )
             }
+            // Safe to ignore as it doesn't impact Aurora state
+            ReceiptEnumView::GlobalContractDistribution { .. } => {}
         }
     }
 
