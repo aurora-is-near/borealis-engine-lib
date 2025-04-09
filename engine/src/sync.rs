@@ -119,9 +119,6 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     (signer_id, maybe_tx, input_data)
                 }
                 near_primitives::views::ReceiptEnumView::Data { .. } => return None,
-                near_primitives::views::ReceiptEnumView::GlobalContractDistribution { .. } => {
-                    return None;
-                }
             };
 
             let signer = signer.as_str().parse().ok()?;
