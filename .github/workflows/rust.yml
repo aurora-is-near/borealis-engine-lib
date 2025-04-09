@@ -40,19 +40,14 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets -- -D clippy::all
-      - name: Run clippy ext-connector
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --features ext-connector -- -D clippy::all
+          args: --all-targets -- -D clippy::all -D clippy::nursery
 
   test:
     name: ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [Linux, macOS]
+        build: [ Linux, macOS ]
         include:
           - build: Linux
             os: ubuntu-latest
@@ -76,11 +71,6 @@ jobs:
         with:
           command: test
           args: --workspace --exclude aurora-refiner-app-integration-tests
-      - name: Run tests ext-connector
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --exclude aurora-refiner-app-integration-tests --features ext-connector
 
   run-test:
     name: Run app test
@@ -95,6 +85,5 @@ jobs:
           rustup target add wasm32-unknown-unknown
           rustup component add rust-src
           cargo test -p aurora-refiner-app-integration-tests
-          cargo test -p aurora-refiner-app-integration-tests --features ext-connector
       - name: Save cache
         run: cache-util msave borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
