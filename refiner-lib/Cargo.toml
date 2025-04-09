@@ -46,4 +46,3 @@ tempfile.workspace = true
 semver.workspace = true
 
 [features]
-ext-connector = ["aurora-engine/ext-connector", "engine-standalone-storage/ext-connector", "aurora-refiner-types/ext-connector", "aurora-standalone-engine/ext-connector"]

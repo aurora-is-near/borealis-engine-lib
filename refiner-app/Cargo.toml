@@ -33,4 +33,3 @@ aurora-engine-sdk.workspace = true
 tempfile.workspace = true
 
 [features]
-ext-connector = ["aurora-refiner-types/ext-connector", "aurora-refiner-lib/ext-connector", "engine-standalone-storage/ext-connector", "aurora-standalone-engine/ext-connector"]
