@@ -12,6 +12,7 @@ use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::{UnixListener, UnixStream},
 };
+use tracing::{error, info, warn};
 
 type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
@@ -20,16 +21,20 @@ pub async fn start_socket_server(
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
+    info!("Starting socket server at: {:?}", path);
+
     // Remove the old socket file if it exists
-    if Path::new(path).exists() {
-        std::fs::remove_file(path).expect("failed to remove socket file");
+    if path.exists() {
+        warn!("Removing old socket file: {:?}", path);
+        std::fs::remove_file(path).expect("Failed to remove socket file");
     }
 
-    let sock = UnixListener::bind(path).expect("failed to open socket");
+    let sock = UnixListener::bind(path).expect("Failed to open socket");
 
     loop {
         tokio::select! {
             _ = stop_signal.recv() => {
+                info!("Receiving stop signal, shutting down socket server...");
                 break
             },
             Ok((mut stream, _)) = sock.accept() => {
@@ -41,7 +46,9 @@ pub async fn start_socket_server(
         }
     }
 
-    std::fs::remove_file(path).expect("failed to remove socket file");
+    info!("Socket server stopped, path: {:?}", path);
+
+    std::fs::remove_file(path).expect("Failed to remove socket file on shutdown");
 }
 
 async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
@@ -54,7 +61,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                 continue;
             }
             Err(e) => {
-                eprintln!("error reading from stream: {:?}", e);
+                error!("error reading from stream: {:?}", e);
                 break;
             }
             Ok(data) if data.is_empty() => break,
@@ -83,7 +90,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
 
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
                         if let Err(e) = wrapped_write(stream, &res_body).await {
-                            eprintln!("error writing to stream: {:?}", e);
+                            error!("error writing to stream: {:?}", e);
                         }
                     }
                     Err(e) => {
@@ -98,7 +105,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                         });
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
                         if let Err(e) = wrapped_write(stream, &res_body).await {
-                            eprintln!("error writing to stream: {:?}", e);
+                            error!("error writing to stream: {:?}", e);
                         }
                     }
                 };

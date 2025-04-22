@@ -58,6 +58,7 @@ pub fn get_output_stream(
     mut total_blocks: Option<u64>,
     config: OutputStoreConfig,
 ) -> tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, ()>> {
+    tracing::info!("get_output_stream: starting output stream, total_blocks: {total_blocks:?}...");
     let (sender, mut receiver) =
         tokio::sync::mpsc::channel::<BlockWithMetadata<AuroraBlock, ()>>(1000);
 

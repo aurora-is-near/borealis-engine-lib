@@ -12,21 +12,21 @@ publish = false
 [dependencies]
 near-indexer.workspace = true
 aurora-engine-types.workspace = true
-aurora-refiner-lib = { path = "../refiner-lib" }
-aurora-refiner-types = { path = "../refiner-types" }
-aurora-standalone-engine = { path = "../engine" }
+aurora-refiner-lib.workspace = true
+aurora-refiner-types.workspace = true
+aurora-standalone-engine.workspace = true
 engine-standalone-storage.workspace = true
 engine-standalone-tracing.workspace = true
 
 actix.workspace = true
 anyhow.workspace = true
-serde_json.workspace = true
-serde.workspace = true
 clap.workspace = true
 near-lake-framework.workspace = true
+serde_json.workspace = true
+serde.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "macros", "rt-multi-thread"] }
-tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 aurora-engine-sdk.workspace = true

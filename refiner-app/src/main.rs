@@ -5,11 +5,13 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
+use tracing::info;
 use std::{borrow::Cow, fs, path::Path};
 
 use clap::Parser;
 use cli::Cli;
 
+use aurora_refiner_lib::signal_handlers;
 use store::{get_output_stream, load_last_block_height};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -82,34 +84,15 @@ async fn main() -> anyhow::Result<()> {
                 engine_path,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
-            )
-            .unwrap();
+            ).map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
 
-            // create a broadcast channel for sending a stop signal
-            let (tx, mut rx1) = tokio::sync::broadcast::channel(1);
-            let mut rx2 = tx.subscribe();
+            // Broadcast shutdown channel
+            let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(1);
+            let mut shutdown_rx_socket = shutdown_tx.subscribe();
 
-            tokio::join!(
-                // listen to ctrl-c for shutdown
-                async {
-                    tokio::signal::ctrl_c()
-                        .await
-                        .expect("failed to listen for event");
-                    tx.send(()).expect("failed to propagate stop signal");
-                },
-                // Run socket server
-                async {
-                    if let Some(socket_config) = config.socket_server {
-                        socket::start_socket_server(
-                            socket_storage,
-                            Path::new(&socket_config.path),
-                            &mut rx1,
-                        )
-                        .await
-                    }
-                },
+            let (refiner_handle, socket_handle, signal_handle) = tokio::join!(
                 // Run Refiner
                 aurora_refiner_lib::run_refiner::<&Path, ()>(
                     ctx,
@@ -118,9 +101,33 @@ async fn main() -> anyhow::Result<()> {
                     input_stream,
                     output_stream,
                     last_block,
-                    &mut rx2,
+                    &mut shutdown_rx_refiner,
                 ),
+                // Run socket server
+                async {
+                    if let Some(socket_config) = config.socket_server {
+                        socket::start_socket_server(
+                            socket_storage,
+                            Path::new(&socket_config.path),
+                            &mut shutdown_rx_socket,
+                        )
+                        .await
+                    }
+                },
+                // Handle all signals
+                async {
+                    signal_handlers::handle_all_signals(shutdown_tx)
+                        .await
+                        .map_err(|err| {
+                            tracing::error!("Signal handler error: {}", err);
+                            err
+                        })
+                },
             );
+
+            info!("Stopping actix runtime");
+            actix::System::current().stop();
+            info!("Actix runtime stopped");
         }
     }
 
