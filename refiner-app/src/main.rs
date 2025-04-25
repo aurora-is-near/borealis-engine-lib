@@ -97,17 +97,9 @@ async fn main() -> anyhow::Result<()> {
             let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(1);
             let mut shutdown_rx_socket = shutdown_tx.subscribe();
 
-            let (_refiner_handle, _socket_handle, signal_handle) = tokio::join!(
-                // Run Refiner
-                aurora_refiner_lib::run_refiner::<&Path, ()>(
-                    ctx,
-                    config.refiner.chain_id,
-                    tx_tracker_path.as_ref(),
-                    input_stream,
-                    output_stream,
-                    last_block,
-                    &mut shutdown_rx_refiner,
-                ),
+            let (signal_handle, _, _) = tokio::join!(
+                // Handle all signals
+                signal_handlers::handle_all_signals(shutdown_tx),
                 // Run socket server
                 async {
                     if let Some(socket_config) = config.socket_server {
@@ -119,8 +111,16 @@ async fn main() -> anyhow::Result<()> {
                         .await
                     }
                 },
-                // Handle all signals
-                signal_handlers::handle_all_signals(shutdown_tx),
+                // Run Refiner
+                aurora_refiner_lib::run_refiner::<&Path, ()>(
+                    ctx,
+                    config.refiner.chain_id,
+                    tx_tracker_path.as_ref(),
+                    input_stream,
+                    output_stream,
+                    last_block,
+                    &mut shutdown_rx_refiner,
+                ),
             );
 
             if let Err(err) = signal_handle {
