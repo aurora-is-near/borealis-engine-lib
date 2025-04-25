@@ -29,10 +29,12 @@ pub fn get_nearcore_stream(
     tokio::spawn(async move {
         while let Some(block) = stream.recv().await {
             // TODO: Slow conversion between types. Fix
-            sender
+            if let Err(err) = sender
                 .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
                 .await
-                .unwrap();
+            {
+                panic!("Failed to send block to channel: {}", err);
+            }
         }
     });
 

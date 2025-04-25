@@ -21,7 +21,7 @@ pub async fn start_socket_server(
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
-    info!("Starting socket server at: {:?}", path);
+    info!("Socket server started, path: {:?}", path);
 
     // Remove the old socket file if it exists
     if path.exists() {
@@ -34,7 +34,6 @@ pub async fn start_socket_server(
     loop {
         tokio::select! {
             _ = stop_signal.recv() => {
-                info!("Receiving stop signal, shutting down socket server...");
                 break
             },
             Ok((mut stream, _)) = sock.accept() => {

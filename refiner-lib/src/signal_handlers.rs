@@ -1,10 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-
-use tokio::signal::{
-    ctrl_c,
-    unix::{SignalKind, signal},
-};
-use tracing::info;
+use tokio::signal::unix::{SignalKind, signal};
+use tokio::sync::broadcast::error::SendError;
+use tracing::{info, warn};
 
 static SIGNAL: AtomicUsize = AtomicUsize::new(0);
 
@@ -35,12 +32,13 @@ pub fn is_matching_signal() -> bool {
 pub async fn handle_usr1(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyhow::Result<()> {
     let mut kill_signal_stream = signal(SignalKind::from_raw(10))?;
     info!("Kill signal (USR1) handler installed");
-    while kill_signal_stream.recv().await == Some(()) {
+    if kill_signal_stream.recv().await == Some(()) {
         info!("Kill signal (USR1) handler triggered");
         SIGNAL.store(10, Ordering::SeqCst);
-        shutdown_tx
-            .send(())
-            .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+        match shutdown_tx.send(()) {
+            Ok(_) => info!("Shutdown signal sent successfully"),
+            Err(SendError(_)) => warn!("No active receivers for shutdown signal"),
+        }
     }
     Ok(())
 }
@@ -49,12 +47,13 @@ pub async fn handle_usr1(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> any
 pub async fn handle_usr2(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyhow::Result<()> {
     let mut kill_signal_stream = signal(SignalKind::from_raw(12))?;
     info!("Kill signal (USR2) handler installed");
-    while kill_signal_stream.recv().await == Some(()) {
+    if kill_signal_stream.recv().await == Some(()) {
         info!("Kill signal (USR2) handler triggered");
         SIGNAL.store(12, Ordering::SeqCst);
-        shutdown_tx
-            .send(())
-            .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+        match shutdown_tx.send(()) {
+            Ok(_) => info!("Shutdown signal sent successfully"),
+            Err(SendError(_)) => warn!("No active receivers for shutdown signal"),
+        }
     }
     Ok(())
 }
@@ -62,13 +61,13 @@ pub async fn handle_usr2(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> any
 /// Creates a future that handles TERM signal and sends shutdown signal when triggered
 pub async fn handle_term(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyhow::Result<()> {
     let mut term_signal_stream = signal(SignalKind::terminate())?;
-    info!("Terminate signal handler installed");
-    while term_signal_stream.recv().await == Some(()) {
+    if term_signal_stream.recv().await == Some(()) {
         info!("Terminate signal handler triggered");
         SIGNAL.store(15, Ordering::SeqCst);
-        shutdown_tx
-            .send(())
-            .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+        match shutdown_tx.send(()) {
+            Ok(_) => info!("Shutdown signal sent successfully"),
+            Err(SendError(_)) => warn!("No active receivers for shutdown signal"),
+        }
     }
     Ok(())
 }
@@ -77,12 +76,13 @@ pub async fn handle_term(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> any
 pub async fn handle_hup(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyhow::Result<()> {
     let mut hup_signal_stream = signal(SignalKind::hangup())?;
     info!("Hangup signal handler installed");
-    while hup_signal_stream.recv().await == Some(()) {
+    if hup_signal_stream.recv().await == Some(()) {
         info!("Hangup signal handler triggered");
         SIGNAL.store(1, Ordering::SeqCst);
-        shutdown_tx
-            .send(())
-            .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+        match shutdown_tx.send(()) {
+            Ok(_) => info!("Shutdown signal sent successfully"),
+            Err(SendError(_)) => warn!("No active receivers for shutdown signal"),
+        }
     }
     Ok(())
 }
@@ -90,12 +90,16 @@ pub async fn handle_hup(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyh
 /// Creates a future that handles Ctrl+C and sends shutdown signal when triggered
 pub async fn handle_ctrl_c(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> anyhow::Result<()> {
     info!("Ctrl-C key sequence handler installed");
-    while matches!(ctrl_c().await, Ok(())) {
-        info!("Ctrl-C key sequence handler triggered");
-        SIGNAL.store(602437500, Ordering::SeqCst);
-        shutdown_tx
-            .send(())
-            .map_err(|e| anyhow::anyhow!("Failed to send shutdown signal: {}", e))?;
+    match tokio::signal::ctrl_c().await {
+        Ok(_) => {
+            info!("Ctrl-C key sequence handler triggered");
+            SIGNAL.store(CUSTOM_CTRL_C_SIGNAL, Ordering::SeqCst);
+            match shutdown_tx.send(()) {
+                Ok(_) => info!("Shutdown signal sent successfully"),
+                Err(SendError(_)) => warn!("No active receivers for shutdown signal"),
+            }
+        }
+        Err(err) => anyhow::bail!("Error handling Ctrl-C signal: {err}"),
     }
     Ok(())
 }
@@ -104,15 +108,46 @@ pub async fn handle_ctrl_c(shutdown_tx: tokio::sync::broadcast::Sender<()>) -> a
 pub async fn handle_all_signals(
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 ) -> anyhow::Result<()> {
-    let result = tokio::select! {
-        result = handle_usr1(shutdown_tx.clone()) => result,
-        result = handle_usr2(shutdown_tx.clone()) => result,
-        result = handle_term(shutdown_tx.clone()) => result,
-        result = handle_hup(shutdown_tx.clone()) => result,
-        result = handle_ctrl_c(shutdown_tx) => result,
-    };
-    actix::System::current().stop();
-    result
+    info!("Installing signal handlers");
+
+    let mut usr1 = Box::pin(handle_usr1(shutdown_tx.clone()));
+    let mut usr2 = Box::pin(handle_usr2(shutdown_tx.clone()));
+    let mut term = Box::pin(handle_term(shutdown_tx.clone()));
+    let mut hup = Box::pin(handle_hup(shutdown_tx.clone()));
+    let mut ctrl_c = Box::pin(handle_ctrl_c(shutdown_tx));
+
+    tokio::select! {
+        result = &mut usr1 => {
+            if let Err(e) = result {
+                warn!("Error handling USR1 signal: {}", e);
+            }
+            Ok(())
+        }
+        result = &mut usr2 => {
+            if let Err(e) = result {
+                warn!("Error handling USR2 signal: {}", e);
+            }
+            Ok(())
+        }
+        result = &mut term => {
+            if let Err(e) = result {
+                warn!("Error handling TERM signal: {}", e);
+            }
+            Ok(())
+        }
+        result = &mut hup => {
+            if let Err(e) = result {
+                warn!("Error handling HUP signal: {}", e);
+            }
+            Ok(())
+        }
+        result = &mut ctrl_c => {
+            if let Err(e) = result {
+                warn!("Error handling Ctrl-C signal: {}", e);
+            }
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]

@@ -5,8 +5,10 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
-use tracing::info;
-use std::{borrow::Cow, fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use cli::Cli;
@@ -75,16 +77,19 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.chain_id,
             );
 
-            let tx_tracker_path = config.refiner.tx_tracker_path.as_ref().map_or_else(
-                || Cow::Owned(engine_path.join("tx_tracker")),
-                |path| Cow::Borrowed(Path::new(path)),
-            );
+            let tx_tracker_path = config
+                .refiner
+                .tx_tracker_path
+                .as_ref()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
-            ).map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
+            )
+            .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
 
@@ -92,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
             let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(1);
             let mut shutdown_rx_socket = shutdown_tx.subscribe();
 
-            let (refiner_handle, socket_handle, signal_handle) = tokio::join!(
+            let (_refiner_handle, _socket_handle, signal_handle) = tokio::join!(
                 // Run Refiner
                 aurora_refiner_lib::run_refiner::<&Path, ()>(
                     ctx,
@@ -115,19 +120,12 @@ async fn main() -> anyhow::Result<()> {
                     }
                 },
                 // Handle all signals
-                async {
-                    signal_handlers::handle_all_signals(shutdown_tx)
-                        .await
-                        .map_err(|err| {
-                            tracing::error!("Signal handler error: {}", err);
-                            err
-                        })
-                },
+                signal_handlers::handle_all_signals(shutdown_tx),
             );
 
-            info!("Stopping actix runtime");
-            actix::System::current().stop();
-            info!("Actix runtime stopped");
+            if let Err(err) = signal_handle {
+                tracing::error!("Signal handler failed: {:?}", err);
+            }
         }
     }
 
