@@ -34,7 +34,6 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["sync", "macros", "signal"] }
-actix = { workspace = true }
 rocksdb.workspace = true
 
 [build-dependencies]

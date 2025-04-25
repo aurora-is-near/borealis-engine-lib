@@ -642,7 +642,6 @@ dependencies = [
 name = "aurora-refiner-lib"
 version = "0.30.4-2.6.0-rc.1"
 dependencies = [
- "actix",
  "anyhow",
  "aurora-engine",
  "aurora-engine-hashchain",
