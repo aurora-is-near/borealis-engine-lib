@@ -1,0 +1,523 @@
+name: Update Nearcore Dependencies
+
+on:
+  schedule:
+    # Runs every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+  actions: read
+  checks: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check-update-needed:
+    runs-on: ubuntu-latest
+    outputs:
+      update_needed: ${{ steps.compare.outputs.update_needed }}
+      current_tag: ${{ steps.current_tag.outputs.tag }}
+      latest_tag: ${{ steps.latest_tag.outputs.tag }}
+      pr_exists: ${{ steps.check_existing_pr.outputs.pr_exists }}
+      pr_number: ${{ steps.check_existing_pr.outputs.pr_number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get current nearcore tag from Cargo.toml
+        id: current_tag
+        run: |
+          tag=$(grep 'near-crypto = { git = "https://github.com/near/nearcore", tag = ' Cargo.toml | sed -n 's/.*tag = "\(.*\)".*/\1/p' | head -n 1)
+          echo "Current tag: $tag"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
+      - name: Get latest nearcore release tag
+        id: latest_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          API_URL="https://api.github.com/repos/near/nearcore/releases"
+          latest_tag=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                           -H "Accept: application/vnd.github.v3+json" \
+                           "$API_URL" | jq -r '.[0].tag_name')
+
+          if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
+            echo "Error: Could not fetch latest tag from GitHub API ($API_URL)."
+            TAGS_URL="https://api.github.com/repos/near/nearcore/tags"
+            latest_tag=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                             -H "Accept: application/vnd.github.v3+json" \
+                             "$TAGS_URL" | jq -r '.[0].name')
+            if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
+               echo "Error: Could also not fetch latest tag from $TAGS_URL."
+               exit 1
+            else
+               echo "Warning: Fetched latest tag '$latest_tag' from tags endpoint as fallback (might be pre-release)."
+            fi
+          fi
+
+          echo "Latest tag: $latest_tag"
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Compare tags and proceed if newer
+        id: compare
+        run: |
+          current="${{ steps.current_tag.outputs.tag }}"
+          latest="${{ steps.latest_tag.outputs.tag }}"
+          if [[ -z "$current" ]]; then
+            echo "Could not extract current tag from Cargo.toml. Exiting."
+            exit 1
+          fi
+          if [[ "$current" == "$latest" ]]; then
+            echo "Current tag ($current) is the latest. No update needed."
+            echo "update_needed=false" >> $GITHUB_OUTPUT
+          else
+            curl -o /usr/local/bin/semver -L https://raw.githubusercontent.com/fsaintjacques/semver-tool/1a547a75f946717223fb7ca821ba6f3f337e9aca/src/semver
+            chmod +x /usr/local/bin/semver
+            current_semver="${current#v}"
+            latest_semver="${latest#v}"
+            echo "Comparing versions with semver-tool: '$latest_semver' vs '$current_semver'"
+            comparison=$(semver compare "$latest_semver" "$current_semver")
+            if [[ "$comparison" -gt 0 ]]; then
+              echo "Newer tag ($latest) found. Proceeding with update."
+              echo "update_needed=true" >> $GITHUB_OUTPUT
+            else
+              echo "Current tag ($current) is newer than or equal to the latest fetched tag ($latest). No update needed."
+              echo "update_needed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Check for existing update PRs
+        if: steps.compare.outputs.update_needed == 'true'
+        id: check_existing_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if there's already an open PR for updating nearcore
+          existing_prs=$(gh pr list --state open --search "chore: Bump nearcore to" --json number,title)
+          pr_count=$(echo "$existing_prs" | jq length)
+
+          if [[ $pr_count -gt 0 ]]; then
+            echo "Found existing open PR(s) for updating nearcore dependencies:"
+            echo "$existing_prs" | jq -r '.[] | "  #\(.number): \(.title)"'
+
+            # Get the first existing PR number
+            pr_number=$(echo "$existing_prs" | jq -r '.[0].number')
+            echo "Using existing PR #$pr_number"
+            echo "pr_exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+          else
+            echo "No existing open PRs for updating nearcore dependencies found."
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  update-cargo:
+    needs: check-update-needed
+    if: needs.check-update-needed.outputs.update_needed == 'true' && needs.check-update-needed.outputs.pr_exists == 'false'
+    runs-on: selfhosted
+    outputs:
+      new_version: ${{ steps.update_cargo.outputs.new_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create update branch
+        run: |
+          new_branch="update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}"
+          git checkout -b "$new_branch"
+          echo "Created branch $new_branch"
+
+      - name: Set up Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+          sh rustup-init.sh -y
+
+      - name: Update Cargo.toml
+        id: update_cargo
+        run: |
+          current_tag_escaped=$(printf '%s\n' "${{ needs.check-update-needed.outputs.current_tag }}" | sed 's/[[\.*^$/]/\\&/g')
+          latest_tag="${{ needs.check-update-needed.outputs.latest_tag }}"
+
+          # Get current version without nearcore version
+          current_version=$(grep 'version = ' Cargo.toml | head -n 1 | sed -n 's/version = "\([0-9]\+\.[0-9]\+\.[0-9]\+\)\-.*"/\1/p')
+          # Create new version with latest nearcore tag
+          new_version="${current_version}-${latest_tag}"
+          echo "New package version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+
+          # Update the workspace.package version
+          sed -i "s/\(version = \"\)[0-9]\+\.[0-9]\+\.[0-9]\+\-[^\"]*\(\"\)/\1$new_version\2/" Cargo.toml
+
+          # Use sed to replace the tag for the three dependencies
+          sed -i "s/\(near-crypto = { git = \"https:\/\/github.com\/near\/nearcore\", tag = \"\)$current_tag_escaped\(\" }\)/\1$latest_tag\2/" Cargo.toml
+          sed -i "s/\(near-indexer = { git = \"https:\/\/github.com\/near\/nearcore\", tag = \"\)$current_tag_escaped\(\" }\)/\1$latest_tag\2/" Cargo.toml
+          sed -i "s/\(near-primitives = { git = \"https:\/\/github.com\/near\/nearcore\", tag = \"\)$current_tag_escaped\(\" }\)/\1$latest_tag\2/" Cargo.toml
+          echo "Updated Cargo.toml with tag $latest_tag and version $new_version"
+          # Display changes for verification
+          git diff Cargo.toml
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang libclang-dev llvm-dev
+
+      - name: Update Cargo.lock
+        id: update_cargo_lock
+        run: |
+          source "$HOME/.cargo/env"
+          if ! cargo check; then
+            echo "::error::Cargo check failed when updating Cargo.lock"
+            exit 1
+          fi
+          echo "Updated Cargo.lock"
+
+      - name: Send notification if Cargo.lock update failed
+        if: failure() && steps.update_cargo_lock.outcome == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ALERTS_SLACK_WEBHOOK_URL }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"text\": \"Failed to update Cargo.lock in nearcore dependency update workflow. See details: $WORKFLOW_URL\"
+          }" $SLACK_WEBHOOK_URL
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml Cargo.lock
+          git commit -m "chore: Bump nearcore to ${{ needs.check-update-needed.outputs.latest_tag }}"
+
+      - name: Push changes
+        run: |
+          new_branch="update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}"
+          git push --force --set-upstream origin "$new_branch"
+          echo "Pushed changes to branch $new_branch"
+
+  create-pr:
+    needs: [check-update-needed, update-cargo]
+    if: needs.check-update-needed.outputs.update_needed == 'true' && needs.check-update-needed.outputs.pr_exists == 'false'
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.create_pr.outputs.pr_number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT_TOKEN }}
+          NEW_VERSION: ${{ needs.update-cargo.outputs.new_version }}
+        id: create_pr
+        run: |
+          new_branch="update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}"
+          pr_url=$(gh pr create \
+            --base main \
+            --head "$new_branch" \
+            --title "chore: Bump nearcore to ${{ needs.check-update-needed.outputs.latest_tag }}" \
+            --body "Automated update of nearcore dependencies to the latest nearcore release tag (${{ needs.check-update-needed.outputs.latest_tag }}). New package version: $NEW_VERSION")
+          pr_number=$(echo $pr_url | grep -o '[0-9]*$')
+          echo "PR created: $pr_url (#$pr_number)"
+          echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+
+  process-pr:
+    needs: [check-update-needed, create-pr]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    outputs:
+      pr_merged: ${{ steps.merge_pr.outputs.merged }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set PR number
+        id: set_pr_number
+        run: |
+          if [[ "${{ needs.check-update-needed.outputs.update_needed }}" != "true" ]]; then
+            echo "No update needed. Skipping PR processing."
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if we have a PR number from either source
+          if [[ -n "${{ needs.check-update-needed.outputs.pr_number }}" ]]; then
+            echo "Using existing PR #${{ needs.check-update-needed.outputs.pr_number }}"
+            echo "pr_number=${{ needs.check-update-needed.outputs.pr_number }}" >> $GITHUB_OUTPUT
+            echo "pr_exists=true" >> $GITHUB_OUTPUT
+          elif [[ -n "${{ needs.create-pr.outputs.pr_number }}" ]]; then
+            echo "Using newly created PR #${{ needs.create-pr.outputs.pr_number }}"
+            echo "pr_number=${{ needs.create-pr.outputs.pr_number }}" >> $GITHUB_OUTPUT
+            echo "pr_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Error: No PR number available from either existing PR or newly created PR."
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+      - name: Wait for checks to complete
+        id: wait_for_checks
+        if: steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          echo "Waiting for checks to complete on PR #$PR_NUMBER..."
+
+          # Maximum wait time (60 minutes)
+          timeout_seconds=3600
+          start_time=$(date +%s)
+          # Required number of checks that need to pass
+          required_checks=7
+
+          while true; do
+            current_time=$(date +%s)
+            elapsed=$((current_time - start_time))
+
+            if [ $elapsed -gt $timeout_seconds ]; then
+              echo "Timeout reached waiting for checks to complete."
+              exit 1
+            fi
+
+            # Count checks by status
+            total=$(gh pr checks $PR_NUMBER --json state --jq '.[] | .name' | wc -l)
+            successful=$(gh pr checks $PR_NUMBER --json state --jq '.[] | select(.state == "SUCCESS") | .name' | wc -l)
+            failed=$(gh pr checks $PR_NUMBER --json state --jq '.[] | select(.state == "FAILURE") | .name' | wc -l)
+            pending=$((total - successful - failed))
+
+            echo "Check status: $successful successful, $failed failed, $pending pending, $total total (requiring at least $required_checks checks)"
+
+            # If any check failed, exit immediately
+            if [ "$failed" -gt "0" ]; then
+              echo "Some checks failed. Will not auto-merge."
+
+              # Get list of failed checks
+              failed_checks=$(gh pr checks $PR_NUMBER --json name,state --jq '.[] | select(.state == "FAILURE") | .name')
+              echo "failed_checks<<EOF" >> $GITHUB_OUTPUT
+              echo "$failed_checks" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+
+              exit 1
+            fi
+
+            # If total is 0, we need to keep waiting for checks to start
+            if [ "$total" -eq "0" ]; then
+              echo "No checks reported yet. Continuing to wait..."
+              sleep 30
+              continue
+            fi
+
+            # If at least the required number of checks passed and all checks have completed
+            if [ "$successful" -ge "$required_checks" ] && [ "$pending" -eq "0" ]; then
+              echo "All $total checks completed with $successful successful! (minimum required: $required_checks)"
+              break
+            fi
+
+            # Otherwise, keep waiting
+            echo "Waiting for all checks to complete... ($elapsed seconds elapsed)"
+            sleep 30
+          done
+
+      - name: Send notification if PR checks failed
+        if: failure() && steps.wait_for_checks.outcome == 'failure' && steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ALERTS_SLACK_WEBHOOK_URL }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+          PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ steps.set_pr_number.outputs.pr_number }}
+          FAILED_CHECKS: ${{ steps.wait_for_checks.outputs.failed_checks }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"text\": \"CI checks failed for nearcore dependency update PR #$PR_NUMBER. See details: $PR_URL\nFailed checks:\n$FAILED_CHECKS\"
+          }" $SLACK_WEBHOOK_URL
+
+      - name: Check PR author
+        id: check_pr_author
+        if: steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          pr_number="$PR_NUMBER"
+          if [[ -z "$pr_number" ]]; then
+            echo "Could not determine PR number. Cannot check PR author."
+            exit 1
+          else
+            # Get PR author login
+            pr_author=$(gh pr view "$pr_number" --json author --jq '.author.login')
+            echo "PR #$pr_number author: $pr_author"
+
+            # List of allowed authors (GitHub usernames)
+            allowed_authors=("austraylis")
+
+            # Check if PR author is in the allowed list
+            is_allowed=false
+            for allowed_author in "${allowed_authors[@]}"; do
+              if [[ "$pr_author" == "$allowed_author" ]]; then
+                is_allowed=true
+                break
+              fi
+            done
+
+            if [[ "$is_allowed" == "true" ]]; then
+              echo "PR author $pr_author is in the list of allowed authors."
+              echo "is_allowed=true" >> $GITHUB_OUTPUT
+            else
+              echo "PR author $pr_author is not in the list of allowed authors. Approval and merge aborted."
+              echo "is_allowed=false" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          fi
+
+      - name: Set up Python
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Update CHANGES.md
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          # Checkout the PR branch
+          gh pr checkout $PR_NUMBER
+
+          # Extract version from Cargo.toml
+          NEW_VERSION=$(grep -m 1 'version = ' Cargo.toml | cut -d '"' -f2)
+          echo "Found version in Cargo.toml: $NEW_VERSION"
+
+          # Run the changelog update script with environment variables
+          echo "Running changelog update with PR_NUMBER=$PR_NUMBER, NEW_VERSION=$NEW_VERSION"
+          NEW_VERSION=$NEW_VERSION python .github/near_core_changelog_update.py
+
+          # Check if there are changes to commit
+          if git diff --quiet CHANGES.md; then
+            echo "No changes to CHANGES.md needed, version already exists"
+            exit 0  # Exit successfully even though no changes were made
+          else
+            # Commit and push changes
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add CHANGES.md
+            git commit -m "Update CHANGES.md"
+            git push origin update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}
+            echo "Updated CHANGES.md for version $NEW_VERSION"
+          fi
+
+      - name: Approve PR
+        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.APPROVER_PAT_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          pr_number="$PR_NUMBER"
+          if [[ -z "$pr_number" ]]; then
+            echo "Could not determine PR number. Approval cannot be performed."
+            exit 1
+          else
+            # Approve the PR
+            gh pr review "$pr_number" --approve
+            echo "Approved PR #$pr_number"
+          fi
+
+      - name: Merge PR
+        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        id: merge_pr
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          pr_number="$PR_NUMBER"
+          if [[ -z "$pr_number" ]]; then
+            echo "Could not determine PR number. Merge cannot be performed."
+            echo "merged=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            gh pr merge "$pr_number" --squash --delete-branch
+            echo "Merging PR #$pr_number with squash strategy"
+            echo "merged=true" >> $GITHUB_OUTPUT
+          fi
+
+  create-release:
+    needs: process-pr
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Check if we should create a release
+        id: check_release
+        run: |
+          # Only proceed if PR was merged successfully
+          if [[ "${{ needs.process-pr.outputs.pr_merged }}" != "true" ]]; then
+            echo "PR was not merged successfully. Skipping release creation."
+            echo "should_create_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "PR was merged successfully. Proceeding with release creation."
+            echo "should_create_release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        if: steps.check_release.outputs.should_create_release == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check version type
+        if: steps.check_release.outputs.should_create_release == 'true'
+        id: check_version
+        run: |
+          version=$(grep 'version = ' Cargo.toml | head -n 1 | sed -n 's/version = "\([^"]*\)"/\1/p')
+          echo "Using version: $version"
+
+          # Check if version contains specific tags that indicate it shouldn't be marked as latest
+          if [[ "$version" == *-rc* ]] || [[ "$version" == *-alpha* ]] || [[ "$version" == *-beta* ]]; then
+            echo "This version should not be marked as latest"
+            echo "mark_as_latest=false" >> $GITHUB_OUTPUT
+          else
+            echo "This version can be marked as latest"
+            echo "mark_as_latest=true" >> $GITHUB_OUTPUT
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.should_create_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ steps.check_version.outputs.version }}"
+          mark_as_latest="${{ steps.check_version.outputs.mark_as_latest }}"
+
+          if [[ "$mark_as_latest" == "true" ]]; then
+            # Create regular release and mark as latest
+            gh release create "v$version" \
+              --title "Release v$version" \
+              --notes "Automated release for version $version" \
+              --latest
+            echo "Created release v$version and marked as latest"
+          else
+            # Create regular release without marking as latest
+            gh release create "v$version" \
+              --title "Release v$version" \
+              --notes "Automated release for version $version"
+            echo "Created release v$version without marking as latest"
+          fi
+
+      - name: Send Slack notification
+        if: steps.check_release.outputs.should_create_release == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_WEBHOOK_URL }}
+          VERSION: ${{ steps.check_version.outputs.version }}
+          MARK_AS_LATEST: ${{ steps.check_version.outputs.mark_as_latest }}
+        run: |
+          release_status="(marked as latest)"
+          if [[ "$MARK_AS_LATEST" == "false" ]]; then
+            release_status=""
+          fi
+
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"text\": \"borealis-engine-lib: Github release v$VERSION has been created and published $release_status\"
+          }" $SLACK_WEBHOOK_URL
