@@ -17,11 +17,12 @@ aurora-engine-hashchain.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
 aurora-engine-sdk.workspace = true
-aurora-refiner-types = { path = "../refiner-types" }
-aurora-standalone-engine = { path = "../engine" }
+aurora-refiner-types.workspace = true
+aurora-standalone-engine.workspace = true
 engine-standalone-storage.workspace = true
 
 anyhow.workspace = true
+actix.workspace = true
 borsh.workspace = true
 triehash-ethereum.workspace = true
 byteorder.workspace = true
@@ -33,7 +34,7 @@ rlp.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
-tokio = { workspace = true, features = ["sync", "macros"] }
+tokio = { workspace = true, features = ["sync", "macros", "signal"] }
 rocksdb.workspace = true
 
 [build-dependencies]

@@ -1,7 +1,10 @@
+use std::path::{Path, PathBuf};
+
 use aurora_refiner_lib::BlockWithMetadata;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use serde::Deserialize;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::info;
 
 const STORE_INFO_FILE: &str = ".REFINER_LAST_BLOCK";
 
@@ -15,7 +18,7 @@ pub struct OutputStoreConfig {
 
 pub async fn store(config: &OutputStoreConfig, block: &AuroraBlock) {
     tracing::trace!("Storing block {}", block.height);
-    let folder_path = std::path::PathBuf::from(&config.path);
+    let folder_path = PathBuf::from(&config.path);
 
     if !folder_path.exists() {
         std::fs::create_dir_all(&folder_path).unwrap();
@@ -54,32 +57,51 @@ pub async fn store(config: &OutputStoreConfig, block: &AuroraBlock) {
     save_last_block_height(&config.path, block.height).await;
 }
 
+/// Spawns a task that stores Aurora blocks to the output storage.
+/// The `shutdown_rx` is used to signal the task to stop.
+/// Returns a channel to send Aurora blocks to the task and a handle to the task.
 pub fn get_output_stream(
     mut total_blocks: Option<u64>,
     config: OutputStoreConfig,
-) -> tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, ()>> {
-    let (sender, mut receiver) =
+    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+) -> (
+    tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, ()>>,
+    tokio::task::JoinHandle<()>,
+) {
+    tracing::info!("get_output_stream: starting output stream, total_blocks: {total_blocks:?}...");
+    let (aurora_blocks_tx, mut aurora_blocks_rx) =
         tokio::sync::mpsc::channel::<BlockWithMetadata<AuroraBlock, ()>>(1000);
 
-    tokio::spawn(async move {
+    let task_handle = tokio::spawn(async move {
         let config = config.clone();
-        while let Some(block) = receiver.recv().await {
-            store(&config, &block.block).await;
-            if let Some(total_blocks) = total_blocks.as_mut() {
-                *total_blocks -= 1;
-                if *total_blocks == 0 {
+
+        loop {
+            tokio::select! {
+                // Handle incoming blocks
+                Some(block) = aurora_blocks_rx.recv() => {
+                    store(&config, &block.block).await;
+                    if let Some(total_blocks) = total_blocks.as_mut() {
+                        *total_blocks -= 1;
+                        if *total_blocks == 0 {
+                            break;
+                        }
+                    }
+                }
+                // Handle shutdown signal
+                _ = shutdown_rx.recv() => {
+                    // Explicitly close the channel, so the tx side should stop sending blocks
+                    aurora_blocks_rx.close();
+                    info!("get_output_stream: Received shutdown signal, Aurora blocks storage stopped");
                     break;
                 }
             }
         }
     });
 
-    sender
+    (aurora_blocks_tx, task_handle)
 }
 
-pub async fn load_last_block_height<P: AsRef<std::path::Path> + Send>(
-    storage_path: P,
-) -> Option<u64> {
+pub async fn load_last_block_height<P: AsRef<Path> + Send>(storage_path: P) -> Option<u64> {
     let path = storage_path.as_ref();
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();
@@ -96,10 +118,7 @@ pub async fn load_last_block_height<P: AsRef<std::path::Path> + Send>(
     }
 }
 
-async fn save_last_block_height<P: AsRef<std::path::Path> + Send>(
-    storage_path: P,
-    block_height: u64,
-) {
+async fn save_last_block_height<P: AsRef<Path> + Send>(storage_path: P, block_height: u64) {
     let path = storage_path.as_ref();
     if !path.exists() {
         tokio::fs::create_dir_all(path).await.unwrap();

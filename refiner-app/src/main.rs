@@ -5,11 +5,15 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
-use std::{borrow::Cow, fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use cli::Cli;
 
+use aurora_refiner_lib::signal_handlers;
 use store::{get_output_stream, load_last_block_height};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -47,18 +51,32 @@ async fn main() -> anyhow::Result<()> {
                 (last_block, next_block)
             };
 
+            // Broadcast shutdown channel
+            let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(16);
+            let shutdown_rx_input_stream = shutdown_tx.subscribe();
+            let shutdown_rx_output_stream = shutdown_tx.subscribe();
+            let mut shutdown_rx_socket = shutdown_tx.subscribe();
+
             // Build input stream
-            let input_stream = match config.input_mode {
-                config::InputMode::DataLake(config) => {
-                    input::data_lake::get_near_data_lake_stream(next_block, &config)
-                }
-                config::InputMode::Nearcore(config) => {
-                    input::nearcore::get_nearcore_stream(next_block, &config)
-                }
+            let (input_stream, task_input_stream) = match config.input_mode {
+                config::InputMode::DataLake(config) => input::data_lake::get_near_data_lake_stream(
+                    next_block,
+                    &config,
+                    shutdown_rx_input_stream,
+                ),
+                config::InputMode::Nearcore(config) => input::nearcore::get_nearcore_stream(
+                    next_block,
+                    &config,
+                    shutdown_rx_input_stream,
+                ),
             };
 
             // Build output stream
-            let output_stream = get_output_stream(total, config.output_storage.clone());
+            let (output_stream, task_output_stream) = get_output_stream(
+                total,
+                config.output_storage.clone(),
+                shutdown_rx_output_stream,
+            );
 
             // Init storage
             let engine_path = Path::new(&config.refiner.engine_path);
@@ -73,39 +91,36 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.chain_id,
             );
 
-            let tx_tracker_path = config.refiner.tx_tracker_path.as_ref().map_or_else(
-                || Cow::Owned(engine_path.join("tx_tracker")),
-                |path| Cow::Borrowed(Path::new(path)),
-            );
+            let tx_tracker_path = config
+                .refiner
+                .tx_tracker_path
+                .as_ref()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
-            .unwrap();
+            .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
 
-            // create a broadcast channel for sending a stop signal
-            let (tx, mut rx1) = tokio::sync::broadcast::channel(1);
-            let mut rx2 = tx.subscribe();
-
-            tokio::join!(
-                // listen to ctrl-c for shutdown
-                async {
-                    tokio::signal::ctrl_c()
-                        .await
-                        .expect("failed to listen for event");
-                    tx.send(()).expect("failed to propagate stop signal");
-                },
+            let (signals_result, input_result, output_result, ..) = tokio::join!(
+                // Handle all signals
+                signal_handlers::handle_all_signals(shutdown_tx),
+                // Wait for input stream to finish
+                task_input_stream,
+                // Wait for output stream to finish
+                task_output_stream,
                 // Run socket server
                 async {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
                             Path::new(&socket_config.path),
-                            &mut rx1,
+                            &mut shutdown_rx_socket,
                         )
                         .await
                     }
@@ -118,11 +133,22 @@ async fn main() -> anyhow::Result<()> {
                     input_stream,
                     output_stream,
                     last_block,
-                    &mut rx2,
+                    &mut shutdown_rx_refiner,
                 ),
             );
+
+            if let Err(err) = signals_result {
+                tracing::error!("Signal handler failed: {:?}", err);
+            }
+            if let Err(err) = input_result {
+                tracing::error!("Input stream failed: {:?}", err);
+            }
+            if let Err(err) = output_result {
+                tracing::error!("Output stream failed: {:?}", err);
+            }
         }
     }
 
+    tracing::info!("refiner-app finished");
     Ok(())
 }

@@ -27,6 +27,9 @@ aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.
 aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std"] }
 engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["ext-connector"] }
 engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["impl-serde"] }
+aurora-refiner-lib = { path = "refiner-lib" }
+aurora-refiner-types = { path = "refiner-types" }
+aurora-standalone-engine = { path = "engine" }
 borsh = { version = "1", features = ["borsh-derive"] }
 byteorder = "1"
 clap = { version = "4", features = ["derive"] }
