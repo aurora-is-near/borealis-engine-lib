@@ -24,6 +24,8 @@ pub fn is_matching_signal() -> bool {
         val if val == SignalKind::from_raw(SIGNAL_USR1) => true,
         // SIGHUP (1)
         val if val == SignalKind::hangup() => true,
+        // SIGQUIT (3)
+        val if val == SignalKind::quit() => true,
         _ => false,
     }
 }
@@ -143,7 +145,8 @@ pub async fn handle_all_signals(
     let mut usr2 = Box::pin(handle_usr2(shutdown_tx.clone()));
     let mut term = Box::pin(handle_term(shutdown_tx.clone()));
     let mut hup = Box::pin(handle_hup(shutdown_tx.clone()));
-    let mut ctrl_c = Box::pin(handle_ctrl_c(shutdown_tx));
+    let mut ctrl_c = Box::pin(handle_ctrl_c(shutdown_tx.clone()));
+    let mut quit = Box::pin(handle_quit(shutdown_tx));
 
     tokio::select! {
         result = &mut usr1 => {
@@ -169,6 +172,11 @@ pub async fn handle_all_signals(
         result = &mut ctrl_c => {
             if let Err(e) = result {
                 warn!("Error handling Ctrl-C signal: {}", e);
+            }
+        }
+        result = &mut quit => {
+            if let Err(e) = result {
+                warn!("Error handling QUIT signal: {}", e);
             }
         }
     };
@@ -207,6 +215,10 @@ mod tests {
 
         // SIGHUP (1)
         SIGNAL.store(SignalKind::hangup().into(), Ordering::SeqCst);
+        assert!(is_matching_signal());
+
+        // SIGQUIT (3)
+        SIGNAL.store(SignalKind::quit().into(), Ordering::SeqCst);
         assert!(is_matching_signal());
     }
 }
