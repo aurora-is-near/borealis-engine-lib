@@ -9,7 +9,15 @@ use crate::{
 pub fn get_nearcore_stream(
     block_height: u64,
     config: &NearcoreConfig,
-) -> tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>> {
+    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+) -> (
+    tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
+    tokio::task::JoinHandle<()>,
+) {
+    tracing::info!(
+        "get_nearcore_stream: starting nearcore stream, block_height: {block_height:?}..."
+    );
+
     let (sender, receiver) = tokio::sync::mpsc::channel(1000);
 
     let indexer_config = near_indexer::IndexerConfig {
@@ -20,21 +28,29 @@ pub fn get_nearcore_stream(
         validate_genesis: true,
     };
 
-    // let indexer_config = construct_near_indexer_config(&pool, home_dir, args.clone()).await;
     let indexer = near_indexer::Indexer::new(indexer_config).expect("Failed to initiate Indexer");
 
-    // Regular indexer process starts here
-    let mut stream = indexer.streamer();
-
-    tokio::spawn(async move {
-        while let Some(block) = stream.recv().await {
-            // TODO: Slow conversion between types. Fix
-            sender
-                .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
-                .await
-                .expect("Failed to send block to channel");
+    let task_handle = tokio::task::spawn_local(async move {
+        // Regular NEAR indexer process starts here
+        let mut stream = indexer.streamer();
+        loop {
+            tokio::select! {
+                Some(block) = stream.recv() => {
+                    // TODO: Slow conversion between types. Fix
+                    sender
+                        .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
+                        .await
+                        .expect("Failed to send block to channel from nearcore stream");
+                }
+                _ = shutdown_rx.recv() => {
+                    // Explicitly close the channel, so the tx side should stop sending blocks
+                    stream.close();
+                    tracing::info!("get_nearcore_stream: Received shutdown signal");
+                    break;
+                }
+            }
         }
     });
 
-    receiver
+    (receiver, task_handle)
 }

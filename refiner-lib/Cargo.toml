@@ -22,6 +22,7 @@ aurora-standalone-engine.workspace = true
 engine-standalone-storage.workspace = true
 
 anyhow.workspace = true
+actix.workspace = true
 borsh.workspace = true
 triehash-ethereum.workspace = true
 byteorder.workspace = true
