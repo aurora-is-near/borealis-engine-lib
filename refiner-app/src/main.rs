@@ -51,18 +51,32 @@ async fn main() -> anyhow::Result<()> {
                 (last_block, next_block)
             };
 
+            // Broadcast shutdown channel
+            let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(16);
+            let shutdown_rx_input_stream = shutdown_tx.subscribe();
+            let shutdown_rx_output_stream = shutdown_tx.subscribe();
+            let mut shutdown_rx_socket = shutdown_tx.subscribe();
+
             // Build input stream
-            let input_stream = match config.input_mode {
-                config::InputMode::DataLake(config) => {
-                    input::data_lake::get_near_data_lake_stream(next_block, &config)
-                }
-                config::InputMode::Nearcore(config) => {
-                    input::nearcore::get_nearcore_stream(next_block, &config)
-                }
+            let (input_stream, task_input_stream) = match config.input_mode {
+                config::InputMode::DataLake(config) => input::data_lake::get_near_data_lake_stream(
+                    next_block,
+                    &config,
+                    shutdown_rx_input_stream,
+                ),
+                config::InputMode::Nearcore(config) => input::nearcore::get_nearcore_stream(
+                    next_block,
+                    &config,
+                    shutdown_rx_input_stream,
+                ),
             };
 
             // Build output stream
-            let output_stream = get_output_stream(total, config.output_storage.clone());
+            let (output_stream, task_output_stream) = get_output_stream(
+                total,
+                config.output_storage.clone(),
+                shutdown_rx_output_stream,
+            );
 
             // Init storage
             let engine_path = Path::new(&config.refiner.engine_path);
@@ -93,13 +107,13 @@ async fn main() -> anyhow::Result<()> {
 
             let socket_storage = ctx.storage.clone();
 
-            // Broadcast shutdown channel
-            let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(1);
-            let mut shutdown_rx_socket = shutdown_tx.subscribe();
-
-            let (signal_handle, _, _) = tokio::join!(
+            let (signals_result, input_result, output_result, ..) = tokio::join!(
                 // Handle all signals
                 signal_handlers::handle_all_signals(shutdown_tx),
+                // Wait for input stream to finish
+                task_input_stream,
+                // Wait for output stream to finish
+                task_output_stream,
                 // Run socket server
                 async {
                     if let Some(socket_config) = config.socket_server {
@@ -123,11 +137,18 @@ async fn main() -> anyhow::Result<()> {
                 ),
             );
 
-            if let Err(err) = signal_handle {
+            if let Err(err) = signals_result {
                 tracing::error!("Signal handler failed: {:?}", err);
+            }
+            if let Err(err) = input_result {
+                tracing::error!("Input stream failed: {:?}", err);
+            }
+            if let Err(err) = output_result {
+                tracing::error!("Output stream failed: {:?}", err);
             }
         }
     }
 
+    tracing::info!("refiner-app finished");
     Ok(())
 }

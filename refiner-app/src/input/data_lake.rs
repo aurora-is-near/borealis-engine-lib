@@ -4,10 +4,21 @@ use near_lake_framework::LakeConfigBuilder;
 
 use crate::{config::DataLakeConfig, conversion::convert};
 
+/// Spawns a task that reads blocks from the NEAR Data Lake stream and sends them to the channel.
+/// The `shutdown_rx` is used to signal the task to stop.
+/// Returns a channel to send NEAR blocks to the task and a handle to the task.
 pub fn get_near_data_lake_stream(
     block_height: u64,
     config: &DataLakeConfig,
-) -> tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>> {
+    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+) -> (
+    tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
+    tokio::task::JoinHandle<()>,
+) {
+    tracing::info!(
+        "get_near_data_lake_stream: starting data lake stream, block_height: {block_height:?}..."
+    );
+
     let mut opts = LakeConfigBuilder::default();
     opts = match config.network {
         crate::config::Network::Mainnet => opts.mainnet(),
@@ -20,16 +31,26 @@ pub fn get_near_data_lake_stream(
 
     let (sender, receiver) = tokio::sync::mpsc::channel(1000);
 
-    tokio::spawn(async move {
-        // instantiate the NEAR Lake Framework Stream
+    let task_handle = tokio::spawn(async move {
+        // Instantiate the NEAR Lake Framework Stream
         let (_, mut stream) = near_lake_framework::streamer(opts);
-        while let Some(block) = stream.recv().await {
-            sender
-                .send(BlockWithMetadata::new(convert(block), ()))
-                .await
-                .unwrap();
+        loop {
+            tokio::select! {
+                Some(block) = stream.recv() => {
+                    sender
+                        .send(BlockWithMetadata::new(convert(block), ()))
+                        .await
+                        .expect("Failed to send block to channel from data lake stream");
+                }
+                _ = shutdown_rx.recv() => {
+                    // Explicitly close the channel, so the tx side should stop sending blocks
+                    stream.close();
+                    tracing::info!("get_near_data_lake_stream: Received shutdown signal");
+                    break;
+                }
+            }
         }
     });
 
-    receiver
+    (receiver, task_handle)
 }
