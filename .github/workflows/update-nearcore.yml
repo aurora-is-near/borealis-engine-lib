@@ -486,24 +486,24 @@ jobs:
       - name: Create GitHub Release
         if: steps.check_release.outputs.should_create_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT_TOKEN }}
         run: |
           version="${{ steps.check_version.outputs.version }}"
           mark_as_latest="${{ steps.check_version.outputs.mark_as_latest }}"
 
           if [[ "$mark_as_latest" == "true" ]]; then
             # Create regular release and mark as latest
-            gh release create "v$version" \
-              --title "Release v$version" \
+            gh release create "$version" \
+              --title "Release $version" \
               --notes "Automated release for version $version" \
               --latest
-            echo "Created release v$version and marked as latest"
+            echo "Created release $version and marked as latest"
           else
             # Create regular release without marking as latest
-            gh release create "v$version" \
-              --title "Release v$version" \
+            gh release create "$version" \
+              --title "Release $version" \
               --notes "Automated release for version $version"
-            echo "Created release v$version without marking as latest"
+            echo "Created release $version without marking as latest"
           fi
 
       - name: Send Slack notification
@@ -519,5 +519,5 @@ jobs:
           fi
 
           curl -X POST -H 'Content-type: application/json' --data "{
-            \"text\": \"borealis-engine-lib: Github release v$VERSION has been created and published $release_status\"
+            \"text\": \"borealis-engine-lib: Github release $VERSION has been created and published $release_status\"
           }" $SLACK_WEBHOOK_URL

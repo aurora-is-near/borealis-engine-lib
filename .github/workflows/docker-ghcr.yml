@@ -79,5 +79,5 @@ jobs:
           VERSION: ${{ env.VERSION }}
         run: |
           curl -X POST -H 'Content-type: application/json' --data "{
-            \"text\": \"borealis-engine-lib: Docker image v$VERSION has been built and pushed to GitHub Container Registry.\"
+            \"text\": \"borealis-engine-lib: Docker image $VERSION has been built and pushed to GitHub Container Registry.\"
           }" $SLACK_WEBHOOK_URL
