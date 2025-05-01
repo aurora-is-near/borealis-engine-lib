@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
-version = "0.30.4-2.6.0"
+version = "0.30.4-2.6.1"
 edition = "2024"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
@@ -39,9 +39,9 @@ hex = "0.4"
 impl-serde = "0.5"
 lazy_static = "1"
 lru = "0.12"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "2.6.0" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "2.6.0" }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "2.6.0" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "2.6.1" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "2.6.1" }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "2.6.1" }
 near-lake-framework = "0.7"
 prometheus = "0.13"
 rlp = "0.6"
