@@ -502,7 +502,8 @@ jobs:
             # Create regular release without marking as latest
             gh release create "$version" \
               --title "Release $version" \
-              --notes "Automated release for version $version"
+              --notes "Automated release for version $version" \
+              --latest=false
             echo "Created release $version without marking as latest"
           fi
 
