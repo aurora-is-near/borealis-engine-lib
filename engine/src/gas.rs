@@ -9,10 +9,7 @@ use aurora_engine_types::{
     H160, H256, U256, storage,
     types::{Address, NearGas, Wei},
 };
-use engine_standalone_storage::{
-    Storage,
-    engine_state::{EngineStateAccess, EngineStorageValue},
-};
+use engine_standalone_storage::{Storage, engine_state::EngineStorageValue};
 use std::collections::HashMap;
 
 fn parse_hex_int(
@@ -366,12 +363,12 @@ fn eth_call(
 }
 
 #[derive(Clone, Copy)]
-pub struct EngineStateOverride<'db, 'input, 'output, 'state> {
-    pub inner: EngineStateAccess<'db, 'input, 'output>,
+pub struct EngineStateOverride<'state, I> {
+    pub inner: I,
     pub state_override: &'state HashMap<H160, HashMap<H256, H256>>,
 }
 
-impl<'db, 'input: 'db, 'output: 'db> IO for EngineStateOverride<'db, 'input, 'output, '_> {
+impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for EngineStateOverride<'_, I> {
     type StorageValue = EngineStorageValue<'db>;
 
     fn read_input(&self) -> Self::StorageValue {

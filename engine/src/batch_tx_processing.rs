@@ -1,18 +1,15 @@
 use aurora_engine_sdk::io::IO;
-use engine_standalone_storage::{
-    Diff,
-    engine_state::{EngineStateAccess, EngineStorageValue},
-};
+use engine_standalone_storage::{Diff, engine_state::EngineStorageValue};
 use std::cell::RefCell;
 
 #[derive(Clone, Copy)]
-pub struct BatchIO<'db, 'local> {
-    pub fallback: EngineStateAccess<'db, 'db, 'db>,
+pub struct BatchIO<'local, I> {
+    pub fallback: I,
     pub cumulative_diff: &'local Diff,
     pub current_diff: &'local RefCell<Diff>,
 }
 
-impl<'db> IO for BatchIO<'db, '_> {
+impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for BatchIO<'_, I> {
     type StorageValue = EngineStorageValue<'db>;
 
     fn read_input(&self) -> Self::StorageValue {
