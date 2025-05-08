@@ -489,7 +489,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.9.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -511,7 +511,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "hex",
  "num",
@@ -531,7 +531,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -546,7 +546,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-types",
  "base64 0.22.1",
@@ -559,7 +559,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -571,7 +571,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "base64 0.22.1",
  "borsh 1.5.5",
@@ -2546,7 +2546,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2570,7 +2570,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#880feada8d6f08d1aaf0ce99d29edcd0bf1b08e6"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fdynamic-lib#49e83c05bbfee6938a5538a3c1fa579855707d16"
 dependencies = [
  "aurora-engine-types",
  "aurora-evm",
