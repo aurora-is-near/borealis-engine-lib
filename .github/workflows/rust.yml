@@ -80,7 +80,14 @@ jobs:
         uses: actions/checkout@v2
       - name: Restore cache
         run: cache-util restore borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+      - name: Install Clang
+        run: |
+          apt-get update
+          apt-get install -y clang
       - name: Run tests
+        env:
+          CC: clang
+          CXX: clang++
         run: |
           rustup target add wasm32-unknown-unknown
           rustup component add rust-src

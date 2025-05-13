@@ -169,8 +169,8 @@ jobs:
         id: update_cargo_lock
         run: |
           source "$HOME/.cargo/env"
-          if ! cargo check; then
-            echo "::error::Cargo check failed when updating Cargo.lock"
+          if ! cargo update; then
+            echo "::error::Cargo update failed when updating Cargo.lock"
             exit 1
           fi
           echo "Updated Cargo.lock"
