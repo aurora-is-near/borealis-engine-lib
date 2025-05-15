@@ -46,3 +46,105 @@ pub fn ch_json<U: Serialize, V: DeserializeOwned>(input: U) -> V {
     let value = serde_json::to_value(input).unwrap();
     serde_json::from_value(value).unwrap()
 }
+
+// NOTE: A module for convenient debugging of the conversion.
+// Should be a trait in the final version.
+pub mod conversion {
+    pub mod data_lake {
+
+        use aurora_refiner_types::near_block::NEARBlock;
+        use near_lake_framework::near_indexer_primitives::StreamerMessage;
+
+        pub fn convert(message: StreamerMessage) -> NEARBlock {
+            NEARBlock {
+                block: message.block.into(),
+                shards: message.shards.into_iter()
+                    .map(|indexer_shard| {
+                        let chunk = indexer_shard.chunk.map(|chunk| {
+                            aurora_refiner_types::near_block::ChunkView {
+                                author: chunk.author,
+                                header: chunk.header.into(),
+                                transactions: chunk.transactions
+                                    .into_iter()
+                                    .map(|tx| {
+                                        aurora_refiner_types::near_block::TransactionWithOutcome {
+                                            transaction: tx.transaction.into(),
+                                            outcome: aurora_refiner_types::near_block::ExecutiosnOutcomeWithOptionalReceipt {
+                                                execution_outcome: tx.outcome.execution_outcome.into(),
+                                                receipt: tx.outcome.receipt.map(Into::into),
+                                            },
+                                        }
+                                    })
+                                    .collect(),
+                                receipts: chunk.receipts.into_iter().map(Into::into).collect(),
+                            }
+                        });
+                        aurora_refiner_types::near_block::Shard {
+                            shard_id: indexer_shard.shard_id,
+                            chunk,
+                            receipt_execution_outcomes: indexer_shard.receipt_execution_outcomes
+                                .into_iter()
+                                .map(|r| {
+                                    aurora_refiner_types::near_block::ExecutionOutcomeWithReceipt {
+                                        execution_outcome: r.execution_outcome.into(),
+                                        receipt: r.receipt.into(),
+                                    }
+                                })
+                                .collect(),
+                            state_changes: indexer_shard.state_changes,
+                        }
+                    })
+                    .collect()
+            }
+        }
+    }
+
+    pub mod nearcore {
+
+        use aurora_refiner_types::near_block::NEARBlock;
+        use near_indexer::StreamerMessage;
+
+        pub fn convert(message: StreamerMessage) -> NEARBlock {
+            NEARBlock {
+                block: message.block.into(),
+                shards: message.shards.into_iter()
+                    .map(|indexer_shard| {
+                        let chunk = indexer_shard.chunk.map(|chunk| {
+                            aurora_refiner_types::near_block::ChunkView {
+                                author: chunk.author,
+                                header: chunk.header.into(),
+                                transactions: chunk.transactions
+                                    .into_iter()
+                                    .map(|tx| {
+                                        aurora_refiner_types::near_block::TransactionWithOutcome {
+                                            transaction: tx.transaction.into(),
+                                            outcome: aurora_refiner_types::near_block::ExecutionOutcomeWithOptionalReceipt {
+                                                execution_outcome: tx.outcome.execution_outcome,
+                                                receipt: tx.outcome.receipt.map(Into::into),
+                                            },
+                                        }
+                                    })
+                                    .collect(),
+                                receipts: chunk.receipts.into_iter().map(Into::into).collect(),
+                            }
+                        });
+                        aurora_refiner_types::near_block::Shard {
+                            shard_id: indexer_shard.shard_id,
+                            chunk,
+                            receipt_execution_outcomes: indexer_shard.receipt_execution_outcomes
+                                .into_iter()
+                                .map(|r| {
+                                    aurora_refiner_types::near_block::ExecutionOutcomeWithReceipt {
+                                        execution_outcome: r.execution_outcome,
+                                        receipt: r.receipt.into(),
+                                    }
+                                })
+                                .collect(),
+                            state_changes: indexer_shard.state_changes,
+                        }
+                    })
+                    .collect()
+            }
+        }
+    }
+}

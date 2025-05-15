@@ -671,7 +671,9 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-serde 0.5.0",
  "near-crypto 2.6.2",
+ "near-lake-framework",
  "near-primitives 2.6.2",
+ "refiner-types-crates-io",
  "serde",
  "serde_json",
  "sha3",
@@ -4666,6 +4668,7 @@ dependencies = [
  "near-schema-checker-lib 0.30.1",
  "near-stdx 0.30.1",
  "primitive-types 0.10.1",
+ "rand 0.8.5",
  "secp256k1",
  "serde",
  "serde_json",
@@ -6957,6 +6960,17 @@ dependencies = [
  "parking_lot 0.11.2",
  "smallvec",
  "spin 0.9.8",
+]
+
+[[package]]
+name = "refiner-types-crates-io"
+version = "0.30.4-2.6.2"
+dependencies = [
+ "near-crypto 0.30.1",
+ "near-indexer-primitives 0.30.1",
+ "near-primitives 0.30.1",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

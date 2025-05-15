@@ -25,6 +25,8 @@ near-crypto.workspace = true
 near-primitives = { workspace = true, features = ["rand"] }
 serde.workspace = true
 sha3.workspace = true
+near-lake-framework.workspace = true
+refiner-types-crates-io.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
