@@ -1,3 +1,5 @@
+use std::{cell::RefCell, collections::HashMap};
+
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
@@ -17,10 +19,10 @@ use engine_standalone_storage::{
     },
 };
 use lru::LruCache;
-use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
+use crate::contract;
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
@@ -50,6 +52,17 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                 }
             }
         });
+
+    // trigger contract dynamic library reload if needed
+    for change in message.shards.iter().flat_map(|s| s.state_changes.iter()) {
+        if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
+            if account_id.as_str() == engine_account_id.as_ref() {
+                if let Err(err) = contract::update(code.clone()) {
+                    tracing::error!("Dynamic update error: {err}");
+                }
+            }
+        }
+    }
 
     // Get expected state changes based on data in the streamer message
     let aurora_state_changes = message

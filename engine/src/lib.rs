@@ -13,6 +13,8 @@ pub mod sync;
 mod tests;
 pub mod tracing;
 
+pub mod contract;
+
 pub type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
 pub struct EngineContext {
