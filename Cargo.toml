@@ -44,6 +44,8 @@ lru = "0.12"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "2.6.2" }
 near-indexer = { git = "https://github.com/near/nearcore", tag = "2.6.2" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "2.6.2" }
+near_crypto_crates_io = { version = "0.30.1", package = "near-crypto" }
+near_primitives_crates_io = { version = "0.30.1", package = "near-primitives" }
 near-lake-framework = "0.7"
 prometheus = "0.13"
 rlp = "0.6"

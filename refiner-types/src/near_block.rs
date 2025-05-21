@@ -12,6 +12,7 @@ use near_primitives::views::{
     ActionView, StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
 };
 use serde::{Deserialize, Serialize};
+
 /// Resulting struct represents block with chunks
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NEARBlock {
@@ -378,6 +379,143 @@ impl From<views::SignedTransactionView> for SignedTransactionView {
             priority_fee: value.priority_fee,
             signature: value.signature,
             hash: value.hash,
+        }
+    }
+}
+
+impl From<near_lake_framework::near_indexer_primitives::views::BlockView> for BlockView {
+    fn from(view: near_lake_framework::near_indexer_primitives::views::BlockView) -> Self {
+        Self {
+            author: view.author,
+            header: view.header.into(),
+        }
+    }
+}
+
+impl From<near_lake_framework::near_indexer_primitives::views::BlockHeaderView>
+    for IndexerBlockHeaderView
+{
+    fn from(header: near_lake_framework::near_indexer_primitives::views::BlockHeaderView) -> Self {
+        let near_lake_framework::near_indexer_primitives::views::BlockHeaderView {
+            height,
+            prev_height,
+            epoch_id,
+            next_epoch_id,
+            hash,
+            prev_hash,
+            prev_state_root,
+            chunk_receipts_root,
+            chunk_headers_root,
+            chunk_tx_root,
+            outcome_root,
+            chunks_included,
+            challenges_root,
+            timestamp,
+            timestamp_nanosec,
+            random_value,
+            validator_proposals,
+            chunk_mask,
+            gas_price,
+            block_ordinal,
+            total_supply,
+            challenges_result,
+            last_final_block,
+            last_ds_final_block,
+            next_bp_hash,
+            block_merkle_root,
+            epoch_sync_data_hash,
+            approvals,
+            signature,
+            latest_protocol_version,
+            ..
+        } = header;
+        Self {
+            height,
+            prev_height,
+            epoch_id: CryptoHash(epoch_id.0),
+            next_epoch_id: CryptoHash(next_epoch_id.0),
+            hash: CryptoHash(hash.0),
+            prev_hash: CryptoHash(prev_hash.0),
+            prev_state_root: CryptoHash(prev_state_root.0),
+            chunk_receipts_root: CryptoHash(chunk_receipts_root.0),
+            chunk_headers_root: CryptoHash(chunk_headers_root.0),
+            chunk_tx_root: CryptoHash(chunk_tx_root.0),
+            outcome_root: CryptoHash(outcome_root.0),
+            chunks_included,
+            challenges_root: CryptoHash(challenges_root.0),
+            timestamp,
+            timestamp_nanosec,
+            random_value: CryptoHash(random_value.0),
+            validator_proposals: validator_proposals
+                .into_iter()
+                .map(|v| convert_validator_stake_view(v))
+                .collect(),
+            chunk_mask,
+            gas_price,
+            block_ordinal,
+            total_supply,
+            challenges_result: challenges_result.into_iter().map(|v| convert_slashed_validator(v)).collect(),
+            last_final_block: CryptoHash(last_final_block.0),
+            last_ds_final_block: CryptoHash(last_ds_final_block.0),
+            next_bp_hash: CryptoHash(next_bp_hash.0),
+            block_merkle_root: CryptoHash(block_merkle_root.0),
+            epoch_sync_data_hash: epoch_sync_data_hash.map(|h| CryptoHash(h.0)),
+            approvals: approvals
+                .into_iter()
+                .map(|v| v.map(|s| Box::new(convert_signature(*s)))).collect(),
+            signature: convert_signature(signature),
+            latest_protocol_version,
+        }
+    }
+}
+
+fn convert_validator_stake_view(
+    v: near_lake_framework::near_indexer_primitives::views::validator_stake_view::ValidatorStakeView,
+) -> near_primitives::views::validator_stake_view::ValidatorStakeView {
+    match v {
+        near_lake_framework::near_indexer_primitives::views::validator_stake_view::ValidatorStakeView::V1(inner) => {
+            near_primitives::views::validator_stake_view::ValidatorStakeView::V1(
+                near_primitives::views::validator_stake_view::ValidatorStakeViewV1 {
+                    account_id: inner.account_id,
+                    public_key: convert_public_key(inner.public_key),
+                    stake: inner.stake,
+                }
+            )
+        }
+    }
+}
+
+pub fn convert_public_key(v: refiner_types_crates_io::PublicKeyCratesIo) -> near_crypto::PublicKey {
+    let key_data = v.key_data();
+    match v {
+        refiner_types_crates_io::PublicKeyCratesIo::ED25519(inner) => {
+            near_crypto::PublicKey::ED25519(inner.0.into())
+        }
+        refiner_types_crates_io::PublicKeyCratesIo::SECP256K1(_) => {
+            near_crypto::PublicKey::SECP256K1(
+                near_crypto::Secp256K1PublicKey::try_from(key_data).unwrap(), // TODO: Remove unwrap
+            )
+        }
+    }
+}
+
+fn convert_slashed_validator(
+    v: near_primitives_crates_io::challenge::SlashedValidator,
+) -> near_primitives::challenge::SlashedValidator {
+    near_primitives::challenge::SlashedValidator {
+        account_id: v.account_id,
+        is_double_sign: v.is_double_sign,
+    }
+}
+
+pub fn convert_signature(v: refiner_types_crates_io::SignatureCratesIo) -> near_crypto::Signature {
+    match v {
+        refiner_types_crates_io::SignatureCratesIo::ED25519(inner) => {
+            near_crypto::Signature::ED25519(inner)
+        }
+        refiner_types_crates_io::SignatureCratesIo::SECP256K1(inner) => {
+            let r: [u8; 65] = inner.into();
+            near_crypto::Signature::SECP256K1(near_crypto::Secp256K1Signature::from(r))
         }
     }
 }

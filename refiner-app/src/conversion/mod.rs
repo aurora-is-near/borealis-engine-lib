@@ -55,7 +55,10 @@ pub mod conversion {
         use near_lake_framework::near_indexer_primitives::StreamerMessage;
 
         pub fn convert(message: StreamerMessage) -> NEARBlock {
-            unreachable!()
+            NEARBlock {
+                block: message.block.into(),
+                shards: unreachable!()
+            }
         }
     }
 
