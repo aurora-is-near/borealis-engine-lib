@@ -1,35 +1,40 @@
+use aurora_refiner_types::conversion::Converter;
 use aurora_refiner_types::near_block::{ChunkHeaderView, ChunkView, NEARBlock, Shard};
 use near_lake_framework::near_indexer_primitives::StreamerMessage;
-use serde::{Serialize, de::DeserializeOwned};
 
 pub fn convert(block: StreamerMessage) -> NEARBlock {
     NEARBlock {
-        block: ch_json(block.block),
+        block: block.block.into(),
         shards: block
             .shards
             .into_iter()
             .map(|shard| Shard {
-                shard_id: ch_json(shard.shard_id),
+                shard_id: shard.shard_id.convert(),
                 chunk: shard.chunk.map(|chunk| ChunkView {
-                    author: ch_json(chunk.author),
+                    author: chunk.author.convert(),
                     header: ChunkHeaderView {
-                        chunk_hash: ch_json(chunk.header.chunk_hash),
-                        prev_block_hash: ch_json(chunk.header.prev_block_hash),
-                        outcome_root: ch_json(chunk.header.outcome_root),
-                        prev_state_root: ch_json(chunk.header.prev_state_root),
-                        encoded_merkle_root: ch_json(chunk.header.encoded_merkle_root),
-                        encoded_length: ch_json(chunk.header.encoded_length),
-                        height_created: ch_json(chunk.header.height_created),
-                        height_included: ch_json(chunk.header.height_included),
-                        shard_id: ch_json(chunk.header.shard_id),
-                        gas_used: ch_json(chunk.header.gas_used),
-                        gas_limit: ch_json(chunk.header.gas_limit),
+                        chunk_hash: chunk.header.chunk_hash.convert(),
+                        prev_block_hash: chunk.header.prev_block_hash.convert(),
+                        outcome_root: chunk.header.outcome_root.convert(),
+                        prev_state_root: chunk.header.prev_state_root.convert(),
+                        encoded_merkle_root: chunk.header.encoded_merkle_root.convert(),
+                        encoded_length: chunk.header.encoded_length,
+                        height_created: chunk.header.height_created,
+                        height_included: chunk.header.height_included,
+                        shard_id: chunk.header.shard_id.convert(),
+                        gas_used: chunk.header.gas_used,
+                        gas_limit: chunk.header.gas_limit,
                         validator_reward: chunk.header.validator_reward,
                         balance_burnt: chunk.header.balance_burnt,
-                        outgoing_receipts_root: ch_json(chunk.header.outgoing_receipts_root),
-                        tx_root: ch_json(chunk.header.tx_root),
-                        validator_proposals: ch_json(chunk.header.validator_proposals),
-                        signature: ch_json(chunk.header.signature),
+                        outgoing_receipts_root: chunk.header.outgoing_receipts_root.convert(),
+                        tx_root: chunk.header.tx_root.convert(),
+                        validator_proposals: chunk
+                            .header
+                            .validator_proposals
+                            .iter()
+                            .map(Converter::convert)
+                            .collect(),
+                        signature: chunk.header.signature.convert(),
                     },
                     transactions: ch_json(chunk.transactions),
                     receipts: ch_json(chunk.receipts),
@@ -41,8 +46,8 @@ pub fn convert(block: StreamerMessage) -> NEARBlock {
     }
 }
 
-/// Convert between types that have the same json representation
-pub fn ch_json<U: Serialize, V: DeserializeOwned>(input: U) -> V {
-    let value = serde_json::to_value(input).unwrap();
-    serde_json::from_value(value).unwrap()
-}
+// /// Convert between types that have the same json representation
+// pub fn ch_json<U: Serialize, V: DeserializeOwned>(input: U) -> V {
+//     let value = serde_json::to_value(input).unwrap();
+//     serde_json::from_value(value).unwrap()
+// }
