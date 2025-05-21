@@ -12,6 +12,7 @@ use near_primitives::views::{
     ActionView, StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
 };
 use serde::{Deserialize, Serialize};
+
 /// Resulting struct represents block with chunks
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NEARBlock {
