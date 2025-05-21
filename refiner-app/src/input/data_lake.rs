@@ -2,7 +2,7 @@ use aurora_refiner_lib::BlockWithMetadata;
 use aurora_refiner_types::near_block::NEARBlock;
 use near_lake_framework::LakeConfigBuilder;
 
-use crate::{config::DataLakeConfig, conversion::convert};
+use crate::config::DataLakeConfig;
 
 /// Spawns a task that reads blocks from the NEAR Data Lake stream and sends them to the channel.
 /// The `shutdown_rx` is used to signal the task to stop.
@@ -38,7 +38,7 @@ pub fn get_near_data_lake_stream(
             tokio::select! {
                 Some(block) = stream.recv() => {
                     sender
-                        .send(BlockWithMetadata::new(convert(block), ()))
+                        .send(BlockWithMetadata::new(crate::conversion::conversion::data_lake::convert(block), ()))
                         .await
                         .expect("Failed to send block to channel from data lake stream");
                 }

@@ -1,10 +1,7 @@
 use aurora_refiner_lib::BlockWithMetadata;
 use aurora_refiner_types::near_block::NEARBlock;
 
-use crate::{
-    config::NearcoreConfig,
-    conversion::{ch_json, convert},
-};
+use crate::config::NearcoreConfig;
 
 pub fn get_nearcore_stream(
     block_height: u64,

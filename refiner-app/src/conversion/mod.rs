@@ -51,7 +51,12 @@ pub fn ch_json<U: Serialize, V: DeserializeOwned>(input: U) -> V {
 // Should be a trait in the final version.
 pub mod conversion {
     pub mod data_lake {
-        pub use refiner_types_crates_io::convert;
+        use aurora_refiner_types::near_block::NEARBlock;
+        use near_lake_framework::near_indexer_primitives::StreamerMessage;
+
+        pub fn convert(message: StreamerMessage) -> NEARBlock {
+            unreachable!()
+        }
     }
 
     pub mod nearcore {
