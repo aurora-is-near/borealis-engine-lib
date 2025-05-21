@@ -54,11 +54,12 @@ async fn main() -> anyhow::Result<()> {
             // Broadcast shutdown channel
             let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(16);
             let shutdown_rx_input_stream = shutdown_tx.subscribe();
+            let shutdown_rx_input_stream_with_trait = shutdown_tx.subscribe();
             let shutdown_rx_output_stream = shutdown_tx.subscribe();
             let mut shutdown_rx_socket = shutdown_tx.subscribe();
 
             // Build input stream
-            let (input_stream, task_input_stream) = match config.input_mode {
+            let (input_stream, task_input_stream) = match &config.input_mode {
                 config::InputMode::DataLake(config) => input::data_lake::get_near_data_lake_stream(
                     next_block,
                     &config,
@@ -69,6 +70,16 @@ async fn main() -> anyhow::Result<()> {
                     &config,
                     shutdown_rx_input_stream,
                 ),
+            };
+
+            // TODO: temporary
+            let (input_stream_with_trait, task_input_stream_with_trait) = match &config.input_mode {
+                config::InputMode::DataLake(config) => input::data_lake_with_trait::get_near_data_lake_stream_with_trait(
+                    next_block,
+                    &config,
+                    shutdown_rx_input_stream_with_trait,
+                ),
+                _ => unreachable!(),
             };
 
             // Build output stream
@@ -135,6 +146,16 @@ async fn main() -> anyhow::Result<()> {
                     last_block,
                     &mut shutdown_rx_refiner,
                 ),
+                // // Run Refiner with trait
+                // aurora_refiner_lib::refiner_with_trait::run_refiner::<&Path, ()>(
+                //     ctx,
+                //     config.refiner.chain_id,
+                //     tx_tracker_path.as_ref(),
+                //     input_stream_with_trait,
+                //     output_stream,
+                //     last_block,
+                //     &mut shutdown_rx_refiner,
+                // ),
             );
 
             if let Err(err) = signals_result {

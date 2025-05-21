@@ -36,9 +36,8 @@ pub fn get_nearcore_stream(
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
-                    // TODO: Slow conversion between types. Fix
                     sender
-                        .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
+                        .send(BlockWithMetadata::new(crate::conversion::conversion::nearcore::convert(block), ()))
                         .await
                         .expect("Failed to send block to channel from nearcore stream");
                 }
