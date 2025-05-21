@@ -29,6 +29,12 @@ tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+thiserror = { version = "2.0" }
+
+near-parameters.workspace = true
+near-primitives-core.workspace = true
+near-primitives.workspace = true
+near-vm-runner.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
