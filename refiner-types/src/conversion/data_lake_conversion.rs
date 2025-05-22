@@ -85,9 +85,7 @@ impl Converter<AccessKey> for near_primitives_crates_io::account::AccessKey {
     }
 }
 
-impl Converter<AccessKeyPermission>
-    for near_primitives_core_crates_io::account::AccessKeyPermission
-{
+impl Converter<AccessKeyPermission> for near_primitives_crates_io::account::AccessKeyPermission {
     fn convert(self) -> AccessKeyPermission {
         match self {
             Self::FunctionCall(inner) => {
@@ -107,7 +105,7 @@ impl Converter<AccessKeyView> for near_primitives_crates_io::views::AccessKeyVie
         AccessKeyView {
             nonce: self.nonce,
             permission: {
-                let inner: near_primitives_core_crates_io::account::AccessKeyPermission =
+                let inner: near_primitives_crates_io::account::AccessKeyPermission =
                     self.permission.into();
                 inner.convert().into()
             },
@@ -120,8 +118,8 @@ impl Converter<GlobalContractDeployMode>
 {
     fn convert(self) -> GlobalContractDeployMode {
         match self {
-            Self::CodeHash => near_primitives::action::GlobalContractDeployMode::CodeHash,
-            Self::AccountId => near_primitives::action::GlobalContractDeployMode::AccountId,
+            Self::CodeHash => GlobalContractDeployMode::CodeHash,
+            Self::AccountId => GlobalContractDeployMode::AccountId,
         }
     }
 }
@@ -131,12 +129,8 @@ impl Converter<GlobalContractIdentifier>
 {
     fn convert(self) -> GlobalContractIdentifier {
         match self {
-            Self::CodeHash(inner) => {
-                near_primitives::action::GlobalContractIdentifier::CodeHash(inner.convert())
-            }
-            Self::AccountId(inner) => {
-                near_primitives::action::GlobalContractIdentifier::AccountId(inner)
-            }
+            Self::CodeHash(inner) => GlobalContractIdentifier::CodeHash(inner.convert()),
+            Self::AccountId(inner) => GlobalContractIdentifier::AccountId(inner),
         }
     }
 }
@@ -363,7 +357,7 @@ impl Converter<FunctionArgs> for near_primitives_crates_io::types::FunctionArgs 
 
 impl Converter<DelegateAction> for near_primitives_crates_io::action::delegate::DelegateAction {
     fn convert(self) -> DelegateAction {
-        near_primitives::action::delegate::DelegateAction {
+        DelegateAction {
             sender_id: self.sender_id,
             receiver_id: self.receiver_id,
             actions: self.actions.into_iter().map(Converter::convert).collect(),
@@ -700,14 +694,10 @@ impl Converter<CostGasUsed> for near_lake_framework::near_indexer_primitives::vi
 }
 
 impl Converter<TxExecutionError> for near_primitives_crates_io::errors::TxExecutionError {
-    fn convert(self) -> near_primitives::errors::TxExecutionError {
+    fn convert(self) -> TxExecutionError {
         match self {
-            Self::ActionError(err) => {
-                near_primitives::errors::TxExecutionError::ActionError(err.convert())
-            }
-            Self::InvalidTxError(err) => {
-                near_primitives::errors::TxExecutionError::InvalidTxError(err.convert())
-            }
+            Self::ActionError(err) => TxExecutionError::ActionError(err.convert()),
+            Self::InvalidTxError(err) => TxExecutionError::InvalidTxError(err.convert()),
         }
     }
 }
@@ -715,7 +705,7 @@ impl Converter<TxExecutionError> for near_primitives_crates_io::errors::TxExecut
 impl Converter<ActionError>
     for near_lake_framework::near_indexer_primitives::near_primitives::errors::ActionError
 {
-    fn convert(self) -> near_primitives::errors::ActionError {
+    fn convert(self) -> ActionError {
         {
             use near_lake_framework::near_indexer_primitives::near_primitives::errors::ActionErrorKind as LakeKind;
             use near_primitives::errors::{ActionError, ActionErrorKind};
@@ -849,70 +839,62 @@ impl Converter<InvalidTxError> for near_primitives_crates_io::errors::InvalidTxE
     fn convert(self) -> InvalidTxError {
         match self {
             Self::InvalidAccessKeyError(invalid_access_key_error) => {
-                near_primitives::errors::InvalidTxError::InvalidAccessKeyError(
-                    invalid_access_key_error.convert(),
-                )
+                InvalidTxError::InvalidAccessKeyError(invalid_access_key_error.convert())
             }
-            Self::InvalidSignerId { signer_id } => {
-                near_primitives::errors::InvalidTxError::InvalidSignerId { signer_id }
-            }
+            Self::InvalidSignerId { signer_id } => InvalidTxError::InvalidSignerId { signer_id },
             Self::SignerDoesNotExist { signer_id } => {
-                near_primitives::errors::InvalidTxError::SignerDoesNotExist { signer_id }
+                InvalidTxError::SignerDoesNotExist { signer_id }
             }
             Self::InvalidNonce { tx_nonce, ak_nonce } => {
-                near_primitives::errors::InvalidTxError::InvalidNonce { tx_nonce, ak_nonce }
+                InvalidTxError::InvalidNonce { tx_nonce, ak_nonce }
             }
             Self::NonceTooLarge {
                 tx_nonce,
                 upper_bound,
-            } => near_primitives::errors::InvalidTxError::NonceTooLarge {
+            } => InvalidTxError::NonceTooLarge {
                 tx_nonce,
                 upper_bound,
             },
             Self::InvalidReceiverId { receiver_id } => {
-                near_primitives::errors::InvalidTxError::InvalidReceiverId { receiver_id }
+                InvalidTxError::InvalidReceiverId { receiver_id }
             }
-            Self::InvalidSignature => near_primitives::errors::InvalidTxError::InvalidSignature,
+            Self::InvalidSignature => InvalidTxError::InvalidSignature,
             Self::NotEnoughBalance {
                 signer_id,
                 balance,
                 cost,
-            } => near_primitives::errors::InvalidTxError::NotEnoughBalance {
+            } => InvalidTxError::NotEnoughBalance {
                 signer_id,
                 balance,
                 cost,
             },
             Self::LackBalanceForState { signer_id, amount } => {
-                near_primitives::errors::InvalidTxError::LackBalanceForState { signer_id, amount }
+                InvalidTxError::LackBalanceForState { signer_id, amount }
             }
-            Self::CostOverflow => near_primitives::errors::InvalidTxError::CostOverflow,
-            Self::InvalidChain => near_primitives::errors::InvalidTxError::InvalidChain,
-            Self::Expired => near_primitives::errors::InvalidTxError::Expired,
+            Self::CostOverflow => InvalidTxError::CostOverflow,
+            Self::InvalidChain => InvalidTxError::InvalidChain,
+            Self::Expired => InvalidTxError::Expired,
             Self::ActionsValidation(actions_validation_error) => {
-                near_primitives::errors::InvalidTxError::ActionsValidation(
-                    actions_validation_error.convert(),
-                )
+                InvalidTxError::ActionsValidation(actions_validation_error.convert())
             }
             Self::TransactionSizeExceeded { size, limit } => {
-                near_primitives::errors::InvalidTxError::TransactionSizeExceeded { size, limit }
+                InvalidTxError::TransactionSizeExceeded { size, limit }
             }
-            Self::InvalidTransactionVersion => {
-                near_primitives::errors::InvalidTxError::InvalidTransactionVersion
-            }
+            Self::InvalidTransactionVersion => InvalidTxError::InvalidTransactionVersion,
             Self::StorageError(storage_error) => {
-                near_primitives::errors::InvalidTxError::StorageError(storage_error.convert())
+                InvalidTxError::StorageError(storage_error.convert())
             }
             Self::ShardCongested {
                 shard_id,
                 congestion_level,
-            } => near_primitives::errors::InvalidTxError::ShardCongested {
+            } => InvalidTxError::ShardCongested {
                 shard_id,
                 congestion_level,
             },
             Self::ShardStuck {
                 shard_id,
                 missed_chunks,
-            } => near_primitives::errors::InvalidTxError::ShardStuck {
+            } => InvalidTxError::ShardStuck {
                 shard_id,
                 missed_chunks,
             },
@@ -924,29 +906,17 @@ impl Converter<FunctionCallError> for near_primitives_crates_io::errors::Functio
     fn convert(self) -> FunctionCallError {
         match self {
             Self::CompilationError(compilation_error) => {
-                near_primitives::errors::FunctionCallError::CompilationError(
-                    compilation_error.convert(),
-                )
+                FunctionCallError::CompilationError(compilation_error.convert())
             }
-            Self::LinkError { msg } => {
-                near_primitives::errors::FunctionCallError::LinkError { msg }
-            }
+            Self::LinkError { msg } => FunctionCallError::LinkError { msg },
             Self::MethodResolveError(method_resolve_error) => {
-                near_primitives::errors::FunctionCallError::MethodResolveError(
-                    method_resolve_error.convert(),
-                )
+                FunctionCallError::MethodResolveError(method_resolve_error.convert())
             }
-            Self::WasmTrap(wasm_trap) => {
-                near_primitives::errors::FunctionCallError::WasmTrap(wasm_trap.convert())
-            }
-            Self::WasmUnknownError => near_primitives::errors::FunctionCallError::WasmUnknownError,
-            Self::HostError(host_error) => {
-                near_primitives::errors::FunctionCallError::HostError(host_error.convert())
-            }
-            Self::_EVMError => near_primitives::errors::FunctionCallError::_EVMError,
-            Self::ExecutionError(s) => {
-                near_primitives::errors::FunctionCallError::ExecutionError(s)
-            }
+            Self::WasmTrap(wasm_trap) => FunctionCallError::WasmTrap(wasm_trap.convert()),
+            Self::WasmUnknownError => FunctionCallError::WasmUnknownError,
+            Self::HostError(host_error) => FunctionCallError::HostError(host_error.convert()),
+            Self::_EVMError => FunctionCallError::_EVMError,
+            Self::ExecutionError(s) => FunctionCallError::ExecutionError(s),
         }
     }
 }
@@ -955,14 +925,12 @@ impl Converter<CompilationError> for near_primitives_crates_io::errors::Compilat
     fn convert(self) -> CompilationError {
         match self {
             Self::CodeDoesNotExist { account_id } => {
-                near_primitives::errors::CompilationError::CodeDoesNotExist { account_id }
+                CompilationError::CodeDoesNotExist { account_id }
             }
             Self::PrepareError(prepare_error) => {
-                near_primitives::errors::CompilationError::PrepareError(prepare_error.convert())
+                CompilationError::PrepareError(prepare_error.convert())
             }
-            Self::WasmerCompileError { msg } => {
-                near_primitives::errors::CompilationError::WasmerCompileError { msg }
-            }
+            Self::WasmerCompileError { msg } => CompilationError::WasmerCompileError { msg },
         }
     }
 }
@@ -970,11 +938,9 @@ impl Converter<CompilationError> for near_primitives_crates_io::errors::Compilat
 impl Converter<MethodResolveError> for near_primitives_crates_io::errors::MethodResolveError {
     fn convert(self) -> MethodResolveError {
         match self {
-            Self::MethodEmptyName => near_primitives::errors::MethodResolveError::MethodEmptyName,
-            Self::MethodNotFound => near_primitives::errors::MethodResolveError::MethodNotFound,
-            Self::MethodInvalidSignature => {
-                near_primitives::errors::MethodResolveError::MethodInvalidSignature
-            }
+            Self::MethodEmptyName => MethodResolveError::MethodEmptyName,
+            Self::MethodNotFound => MethodResolveError::MethodNotFound,
+            Self::MethodInvalidSignature => MethodResolveError::MethodInvalidSignature,
         }
     }
 }
@@ -982,19 +948,15 @@ impl Converter<MethodResolveError> for near_primitives_crates_io::errors::Method
 impl Converter<PrepareError> for near_primitives_crates_io::errors::PrepareError {
     fn convert(self) -> PrepareError {
         match self {
-            Self::Serialization => near_primitives::errors::PrepareError::Serialization,
-            Self::Deserialization => near_primitives::errors::PrepareError::Deserialization,
-            Self::InternalMemoryDeclared => {
-                near_primitives::errors::PrepareError::InternalMemoryDeclared
-            }
-            Self::GasInstrumentation => near_primitives::errors::PrepareError::GasInstrumentation,
-            Self::StackHeightInstrumentation => {
-                near_primitives::errors::PrepareError::StackHeightInstrumentation
-            }
-            Self::Instantiate => near_primitives::errors::PrepareError::Instantiate,
-            Self::Memory => near_primitives::errors::PrepareError::Memory,
-            Self::TooManyFunctions => near_primitives::errors::PrepareError::TooManyFunctions,
-            Self::TooManyLocals => near_primitives::errors::PrepareError::TooManyLocals,
+            Self::Serialization => PrepareError::Serialization,
+            Self::Deserialization => PrepareError::Deserialization,
+            Self::InternalMemoryDeclared => PrepareError::InternalMemoryDeclared,
+            Self::GasInstrumentation => PrepareError::GasInstrumentation,
+            Self::StackHeightInstrumentation => PrepareError::StackHeightInstrumentation,
+            Self::Instantiate => PrepareError::Instantiate,
+            Self::Memory => PrepareError::Memory,
+            Self::TooManyFunctions => PrepareError::TooManyFunctions,
+            Self::TooManyLocals => PrepareError::TooManyLocals,
         }
     }
 }
@@ -1002,19 +964,15 @@ impl Converter<PrepareError> for near_primitives_crates_io::errors::PrepareError
 impl Converter<WasmTrap> for near_primitives_crates_io::errors::WasmTrap {
     fn convert(self) -> WasmTrap {
         match self {
-            Self::Unreachable => near_primitives::errors::WasmTrap::Unreachable,
-            Self::IncorrectCallIndirectSignature => {
-                near_primitives::errors::WasmTrap::IncorrectCallIndirectSignature
-            }
-            Self::MemoryOutOfBounds => near_primitives::errors::WasmTrap::MemoryOutOfBounds,
-            Self::CallIndirectOOB => near_primitives::errors::WasmTrap::CallIndirectOOB,
-            Self::IllegalArithmetic => near_primitives::errors::WasmTrap::IllegalArithmetic,
-            Self::MisalignedAtomicAccess => {
-                near_primitives::errors::WasmTrap::MisalignedAtomicAccess
-            }
-            Self::IndirectCallToNull => near_primitives::errors::WasmTrap::IndirectCallToNull,
-            Self::StackOverflow => near_primitives::errors::WasmTrap::StackOverflow,
-            Self::GenericTrap => near_primitives::errors::WasmTrap::GenericTrap,
+            Self::Unreachable => WasmTrap::Unreachable,
+            Self::IncorrectCallIndirectSignature => WasmTrap::IncorrectCallIndirectSignature,
+            Self::MemoryOutOfBounds => WasmTrap::MemoryOutOfBounds,
+            Self::CallIndirectOOB => WasmTrap::CallIndirectOOB,
+            Self::IllegalArithmetic => WasmTrap::IllegalArithmetic,
+            Self::MisalignedAtomicAccess => WasmTrap::MisalignedAtomicAccess,
+            Self::IndirectCallToNull => WasmTrap::IndirectCallToNull,
+            Self::StackOverflow => WasmTrap::StackOverflow,
+            Self::GenericTrap => WasmTrap::GenericTrap,
         }
     }
 }
@@ -1022,93 +980,71 @@ impl Converter<WasmTrap> for near_primitives_crates_io::errors::WasmTrap {
 impl Converter<HostError> for near_primitives_crates_io::errors::HostError {
     fn convert(self) -> HostError {
         match self {
-            Self::BadUTF16 => near_primitives::errors::HostError::BadUTF16,
-            Self::BadUTF8 => near_primitives::errors::HostError::BadUTF8,
-            Self::GasExceeded => near_primitives::errors::HostError::GasExceeded,
-            Self::GasLimitExceeded => near_primitives::errors::HostError::GasLimitExceeded,
-            Self::BalanceExceeded => near_primitives::errors::HostError::BalanceExceeded,
-            Self::EmptyMethodName => near_primitives::errors::HostError::EmptyMethodName,
-            Self::GuestPanic { panic_msg } => {
-                near_primitives::errors::HostError::GuestPanic { panic_msg }
-            }
-            Self::IntegerOverflow => near_primitives::errors::HostError::IntegerOverflow,
+            Self::BadUTF16 => HostError::BadUTF16,
+            Self::BadUTF8 => HostError::BadUTF8,
+            Self::GasExceeded => HostError::GasExceeded,
+            Self::GasLimitExceeded => HostError::GasLimitExceeded,
+            Self::BalanceExceeded => HostError::BalanceExceeded,
+            Self::EmptyMethodName => HostError::EmptyMethodName,
+            Self::GuestPanic { panic_msg } => HostError::GuestPanic { panic_msg },
+            Self::IntegerOverflow => HostError::IntegerOverflow,
             Self::InvalidPromiseIndex { promise_idx } => {
-                near_primitives::errors::HostError::InvalidPromiseIndex { promise_idx }
+                HostError::InvalidPromiseIndex { promise_idx }
             }
-            Self::CannotAppendActionToJointPromise => {
-                near_primitives::errors::HostError::CannotAppendActionToJointPromise
-            }
-            Self::CannotReturnJointPromise => {
-                near_primitives::errors::HostError::CannotReturnJointPromise
-            }
+            Self::CannotAppendActionToJointPromise => HostError::CannotAppendActionToJointPromise,
+            Self::CannotReturnJointPromise => HostError::CannotReturnJointPromise,
             Self::InvalidPromiseResultIndex { result_idx } => {
-                near_primitives::errors::HostError::InvalidPromiseResultIndex { result_idx }
+                HostError::InvalidPromiseResultIndex { result_idx }
             }
-            Self::InvalidRegisterId { register_id } => {
-                near_primitives::errors::HostError::InvalidRegisterId { register_id }
-            }
+            Self::InvalidRegisterId { register_id } => HostError::InvalidRegisterId { register_id },
             Self::IteratorWasInvalidated { iterator_index } => {
-                near_primitives::errors::HostError::IteratorWasInvalidated { iterator_index }
+                HostError::IteratorWasInvalidated { iterator_index }
             }
-            Self::MemoryAccessViolation => {
-                near_primitives::errors::HostError::MemoryAccessViolation
-            }
+            Self::MemoryAccessViolation => HostError::MemoryAccessViolation,
             Self::InvalidReceiptIndex { receipt_index } => {
-                near_primitives::errors::HostError::InvalidReceiptIndex { receipt_index }
+                HostError::InvalidReceiptIndex { receipt_index }
             }
             Self::InvalidIteratorIndex { iterator_index } => {
-                near_primitives::errors::HostError::InvalidIteratorIndex { iterator_index }
+                HostError::InvalidIteratorIndex { iterator_index }
             }
-            Self::InvalidAccountId => near_primitives::errors::HostError::InvalidAccountId,
-            Self::InvalidMethodName => near_primitives::errors::HostError::InvalidMethodName,
-            Self::InvalidPublicKey => near_primitives::errors::HostError::InvalidPublicKey,
-            Self::ProhibitedInView { method_name } => {
-                near_primitives::errors::HostError::ProhibitedInView { method_name }
-            }
-            Self::NumberOfLogsExceeded { limit } => {
-                near_primitives::errors::HostError::NumberOfLogsExceeded { limit }
-            }
+            Self::InvalidAccountId => HostError::InvalidAccountId,
+            Self::InvalidMethodName => HostError::InvalidMethodName,
+            Self::InvalidPublicKey => HostError::InvalidPublicKey,
+            Self::ProhibitedInView { method_name } => HostError::ProhibitedInView { method_name },
+            Self::NumberOfLogsExceeded { limit } => HostError::NumberOfLogsExceeded { limit },
             Self::KeyLengthExceeded { length, limit } => {
-                near_primitives::errors::HostError::KeyLengthExceeded { length, limit }
+                HostError::KeyLengthExceeded { length, limit }
             }
             Self::ValueLengthExceeded { length, limit } => {
-                near_primitives::errors::HostError::ValueLengthExceeded { length, limit }
+                HostError::ValueLengthExceeded { length, limit }
             }
             Self::TotalLogLengthExceeded { length, limit } => {
-                near_primitives::errors::HostError::TotalLogLengthExceeded { length, limit }
+                HostError::TotalLogLengthExceeded { length, limit }
             }
             Self::NumberPromisesExceeded {
                 number_of_promises,
                 limit,
-            } => near_primitives::errors::HostError::NumberPromisesExceeded {
+            } => HostError::NumberPromisesExceeded {
                 number_of_promises,
                 limit,
             },
             Self::NumberInputDataDependenciesExceeded {
                 number_of_input_data_dependencies,
                 limit,
-            } => near_primitives::errors::HostError::NumberInputDataDependenciesExceeded {
+            } => HostError::NumberInputDataDependenciesExceeded {
                 number_of_input_data_dependencies,
                 limit,
             },
             Self::ReturnedValueLengthExceeded { length, limit } => {
-                near_primitives::errors::HostError::ReturnedValueLengthExceeded { length, limit }
+                HostError::ReturnedValueLengthExceeded { length, limit }
             }
             Self::ContractSizeExceeded { size, limit } => {
-                near_primitives::errors::HostError::ContractSizeExceeded { size, limit }
+                HostError::ContractSizeExceeded { size, limit }
             }
-            Self::Deprecated { method_name } => {
-                near_primitives::errors::HostError::Deprecated { method_name }
-            }
-            Self::ECRecoverError { msg } => {
-                near_primitives::errors::HostError::ECRecoverError { msg }
-            }
-            Self::AltBn128InvalidInput { msg } => {
-                near_primitives::errors::HostError::AltBn128InvalidInput { msg }
-            }
-            Self::Ed25519VerifyInvalidInput { msg } => {
-                near_primitives::errors::HostError::Ed25519VerifyInvalidInput { msg }
-            }
+            Self::Deprecated { method_name } => HostError::Deprecated { method_name },
+            Self::ECRecoverError { msg } => HostError::ECRecoverError { msg },
+            Self::AltBn128InvalidInput { msg } => HostError::AltBn128InvalidInput { msg },
+            Self::Ed25519VerifyInvalidInput { msg } => HostError::Ed25519VerifyInvalidInput { msg },
         }
     }
 }
@@ -1118,31 +1054,33 @@ impl Converter<ReceiptValidationError>
 {
     fn convert(self) -> ReceiptValidationError {
         match self {
-                Self::InvalidPredecessorId { account_id } =>{
-                    near_primitives::errors::ReceiptValidationError::InvalidPredecessorId { account_id }
-                }
-                Self::InvalidReceiverId { account_id } =>{
-                    near_primitives::errors::ReceiptValidationError::InvalidReceiverId { account_id }
-                }
-                Self::InvalidSignerId { account_id } =>{
-                    near_primitives::errors::ReceiptValidationError::InvalidSignerId { account_id }
-                }
-                Self::InvalidDataReceiverId { account_id } =>{
-                    near_primitives::errors::ReceiptValidationError::InvalidDataReceiverId { account_id }
-                }
-                Self::ReturnedValueLengthExceeded { length, limit } =>{
-                    near_primitives::errors::ReceiptValidationError::ReturnedValueLengthExceeded { length, limit }
-                }
-                Self::NumberInputDataDependenciesExceeded { number_of_input_data_dependencies, limit } =>{
-                    near_primitives::errors::ReceiptValidationError::NumberInputDataDependenciesExceeded { number_of_input_data_dependencies, limit }
-                }
-                Self::ActionsValidation(e) =>{
-                    near_primitives::errors::ReceiptValidationError::ActionsValidation(e.convert())
-                }
-                Self::ReceiptSizeExceeded { size, limit } =>{
-                    near_primitives::errors::ReceiptValidationError::ReceiptSizeExceeded { size, limit }
-                }
+            Self::InvalidPredecessorId { account_id } => {
+                ReceiptValidationError::InvalidPredecessorId { account_id }
             }
+            Self::InvalidReceiverId { account_id } => {
+                ReceiptValidationError::InvalidReceiverId { account_id }
+            }
+            Self::InvalidSignerId { account_id } => {
+                ReceiptValidationError::InvalidSignerId { account_id }
+            }
+            Self::InvalidDataReceiverId { account_id } => {
+                ReceiptValidationError::InvalidDataReceiverId { account_id }
+            }
+            Self::ReturnedValueLengthExceeded { length, limit } => {
+                ReceiptValidationError::ReturnedValueLengthExceeded { length, limit }
+            }
+            Self::NumberInputDataDependenciesExceeded {
+                number_of_input_data_dependencies,
+                limit,
+            } => ReceiptValidationError::NumberInputDataDependenciesExceeded {
+                number_of_input_data_dependencies,
+                limit,
+            },
+            Self::ActionsValidation(e) => ReceiptValidationError::ActionsValidation(e.convert()),
+            Self::ReceiptSizeExceeded { size, limit } => {
+                ReceiptValidationError::ReceiptSizeExceeded { size, limit }
+            }
+        }
     }
 }
 
@@ -1151,62 +1089,82 @@ impl Converter<ActionsValidationError>
 {
     fn convert(self) -> ActionsValidationError {
         match self {
-                Self::DeleteActionMustBeFinal =>
-                    near_primitives::errors::ActionsValidationError::DeleteActionMustBeFinal,
-                Self::TotalPrepaidGasExceeded { total_prepaid_gas, limit } =>
-                    near_primitives::errors::ActionsValidationError::TotalPrepaidGasExceeded { total_prepaid_gas, limit },
-                Self::TotalNumberOfActionsExceeded { total_number_of_actions, limit } =>
-                    near_primitives::errors::ActionsValidationError::TotalNumberOfActionsExceeded { total_number_of_actions, limit },
-                Self::AddKeyMethodNamesNumberOfBytesExceeded { total_number_of_bytes, limit } =>
-                    near_primitives::errors::ActionsValidationError::AddKeyMethodNamesNumberOfBytesExceeded { total_number_of_bytes, limit },
-                Self::AddKeyMethodNameLengthExceeded { length, limit } =>
-                    near_primitives::errors::ActionsValidationError::AddKeyMethodNameLengthExceeded { length, limit },
-                Self::IntegerOverflow =>
-                    near_primitives::errors::ActionsValidationError::IntegerOverflow,
-                Self::InvalidAccountId { account_id } =>
-                    near_primitives::errors::ActionsValidationError::InvalidAccountId { account_id },
-                Self::ContractSizeExceeded { size, limit } =>
-                    near_primitives::errors::ActionsValidationError::ContractSizeExceeded { size, limit },
-                Self::FunctionCallMethodNameLengthExceeded { length, limit } =>
-                    near_primitives::errors::ActionsValidationError::FunctionCallMethodNameLengthExceeded { length, limit },
-                Self::FunctionCallArgumentsLengthExceeded { length, limit } =>
-                    near_primitives::errors::ActionsValidationError::FunctionCallArgumentsLengthExceeded { length, limit },
-                Self::UnsuitableStakingKey { public_key } =>
-                    near_primitives::errors::ActionsValidationError::UnsuitableStakingKey { public_key: Box::new(public_key.convert()) },
-                Self::FunctionCallZeroAttachedGas =>
-                    near_primitives::errors::ActionsValidationError::FunctionCallZeroAttachedGas,
-                Self::DelegateActionMustBeOnlyOne =>
-                    near_primitives::errors::ActionsValidationError::DelegateActionMustBeOnlyOne,
-                Self::UnsupportedProtocolFeature { protocol_feature, version } =>
-                    near_primitives::errors::ActionsValidationError::UnsupportedProtocolFeature { protocol_feature, version },
+            Self::DeleteActionMustBeFinal => ActionsValidationError::DeleteActionMustBeFinal,
+            Self::TotalPrepaidGasExceeded {
+                total_prepaid_gas,
+                limit,
+            } => ActionsValidationError::TotalPrepaidGasExceeded {
+                total_prepaid_gas,
+                limit,
+            },
+            Self::TotalNumberOfActionsExceeded {
+                total_number_of_actions,
+                limit,
+            } => ActionsValidationError::TotalNumberOfActionsExceeded {
+                total_number_of_actions,
+                limit,
+            },
+            Self::AddKeyMethodNamesNumberOfBytesExceeded {
+                total_number_of_bytes,
+                limit,
+            } => ActionsValidationError::AddKeyMethodNamesNumberOfBytesExceeded {
+                total_number_of_bytes,
+                limit,
+            },
+            Self::AddKeyMethodNameLengthExceeded { length, limit } => {
+                ActionsValidationError::AddKeyMethodNameLengthExceeded { length, limit }
             }
+            Self::IntegerOverflow => ActionsValidationError::IntegerOverflow,
+            Self::InvalidAccountId { account_id } => {
+                ActionsValidationError::InvalidAccountId { account_id }
+            }
+            Self::ContractSizeExceeded { size, limit } => {
+                ActionsValidationError::ContractSizeExceeded { size, limit }
+            }
+            Self::FunctionCallMethodNameLengthExceeded { length, limit } => {
+                ActionsValidationError::FunctionCallMethodNameLengthExceeded { length, limit }
+            }
+            Self::FunctionCallArgumentsLengthExceeded { length, limit } => {
+                ActionsValidationError::FunctionCallArgumentsLengthExceeded { length, limit }
+            }
+            Self::UnsuitableStakingKey { public_key } => {
+                ActionsValidationError::UnsuitableStakingKey {
+                    public_key: Box::new(public_key.convert()),
+                }
+            }
+            Self::FunctionCallZeroAttachedGas => {
+                ActionsValidationError::FunctionCallZeroAttachedGas
+            }
+            Self::DelegateActionMustBeOnlyOne => {
+                ActionsValidationError::DelegateActionMustBeOnlyOne
+            }
+            Self::UnsupportedProtocolFeature {
+                protocol_feature,
+                version,
+            } => ActionsValidationError::UnsupportedProtocolFeature {
+                protocol_feature,
+                version,
+            },
+        }
     }
 }
 
 impl Converter<StorageError> for near_primitives_crates_io::errors::StorageError {
     fn convert(self) -> StorageError {
         match self {
-            Self::StorageInternalError => {
-                near_primitives::errors::StorageError::StorageInternalError
-            }
+            Self::StorageInternalError => StorageError::StorageInternalError,
             Self::MissingTrieValue(missing_trie_value_context, crypto_hash) => {
-                near_primitives::errors::StorageError::MissingTrieValue(
+                StorageError::MissingTrieValue(
                     missing_trie_value_context.convert(),
                     crypto_hash.convert(),
                 )
             }
-            Self::UnexpectedTrieValue => near_primitives::errors::StorageError::UnexpectedTrieValue,
-            Self::StorageInconsistentState(s) => {
-                near_primitives::errors::StorageError::StorageInconsistentState(s)
-            }
-            Self::FlatStorageBlockNotSupported(s) => {
-                near_primitives::errors::StorageError::FlatStorageBlockNotSupported(s)
-            }
-            Self::MemTrieLoadingError(s) => {
-                near_primitives::errors::StorageError::MemTrieLoadingError(s)
-            }
+            Self::UnexpectedTrieValue => StorageError::UnexpectedTrieValue,
+            Self::StorageInconsistentState(s) => StorageError::StorageInconsistentState(s),
+            Self::FlatStorageBlockNotSupported(s) => StorageError::FlatStorageBlockNotSupported(s),
+            Self::MemTrieLoadingError(s) => StorageError::MemTrieLoadingError(s),
             Self::FlatStorageReshardingAlreadyInProgress => {
-                near_primitives::errors::StorageError::FlatStorageReshardingAlreadyInProgress
+                StorageError::FlatStorageReshardingAlreadyInProgress
             }
         }
     }
@@ -1217,14 +1175,10 @@ impl Converter<MissingTrieValueContext>
 {
     fn convert(self) -> MissingTrieValueContext {
         match self {
-            Self::TrieIterator => near_primitives::errors::MissingTrieValueContext::TrieIterator,
-            Self::TriePrefetchingStorage => {
-                near_primitives::errors::MissingTrieValueContext::TriePrefetchingStorage
-            }
-            Self::TrieMemoryPartialStorage => {
-                near_primitives::errors::MissingTrieValueContext::TrieMemoryPartialStorage
-            }
-            Self::TrieStorage => near_primitives::errors::MissingTrieValueContext::TrieStorage,
+            Self::TrieIterator => MissingTrieValueContext::TrieIterator,
+            Self::TriePrefetchingStorage => MissingTrieValueContext::TriePrefetchingStorage,
+            Self::TrieMemoryPartialStorage => MissingTrieValueContext::TrieMemoryPartialStorage,
+            Self::TrieStorage => MissingTrieValueContext::TrieStorage,
         }
     }
 }
@@ -1235,37 +1189,33 @@ impl Converter<InvalidAccessKeyError> for near_primitives_crates_io::errors::Inv
             Self::AccessKeyNotFound {
                 account_id,
                 public_key,
-            } => near_primitives::errors::InvalidAccessKeyError::AccessKeyNotFound {
+            } => InvalidAccessKeyError::AccessKeyNotFound {
                 account_id,
                 public_key: Box::new(public_key.convert()),
             },
             Self::ReceiverMismatch {
                 tx_receiver,
                 ak_receiver,
-            } => near_primitives::errors::InvalidAccessKeyError::ReceiverMismatch {
+            } => InvalidAccessKeyError::ReceiverMismatch {
                 tx_receiver,
                 ak_receiver,
             },
             Self::MethodNameMismatch { method_name } => {
-                near_primitives::errors::InvalidAccessKeyError::MethodNameMismatch { method_name }
+                InvalidAccessKeyError::MethodNameMismatch { method_name }
             }
-            Self::RequiresFullAccess => {
-                near_primitives::errors::InvalidAccessKeyError::RequiresFullAccess
-            }
+            Self::RequiresFullAccess => InvalidAccessKeyError::RequiresFullAccess,
             Self::NotEnoughAllowance {
                 account_id,
                 public_key,
                 allowance,
                 cost,
-            } => near_primitives::errors::InvalidAccessKeyError::NotEnoughAllowance {
+            } => InvalidAccessKeyError::NotEnoughAllowance {
                 account_id,
                 public_key: Box::new(public_key.convert()),
                 allowance,
                 cost,
             },
-            Self::DepositWithFunctionCall => {
-                near_primitives::errors::InvalidAccessKeyError::DepositWithFunctionCall
-            }
+            Self::DepositWithFunctionCall => InvalidAccessKeyError::DepositWithFunctionCall,
         }
     }
 }

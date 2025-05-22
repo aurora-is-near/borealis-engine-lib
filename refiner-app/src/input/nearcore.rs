@@ -39,7 +39,7 @@ pub fn get_nearcore_stream(
                             ())
                         )
                         .await
-                        .expect("Failed to send block to channel from nearcore stream");
+                        .expect("Failed to send block to the channel from nearcore stream");
                 }
                 _ = shutdown_rx.recv() => {
                     // Explicitly close the channel, so the tx side should stop sending blocks
