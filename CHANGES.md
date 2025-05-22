@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#226]
+
+[#226]: https://github.com/aurora-is-near/borealis-engine-lib/pull/226
+
 ## [0.30.4-2.6.2] 2025-05-10
 
 ### Changes
