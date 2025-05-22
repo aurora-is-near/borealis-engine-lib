@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#226]
 
 [#226]: https://github.com/aurora-is-near/borealis-engine-lib/pull/226
+## [0.30.4-2.6.3] 2025-05-16
+
+### Changes
+
+* chore: bump nearcore to 2.6.3 in [#225]
+
+[#225]: https://github.com/aurora-is-near/borealis-engine-lib/pull/225
+
+## [0.30.4-2.6.3-rc.2] 2025-05-15
+
+### Changes
+
+* chore: bump nearcore to 2.6.3-rc.2 in [#224]
+
+[#224]: https://github.com/aurora-is-near/borealis-engine-lib/pull/224
+
+## [0.30.4-2.6.3-rc.1] 2025-05-14
+
+### Changes
+
+* chore: bump nearcore to 2.6.3-rc.1 in [#223]
+
+[#223]: https://github.com/aurora-is-near/borealis-engine-lib/pull/223
 
 ## [0.30.4-2.6.2] 2025-05-10
 
@@ -245,7 +268,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.4-2.6.2...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.4-2.6.3...main
+[0.30.4-2.6.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.3-rc.2...0.30.4-2.6.3
+[0.30.4-2.6.3-rc.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.3-rc.1...0.30.4-2.6.3-rc.2
+[0.30.4-2.6.3-rc.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.2...0.30.4-2.6.3-rc.1
 [0.30.4-2.6.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.2-rc.1...0.30.4-2.6.2
 [0.30.4-2.6.2-rc.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.1-rc.1...0.30.4-2.6.2-rc.1
 [0.30.4-2.6.1-rc.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.1...0.30.4-2.6.1-rc.1
