@@ -3,7 +3,6 @@ members = [
     "engine",
     "refiner-lib",
     "refiner-types",
-    "refiner-types-crates-io",
     "refiner-app",
     "etc/integration-tests",
 ]
@@ -30,7 +29,6 @@ engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-en
 engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["impl-serde"] }
 aurora-refiner-lib = { path = "refiner-lib" }
 aurora-refiner-types = { path = "refiner-types" }
-refiner-types-crates-io = { path = "refiner-types-crates-io" }
 aurora-standalone-engine = { path = "engine" }
 borsh = { version = "1", features = ["borsh-derive"] }
 byteorder = "1"
@@ -46,6 +44,7 @@ near-indexer = { git = "https://github.com/near/nearcore", tag = "2.6.2" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "2.6.2" }
 near_crypto_crates_io = { version = "0.30.1", package = "near-crypto" }
 near_primitives_crates_io = { version = "0.30.1", package = "near-primitives" }
+near_primitives_core_crates_io = { version = "0.30.1", package = "near-primitives-core" }
 near-lake-framework = "0.7"
 prometheus = "0.13"
 rlp = "0.6"

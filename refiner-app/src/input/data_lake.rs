@@ -38,7 +38,7 @@ pub fn get_near_data_lake_stream(
             tokio::select! {
                 Some(block) = stream.recv() => {
                     sender
-                        .send(BlockWithMetadata::new(crate::conversion::conversion::data_lake::convert(block), ()))
+                        .send(BlockWithMetadata::new(crate::conversion::data_lake::convert(block), ()))
                         .await
                         .expect("Failed to send block to channel from data lake stream");
                 }

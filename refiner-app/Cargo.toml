@@ -17,7 +17,6 @@ aurora-refiner-types.workspace = true
 aurora-standalone-engine.workspace = true
 engine-standalone-storage.workspace = true
 engine-standalone-tracing.workspace = true
-refiner-types-crates-io.workspace = true
 
 actix.workspace = true
 anyhow.workspace = true

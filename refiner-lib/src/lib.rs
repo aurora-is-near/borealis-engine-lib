@@ -3,7 +3,6 @@
 pub mod hashchain;
 mod metrics;
 pub mod near_stream;
-pub mod refiner_with_trait;
 mod refiner;
 mod refiner_inner;
 pub mod storage;
