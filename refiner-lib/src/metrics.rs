@@ -63,6 +63,10 @@ lazy_static! {
         "refiner_tx_type_deploy_erc20_token",
         "Number of transactions of type: deploy_erc20_token"
     );
+    pub static ref TRANSACTION_TYPE_DEPLOY_ERC20_CALLBACK_TOKEN: IntCounter = counter(
+        "refiner_tx_type_deploy_erc20_callback_token",
+        "Number of transactions of type: deploy_erc20_callback_token"
+    );
     pub static ref TRANSACTION_TYPE_FT_ON_TRANSFER: IntCounter = counter(
         "refiner_tx_type_ft_on_transfer",
         "Number of transactions of type: ft_on_transfer"
@@ -271,6 +275,9 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::DeployErc20 => {
             TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
+        }
+        TransactionKindTag::DeployErc20Callback => {
+            TRANSACTION_TYPE_DEPLOY_ERC20_CALLBACK_TOKEN.inc();
         }
         TransactionKindTag::FtOnTransfer => {
             TRANSACTION_TYPE_FT_ON_TRANSFER.inc();

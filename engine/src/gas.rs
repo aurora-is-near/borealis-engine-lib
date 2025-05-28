@@ -9,8 +9,8 @@ use aurora_engine_types::{
     H160, H256, U256, storage,
     types::{Address, NearGas, Wei},
 };
-use engine_standalone_storage::{Storage, engine_state::EngineStorageValue};
-use std::collections::HashMap;
+use engine_standalone_storage::Storage;
+use std::{borrow::Cow, collections::HashMap};
 
 fn parse_hex_int(
     body_obj: &serde_json::Map<String, serde_json::Value>,
@@ -368,8 +368,8 @@ pub struct EngineStateOverride<'state, I> {
     pub state_override: &'state HashMap<H160, HashMap<H256, H256>>,
 }
 
-impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for EngineStateOverride<'_, I> {
-    type StorageValue = EngineStorageValue<'db>;
+impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for EngineStateOverride<'_, I> {
+    type StorageValue = Cow<'db, [u8]>;
 
     fn read_input(&self) -> Self::StorageValue {
         self.inner.read_input()
@@ -387,7 +387,7 @@ impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for EngineStateOverr
                 |state_override| {
                     state_override
                         .get(&index)
-                        .map(|value| EngineStorageValue::Vec(value.as_bytes().to_vec()))
+                        .map(|value| Cow::Owned(value.as_bytes().to_vec()))
                 },
             ),
         }

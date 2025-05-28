@@ -1,10 +1,9 @@
 use crate::legacy::decode_submit_result;
 use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
 use crate::utils::{TxMetadata, as_h256, keccak256};
-use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
 use aurora_engine::engine::{GetErc20FromNep141Error, create_legacy_address};
 use aurora_engine::parameters::{
-    CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
+    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
 };
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
@@ -13,7 +12,9 @@ use aurora_engine_transactions::{
 };
 use aurora_engine_types::account_id::ParseAccountError;
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::parameters::connector::Erc20Metadata;
+use aurora_engine_types::parameters::connector::{
+    Erc20Metadata, FtOnTransferArgs, FtTransferMessageData,
+};
 use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -986,7 +987,7 @@ fn build_transaction(
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
-                    if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                    if let Ok(args) = serde_json::from_slice::<FtOnTransferArgs>(&raw_input) {
                         let token_mint_kind =
                             get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
                         // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
@@ -1018,7 +1019,10 @@ fn build_transaction(
                             // For ERC-20 transactions, encode the amount as part of the input, not value
                             TokenMintKind::Erc20 => (
                                 Wei::zero(),
-                                aurora_engine::engine::setup_receive_erc20_tokens_input(&args, &to),
+                                aurora_engine::engine::setup_receive_erc20_tokens_input(
+                                    &to,
+                                    args.amount.as_u128(),
+                                ),
                             ),
                         };
 
@@ -1149,13 +1153,13 @@ fn build_transaction(
 fn determine_ft_on_transfer_recipient(
     token_mint_kind: &TokenMintKind,
     execution_outcome: &ExecutionOutcomeWithReceipt,
-    args: &NEP141FtOnTransferArgs,
+    args: &FtOnTransferArgs,
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
 ) -> Address {
     match token_mint_kind {
-        TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
+        TokenMintKind::Eth => FtTransferMessageData::try_from(args.msg.as_str())
             .map(|msg_data| msg_data.recipient)
             .unwrap_or_else(|err| {
                 tracing::error!(
@@ -1186,10 +1190,10 @@ fn determine_ft_on_transfer_recipient(
                     },
                 )
                 .result
-                .and_then(|bytes| {
-                    Address::try_from_slice(&bytes)
+                .and_then(|address| {
+                    Address::try_from_slice(address.as_bytes())
                         .map_err(|err| {
-                            tracing::error!("Error parsing ERC20 address: {bytes:?}. Error: {err}");
+                            tracing::error!("Error parsing ERC20 address: {address:?}. Error: {err}");
                             GetErc20FromNep141Error::InvalidAddress
                         })
                 })

@@ -1,6 +1,6 @@
 use aurora_engine_sdk::io::IO;
-use engine_standalone_storage::{Diff, engine_state::EngineStorageValue};
-use std::cell::RefCell;
+use engine_standalone_storage::Diff;
+use std::{borrow::Cow, cell::RefCell};
 
 #[derive(Clone, Copy)]
 pub struct BatchIO<'local, I> {
@@ -9,8 +9,8 @@ pub struct BatchIO<'local, I> {
     pub current_diff: &'local RefCell<Diff>,
 }
 
-impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for BatchIO<'_, I> {
-    type StorageValue = EngineStorageValue<'db>;
+impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for BatchIO<'_, I> {
+    type StorageValue = Cow<'db, [u8]>;
 
     fn read_input(&self) -> Self::StorageValue {
         self.fallback.read_input()
@@ -27,9 +27,7 @@ impl<'db, I: IO<StorageValue = EngineStorageValue<'db>>> IO for BatchIO<'_, I> {
             .get(key)
             .or_else(|| self.cumulative_diff.get(key))
         {
-            return diff
-                .value()
-                .map(|bytes| EngineStorageValue::Vec(bytes.to_vec()));
+            return diff.value().map(|bytes| Cow::Owned(bytes.to_vec()));
         }
         self.fallback.read_storage(key)
     }
