@@ -482,7 +482,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.9.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -504,7 +504,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "hex",
  "num",
@@ -524,7 +524,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -539,7 +539,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-types",
  "base64 0.22.1",
@@ -552,7 +552,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -564,7 +564,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "2.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "borsh 1.5.7",
  "bs58 0.5.1",
@@ -700,6 +700,8 @@ dependencies = [
  "engine-standalone-tracing",
  "hex",
  "lru 0.12.5",
+ "near-jsonrpc-client",
+ "near-jsonrpc-primitives 0.29.2",
  "near-parameters 2.6.3",
  "near-primitives 2.6.3",
  "near-primitives-core 2.6.3",
@@ -2729,7 +2731,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2755,7 +2757,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=8b1adb02b10cc9f95991c04edc8a3fc0ed91545c#8b1adb02b10cc9f95991c04edc8a3fc0ed91545c"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=aad12c4fd51cbebde9484d33b3c98acbfb8b5925#aad12c4fd51cbebde9484d33b3c98acbfb8b5925"
 dependencies = [
  "aurora-engine-types",
  "aurora-evm",
@@ -4520,7 +4522,7 @@ dependencies = [
  "more-asserts",
  "near-async",
  "near-cache",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chain-primitives",
  "near-client-primitives",
  "near-crypto 2.6.3",
@@ -4548,6 +4550,30 @@ dependencies = [
  "thiserror 2.0.12",
  "time",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "near-chain-configs"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82d98e77d25ba905d16e91179a33e215da3226d62fadf73c471ef88a9b9d58c2"
+dependencies = [
+ "anyhow",
+ "bytesize",
+ "chrono",
+ "derive_more 1.0.0",
+ "near-config-utils 0.29.2",
+ "near-crypto 0.29.2",
+ "near-parameters 0.29.2",
+ "near-primitives 0.29.2",
+ "near-time 0.29.2",
+ "num-rational 0.3.2",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "smart-default",
+ "time",
  "tracing",
 ]
 
@@ -4602,7 +4628,7 @@ dependencies = [
  "lru 0.12.5",
  "near-async",
  "near-chain",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chunks-primitives",
  "near-crypto 2.6.3",
  "near-epoch-manager",
@@ -4649,7 +4675,7 @@ dependencies = [
  "near-async",
  "near-cache",
  "near-chain",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chain-primitives",
  "near-chunks",
  "near-client-primitives",
@@ -4696,7 +4722,7 @@ source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a2
 dependencies = [
  "actix",
  "chrono",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chain-primitives",
  "near-chunks-primitives",
  "near-crypto 2.6.3",
@@ -4707,6 +4733,18 @@ dependencies = [
  "strum 0.24.1",
  "thiserror 2.0.12",
  "time",
+ "tracing",
+]
+
+[[package]]
+name = "near-config-utils"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b992cca8d3b00f34b37f638c9632a97b734656151294e7a29b60b93b8a92948"
+dependencies = [
+ "anyhow",
+ "json_comments",
+ "thiserror 2.0.12",
  "tracing",
 ]
 
@@ -4731,6 +4769,32 @@ dependencies = [
  "json_comments",
  "thiserror 2.0.12",
  "tracing",
+]
+
+[[package]]
+name = "near-crypto"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "938773caf4ce15aa435d422fd5823e5302a260c93dbd070281eecae74f1a2559"
+dependencies = [
+ "blake2",
+ "borsh 1.5.7",
+ "bs58 0.4.0",
+ "curve25519-dalek",
+ "derive_more 1.0.0",
+ "ed25519-dalek",
+ "hex",
+ "near-account-id",
+ "near-config-utils 0.29.2",
+ "near-schema-checker-lib 0.29.2",
+ "near-stdx 0.29.2",
+ "primitive-types 0.10.1",
+ "rand 0.8.5",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "subtle",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4790,7 +4854,7 @@ version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
 dependencies = [
  "anyhow",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-crypto 2.6.3",
  "near-o11y",
  "near-primitives 2.6.3",
@@ -4811,7 +4875,7 @@ dependencies = [
  "borsh 1.5.7",
  "itertools 0.12.1",
  "near-cache",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chain-primitives",
  "near-crypto 2.6.3",
  "near-o11y",
@@ -4827,6 +4891,15 @@ dependencies = [
  "serde_json",
  "smart-default",
  "tracing",
+]
+
+[[package]]
+name = "near-fmt"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0599477a38b5596c283212d4db8eb11c6cc33fb43d02002db9cd3f141ba735f1"
+dependencies = [
+ "near-primitives-core 0.29.2",
 ]
 
 [[package]]
@@ -4854,7 +4927,7 @@ dependencies = [
  "actix",
  "anyhow",
  "futures",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-client",
  "near-config-utils 2.6.3",
  "near-crypto 2.6.3",
@@ -4909,11 +4982,11 @@ dependencies = [
  "futures",
  "hex",
  "near-async",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-client",
  "near-client-primitives",
  "near-jsonrpc-client-internal",
- "near-jsonrpc-primitives",
+ "near-jsonrpc-primitives 2.6.3",
  "near-network",
  "near-o11y",
  "near-primitives 2.6.3",
@@ -4926,6 +4999,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "near-jsonrpc-client"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00b8a74b8311731d9ed1a995549fc7ec1d103d5c8c7eaab35e240f894343b0b4"
+dependencies = [
+ "borsh 1.5.7",
+ "lazy_static",
+ "log",
+ "near-chain-configs 0.29.2",
+ "near-crypto 0.30.1",
+ "near-jsonrpc-primitives 0.29.2",
+ "near-primitives 0.30.1",
+ "reqwest 0.12.15",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "near-jsonrpc-client-internal"
 version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
@@ -4933,10 +5025,27 @@ dependencies = [
  "actix-http",
  "awc",
  "futures",
- "near-jsonrpc-primitives",
+ "near-jsonrpc-primitives 2.6.3",
  "near-primitives 2.6.3",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "near-jsonrpc-primitives"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f003113d08e1f0ab9e6335efb1f7167662954804274653904ef57a9b5f8e687"
+dependencies = [
+ "arbitrary",
+ "near-chain-configs 0.29.2",
+ "near-crypto 0.29.2",
+ "near-primitives 0.29.2",
+ "near-schema-checker-lib 0.29.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "time",
 ]
 
 [[package]]
@@ -4945,7 +5054,7 @@ version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
 dependencies = [
  "arbitrary",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-client-primitives",
  "near-crypto 2.6.3",
  "near-primitives 2.6.3",
@@ -4988,7 +5097,7 @@ version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
 dependencies = [
  "near-account-id",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-primitives 2.6.3",
  "serde_json",
 ]
@@ -5015,7 +5124,7 @@ dependencies = [
  "itertools 0.12.1",
  "lru 0.12.5",
  "near-async",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-crypto 2.6.3",
  "near-fmt 2.6.3",
  "near-o11y",
@@ -5068,6 +5177,25 @@ dependencies = [
  "tracing-appender",
  "tracing-opentelemetry",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "near-parameters"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbfe696b28e2406001d4d5be14414a32c91f9c7202ae631367a6b22288ccad8d"
+dependencies = [
+ "borsh 1.5.7",
+ "enum-map",
+ "near-account-id",
+ "near-primitives-core 0.29.2",
+ "near-schema-checker-lib 0.29.2",
+ "num-rational 0.3.2",
+ "serde",
+ "serde_repr",
+ "serde_yaml",
+ "strum 0.24.1",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -5141,6 +5269,48 @@ dependencies = [
  "near-o11y",
  "near-primitives 2.6.3",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "near-primitives"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd5009712faf116cdadda4c1636daf04f0f53a5537555f38ded2736f2d9e0cac"
+dependencies = [
+ "arbitrary",
+ "base64 0.21.7",
+ "bitvec 1.0.1",
+ "borsh 1.5.7",
+ "bytes",
+ "bytesize",
+ "cfg-if 1.0.0",
+ "chrono",
+ "derive_more 1.0.0",
+ "easy-ext",
+ "enum-map",
+ "hex",
+ "itertools 0.12.1",
+ "near-crypto 0.29.2",
+ "near-fmt 0.29.2",
+ "near-parameters 0.29.2",
+ "near-primitives-core 0.29.2",
+ "near-schema-checker-lib 0.29.2",
+ "near-stdx 0.29.2",
+ "near-time 0.29.2",
+ "num-rational 0.3.2",
+ "ordered-float",
+ "primitive-types 0.10.1",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sha3",
+ "smart-default",
+ "strum 0.24.1",
+ "thiserror 2.0.12",
+ "tracing",
+ "zstd",
 ]
 
 [[package]]
@@ -5227,6 +5397,27 @@ dependencies = [
 
 [[package]]
 name = "near-primitives-core"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afc441b97a25a22b2344944962dba34bea9bfc732c6ce3a23728593e82166ae6"
+dependencies = [
+ "arbitrary",
+ "base64 0.21.7",
+ "borsh 1.5.7",
+ "bs58 0.4.0",
+ "derive_more 1.0.0",
+ "enum-map",
+ "near-account-id",
+ "near-schema-checker-lib 0.29.2",
+ "num-rational 0.3.2",
+ "serde",
+ "serde_repr",
+ "sha2 0.10.9",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "near-primitives-core"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "408abb7e360ae1353d5a3cde62b4a2f0abde96c9ff4045f23cabda15c22b6ec9"
@@ -5281,7 +5472,7 @@ dependencies = [
  "hex",
  "insta",
  "near-account-id",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-client",
  "near-client-primitives",
  "near-crypto 2.6.3",
@@ -5300,6 +5491,12 @@ dependencies = [
 
 [[package]]
 name = "near-schema-checker-core"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00d54cd2888814fc2398316ec6d870754d7dd08704233bda770a75360afc8a7b"
+
+[[package]]
+name = "near-schema-checker-core"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed1fbfbc3c53b00aa893f8cb64abc5c12601edb8cecb878baf6f8f00e3184d3d"
@@ -5308,6 +5505,16 @@ checksum = "ed1fbfbc3c53b00aa893f8cb64abc5c12601edb8cecb878baf6f8f00e3184d3d"
 name = "near-schema-checker-core"
 version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
+
+[[package]]
+name = "near-schema-checker-lib"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "311745157f685c26e05ca8532efbfcc09f63ab9fc7d94b824b2c75946ef37197"
+dependencies = [
+ "near-schema-checker-core 0.29.2",
+ "near-schema-checker-macro 0.29.2",
+]
 
 [[package]]
 name = "near-schema-checker-lib"
@@ -5330,6 +5537,12 @@ dependencies = [
 
 [[package]]
 name = "near-schema-checker-macro"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "515c63689e1e7940ac34629ad9d16ba8fd6bea58ad8ddbd4acf705d6149f3c77"
+
+[[package]]
+name = "near-schema-checker-macro"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d191936f902770069255b16c95d1fb8edd6f3c3817c9228933a20ec8466737a3"
@@ -5338,6 +5551,12 @@ checksum = "d191936f902770069255b16c95d1fb8edd6f3c3817c9228933a20ec8466737a3"
 name = "near-schema-checker-macro"
 version = "2.6.3"
 source = "git+https://github.com/near/nearcore?tag=2.6.3#680b27eb0105655345535a20623aaeb3b49b82e0"
+
+[[package]]
+name = "near-stdx"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bf9306662fe8ced267a85aa1d3fc9205f1968d88b9ddbb9a03c657da8457533"
 
 [[package]]
 name = "near-stdx"
@@ -5368,7 +5587,7 @@ dependencies = [
  "itertools 0.12.1",
  "itoa",
  "lru 0.12.5",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chain-primitives",
  "near-crypto 2.6.3",
  "near-fmt 2.6.3",
@@ -5414,6 +5633,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "near-time"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40a8ffbee0028f08220c46d864d81ac780f2805ab3156b044ee04a927005a84f"
+dependencies = [
+ "serde",
+ "time",
 ]
 
 [[package]]
@@ -5617,7 +5846,7 @@ dependencies = [
  "itertools 0.12.1",
  "near-async",
  "near-chain",
- "near-chain-configs",
+ "near-chain-configs 2.6.3",
  "near-chunks",
  "near-client",
  "near-client-primitives",
@@ -5626,7 +5855,7 @@ dependencies = [
  "near-dyn-configs",
  "near-epoch-manager",
  "near-jsonrpc",
- "near-jsonrpc-primitives",
+ "near-jsonrpc-primitives 2.6.3",
  "near-mainnet-res",
  "near-network",
  "near-o11y",

@@ -35,6 +35,8 @@ near-parameters.workspace = true
 near-primitives-core.workspace = true
 near-primitives.workspace = true
 near-vm-runner.workspace = true
+near-jsonrpc-client.workspace = true
+near-jsonrpc-primitives.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

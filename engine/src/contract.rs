@@ -2,6 +2,12 @@ use std::sync::Arc;
 
 use aurora_engine::contract_methods::ContractError;
 use engine_standalone_storage::native_ffi;
+use near_jsonrpc_client::{
+    JsonRpcClient, NEAR_TESTNET_RPC_URL,
+    errors::JsonRpcError,
+    methods::{RpcMethod, query::RpcQueryRequest},
+};
+use near_jsonrpc_primitives::types::query::QueryResponseKind;
 use near_primitives::types::AccountId;
 use near_vm_runner::{
     ContractCode,
@@ -11,6 +17,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum UpdateError {
+    #[error("failed to get aurora version: {0}")]
+    Rpc(#[from] JsonRpcError<<RpcQueryRequest as RpcMethod>::Error>),
     #[error("{0}")]
     Load(#[from] native_ffi::LibLoadingError),
     #[error("{0}")]
@@ -26,11 +34,32 @@ const LIB_SUFFIX: &str = "dylib";
 #[cfg(target_os = "linux")]
 const LIB_SUFFIX: &str = "so";
 
-pub fn load() -> Result<(), UpdateError> {
-    let version = "3.9.0";
-    let path = format!("libaurora_engine_native_{version}.{LIB_SUFFIX}");
-
-    native_ffi::load(path)?;
+pub async fn load(height: u64, mainnet: bool) -> Result<(), UpdateError> {
+    let url = if mainnet {
+        "https://archival-rpc.mainnet.near.org"
+    } else {
+        NEAR_TESTNET_RPC_URL
+    };
+    let client = JsonRpcClient::connect(url);
+    let request = serde_json::from_value::<RpcQueryRequest>(serde_json::json!({
+        "request_type": "call_function",
+        "block_id": height,
+        "account_id": "aurora",
+        "method_name": "get_version",
+        "args_base64": "",
+    }))
+    .expect("Format query request");
+    let result = client.call(request).await?;
+    match result.kind {
+        QueryResponseKind::CallResult(r) => {
+            let path = format!(
+                "libaurora_engine_native_{}.{LIB_SUFFIX}",
+                String::from_utf8(r.result).unwrap().trim_end()
+            );
+            native_ffi::load(path)?;
+        }
+        _ => panic!("wrong response"),
+    }
 
     Ok(())
 }
