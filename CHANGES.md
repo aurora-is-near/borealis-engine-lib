@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.5-2.6.3] 2025-06-03
+
 * fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#226]
 * fix: Add benchmarks for `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#227]
 
