@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Run rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Cargo Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -55,9 +55,9 @@ jobs:
             os: macos-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Cargo Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -77,14 +77,14 @@ jobs:
     runs-on: [ self-hosted, heavy ]
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Restore cache
         run: cache-util restore borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
       - name: Install Clang
         run: |
           apt-get update
           apt-get install -y clang
-      - name: Run tests
+      - name: Run integration tests
         env:
           CC: clang
           CXX: clang++
