@@ -68,6 +68,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
       - name: Check system resources
+        if: runner.os == 'Linux'
         run: |
           echo "=== System Information ==="
           free -h
@@ -80,6 +81,7 @@ jobs:
           command: test
           args: --no-run --workspace --exclude aurora-refiner-app-integration-tests
       - name: Check system resources (Before running tests)
+        if: runner.os == 'Linux'
         run: |
           echo "=== System Information (Before running tests) ==="
           free -h
