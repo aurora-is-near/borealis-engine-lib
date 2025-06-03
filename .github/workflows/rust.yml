@@ -45,6 +45,7 @@ jobs:
   test:
     name: ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       matrix:
         build: [ Linux, macOS ]
