@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      - name: Install dependencies
+        run: apt install -y libclang-dev
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -58,6 +60,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      - name: Install dependencies
+        if: ${{ matrix.build == 'Linux' }}
+        run: apt install -y libclang-dev
       - name: Cargo Cache
         uses: actions/cache@v4
         with:
@@ -81,18 +86,19 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-      - name: Restore cache
-        run: cache-util restore borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
-      - name: Install Clang
-        run: |
-          apt-get update
-          apt-get install -y clang
+      - name: Install dependencies
+        run: apt install -y libclang-dev
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.lock') }}
       - name: Run integration tests
-        #        env:
-        #          CC: clang
-        #          CXX: clang++
         run: |
           rustup target add wasm32-unknown-unknown
           cargo test -p aurora-refiner-app-integration-tests
-      - name: Save cache
-        run: cache-util msave borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
