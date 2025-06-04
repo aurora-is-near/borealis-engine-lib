@@ -16,9 +16,11 @@ pub async fn get_repository_root() -> anyhow::Result<PathBuf> {
         .await?;
 
     if !output.status.success() {
-        return Err(anyhow::Error::msg(
-            "Command `git rev-parse --show-toplevel` failed",
-        ));
+        anyhow::bail!(
+            "Command `git rev-parse --show-toplevel` failed: {}, {}",
+            String::from_utf8(output.stdout)?,
+            String::from_utf8(output.stderr)?,
+        );
     }
 
     let output = String::from_utf8(output.stdout)?;
