@@ -45,13 +45,12 @@ jobs:
   test:
     name: ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
     strategy:
       matrix:
         build: [ Linux, macOS ]
         include:
           - build: Linux
-            os: ubuntu-latest
+            os: github-hosted-heavy-runner
           - build: macOS
             os: macos-latest
     steps:
@@ -67,27 +66,16 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-      - name: System info - Pre test build
-        if: runner.os == 'Linux'
-        run: |
-          chmod +x .github/scripts/system-info.sh
-          .github/scripts/system-info.sh "Pre test build"
       - name: Build tests
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --no-run --workspace --exclude aurora-refiner-app-integration-tests
-      - name: System info - Test build failure
-        if: failure() && runner.os == 'Linux'
-        run: .github/scripts/system-info.sh "Test build failed"
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --workspace --exclude aurora-refiner-app-integration-tests
-      - name: System info - Post test run failure
-        if: failure() && runner.os == 'Linux'
-        run: .github/scripts/system-info.sh "Post test run failure"
 
   run-test:
     name: Run app test
