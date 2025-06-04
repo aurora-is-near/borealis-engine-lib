@@ -28,6 +28,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: apt install -y libclang-dev
       - name: Cargo Cache
         uses: actions/cache@v4
@@ -61,6 +63,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         if: ${{ matrix.build == 'Linux' }}
         run: apt install -y libclang-dev
       - name: Cargo Cache
@@ -87,6 +91,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: apt install -y libclang-dev
       - name: Cargo Cache
         uses: actions/cache@v4
