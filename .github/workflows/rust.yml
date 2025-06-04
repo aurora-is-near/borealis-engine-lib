@@ -22,7 +22,8 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: selfhosted
+    container: rust:latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -44,15 +45,16 @@ jobs:
 
   test:
     name: ${{ matrix.build }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.image }}
     strategy:
       matrix:
         build: [ Linux, macOS ]
         include:
           - build: Linux
-            os: github-hosted-heavy-runner
+            image: selfhosted
+            container: rust:latest
           - build: macOS
-            os: macos-latest
+            image: macos-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -74,7 +76,8 @@ jobs:
 
   run-test:
     name: Run app test
-    runs-on: [ self-hosted, heavy ]
+    runs-on: selfhosted
+    container: rust:latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -85,12 +88,11 @@ jobs:
           apt-get update
           apt-get install -y clang
       - name: Run integration tests
-        env:
-          CC: clang
-          CXX: clang++
+        #        env:
+        #          CC: clang
+        #          CXX: clang++
         run: |
           rustup target add wasm32-unknown-unknown
-          rustup component add rust-src
           cargo test -p aurora-refiner-app-integration-tests
       - name: Save cache
         run: cache-util msave borealis-engine-lib@target@generic@${{ hashFiles('**/Cargo.lock') }}:target
