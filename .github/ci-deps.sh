@@ -3,4 +3,4 @@
 export DEBIAN_FRONTEND=noninteractive
 
 apt update
-apt install -y libclang-dev libssl-dev git
+apt install -y libclang-dev libssl-dev git libgit2-dev
