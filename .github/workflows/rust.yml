@@ -75,7 +75,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
       - name: Fix issue with dubious ownership in repository
-        run: git config --global --add safe.directory /__w/borealis-engine-lib/borealis-engine-lib
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -102,8 +102,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.lock') }}
       - name: Fix issue with dubious ownership in repository
-        run: git config --global --add safe.directory /__w/borealis-engine-lib/borealis-engine-lib
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Run integration tests
         run: |
           rustup target add wasm32-unknown-unknown
+          rustup component add rust-src
           cargo test -p aurora-refiner-app-integration-tests
