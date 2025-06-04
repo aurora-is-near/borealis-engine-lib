@@ -66,11 +66,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-      - name: Build tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-run --workspace --exclude aurora-refiner-app-integration-tests
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
