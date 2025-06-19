@@ -156,6 +156,7 @@ pub struct ChunkHeaderView {
     pub shard_id: ShardId,
     pub gas_used: Gas,
     pub gas_limit: Gas,
+    #[serde(with = "dec_format")]
     pub validator_reward: Balance,
     #[serde(with = "dec_format")]
     pub balance_burnt: Balance,
@@ -402,5 +403,92 @@ impl From<views::ReceiptView> for ReceiptView {
             receipt: value.receipt.clone(),
             priority: value.priority,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test block 151768255 from mainnet
+    #[test]
+    fn test_de_nearblock_151768255_mainnet_from_json() {
+        serde_json::from_str::<NEARBlock>(include_str!(
+            "../tests/res/near_block/block_151768255_mainnet.json"
+        ))
+        .expect("Failed to load NEARBlock");
+    }
+
+    // Test latest block from mainnet using request GET https://mainnet.neardata.xyz/v0/last_block/final
+    #[test]
+    fn test_de_nearblock_latest_mainnet_from_json_get() {
+        let response = reqwest::blocking::Client::new()
+            .get("https://mainnet.neardata.xyz/v0/last_block/final")
+            .send()
+            .expect("Failed to fetch latest block from mainnet");
+
+        let response_text = response.text().expect("Failed to get response text");
+
+        serde_json::from_str::<NEARBlock>(&response_text)
+            .inspect_err(|e| {
+                let height = extract_block_height(&response_text);
+                println!("NEARBlock parse error: {}, height: {}", e, height);
+            })
+            .expect("Failed to parse block");
+    }
+
+    // Test latest block from testnet using request GET https://testnet.neardata.xyz/v0/last_block/final
+    #[test]
+    fn test_de_nearblock_latest_testnet_from_json_get() {
+        let response = reqwest::blocking::Client::new()
+            .get("https://testnet.neardata.xyz/v0/last_block/final")
+            .send()
+            .expect("Failed to fetch latest block from testnet");
+
+        let response_text = response.text().expect("Failed to get response text");
+
+        serde_json::from_str::<NEARBlock>(&response_text)
+            .inspect_err(|e| {
+                let height = extract_block_height(&response_text);
+                println!("NEARBlock parse error: {}, height: {}", e, height);
+            })
+            .expect("Failed to parse block");
+    }
+
+    // Test block range from 100000000 to LATEST on mainnet with step 10000000
+    // The purpose of this test if to identify the block range that is not supported by the NEARBlock deserialization
+    #[test]
+    fn test_de_nearblock_mainnet_range_from_json_get() {
+        // Get latest block height from mainnet
+        let response = reqwest::blocking::Client::new()
+            .get("https://mainnet.neardata.xyz/v0/last_block/final")
+            .send()
+            .expect("Failed to fetch latest block from mainnet");
+        let response_text = response.text().expect("Failed to get response text");
+        let latest_height = extract_block_height(&response_text);
+
+        for height in (100000000..=latest_height).step_by(10000000) {
+            println!("Test NEARBlock at height: {}", height);
+
+            let response = reqwest::blocking::Client::new()
+                .get(format!("https://mainnet.neardata.xyz/v0/block/{}", height))
+                .send()
+                .expect("Failed to fetch block from mainnet");
+
+            let response_text = response.text().expect("Failed to get response text");
+
+            serde_json::from_str::<NEARBlock>(&response_text)
+                .inspect_err(|e| {
+                    let height = extract_block_height(&response_text);
+                    println!("NEARBlock parse error: {}, height: {}", e, height);
+                })
+                .expect("Failed to parse block");
+        }
+    }
+
+    // Helper function to extract block height from JSON response text
+    fn extract_block_height(response_text: &str) -> u64 {
+        let json: serde_json::Value = serde_json::from_str(response_text).unwrap();
+        json["block"]["header"]["height"].as_u64().unwrap()
     }
 }
