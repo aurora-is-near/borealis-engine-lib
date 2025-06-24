@@ -39,28 +39,24 @@ jobs:
         env:
           RUST_LOG: debug
 
-      - name: Send failure notification
-        if: failure() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
+      - name: Send Slack notification
+        if: always() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
         run: |
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            if [ "$JOB_STATUS" = "success" ]; then
+              MESSAGE="Borealis Engine Lib Network Tests PASSED - Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks."
+            elif [ "$JOB_STATUS" = "failure" ]; then
+              MESSAGE="Borealis Engine Lib Network Tests FAILED - Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL"
+            else
+              MESSAGE="Borealis Engine Lib Network Tests completed with status: $JOB_STATUS"
+            fi
+            
             curl -X POST -H 'Content-type: application/json' --data "{
-              \"text\": \"Borealis Engine Lib Network Tests FAILED - Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL\"
-            }" $SLACK_WEBHOOK_URL
-          else
-            echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
-          fi
-
-      - name: Send success notification
-        if: success() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL }}
-        run: |
-          if [ -n "$SLACK_WEBHOOK_URL" ]; then
-            curl -X POST -H 'Content-type: application/json' --data "{
-              \"text\": \"Borealis Engine Lib Network Tests PASSED - Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks.\"
+              \"text\": \"$MESSAGE\"
             }" $SLACK_WEBHOOK_URL
           else
             echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
