@@ -54,10 +54,10 @@ jobs:
             else
               MESSAGE="Borealis Engine Lib Network Tests completed with status: $JOB_STATUS"
             fi
-            
-            curl -X POST -H 'Content-type: application/json' --data "{
+            set -e
+            curl --fail-with-body -sS -X POST -H 'Content-type: application/json' --data "{
               \"text\": \"$MESSAGE\"
-            }" $SLACK_WEBHOOK_URL
+            }" "$SLACK_WEBHOOK_URL"
           else
             echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
           fi
