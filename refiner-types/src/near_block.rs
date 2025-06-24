@@ -421,6 +421,7 @@ mod tests {
 
     // Test latest block from mainnet using request GET https://mainnet.neardata.xyz/v0/last_block/final
     #[test]
+    #[ignore]
     fn test_de_nearblock_latest_mainnet_from_json_get() {
         let response = reqwest::blocking::Client::new()
             .get("https://mainnet.neardata.xyz/v0/last_block/final")
@@ -439,6 +440,7 @@ mod tests {
 
     // Test latest block from testnet using request GET https://testnet.neardata.xyz/v0/last_block/final
     #[test]
+    #[ignore]
     fn test_de_nearblock_latest_testnet_from_json_get() {
         let response = reqwest::blocking::Client::new()
             .get("https://testnet.neardata.xyz/v0/last_block/final")
@@ -458,6 +460,7 @@ mod tests {
     // Test block range from 100000000 to LATEST on mainnet with step 10000000
     // The purpose of this test if to identify the block range that is not supported by the NEARBlock deserialization
     #[test]
+    #[ignore]
     fn test_de_nearblock_mainnet_range_from_json_get() {
         // Get latest block height from mainnet
         let response = reqwest::blocking::Client::new()

@@ -1,0 +1,81 @@
+name: Daily Borealis Engine Lib Network Tests
+
+on:
+  schedule:
+    # Runs daily at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Formatting
+        run: echo "Intentionally skipped"
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clippy
+        run: echo "Intentionally skipped"
+
+  network-tests:
+    name: Borealis Engine Lib Network-dependent tests
+    runs-on: selfhosted
+    container: rust:latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: .github/ci-deps.sh
+
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-network-tests-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run network-dependent tests
+        run: |
+          # Run the specific network tests with verbose output
+          cargo test -p refiner-types \
+            test_de_nearblock_latest_mainnet_from_json_get \
+            test_de_nearblock_latest_testnet_from_json_get \
+            test_de_nearblock_mainnet_range_from_json_get \
+            -- --nocapture --test-threads=1
+        env:
+          RUST_LOG: debug
+
+      - name: Send failure notification
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ALERTS_SLACK_WEBHOOK_URL }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
+            curl -X POST -H 'Content-type: application/json' --data "{
+              \"text\": \"Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL\"
+            }" $SLACK_WEBHOOK_URL
+          else
+            echo "SLACK_WEBHOOK_URL not configured, skipping notification"
+          fi
+
+      - name: Send success notification
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_WEBHOOK_URL }}
+        run: |
+          if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
+            curl -X POST -H 'Content-type: application/json' --data "{
+              \"text\": \"Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks.\"
+            }" $SLACK_WEBHOOK_URL
+          else
+            echo "SLACK_WEBHOOK_URL not configured, skipping notification"
+          fi 
