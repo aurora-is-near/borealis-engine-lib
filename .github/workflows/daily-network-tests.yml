@@ -40,28 +40,32 @@ jobs:
           RUST_LOG: debug
 
       - name: Send failure notification
-        if: failure()
+        if: failure() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ALERTS_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
             curl -X POST -H 'Content-type: application/json' --data "{
-              \"text\": \"Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL\"
+              \"text\": \"Borealis Engine Lib Network Tests FAILED - Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL\"
             }" $SLACK_WEBHOOK_URL
           else
-            echo "SLACK_WEBHOOK_URL not configured, skipping notification"
+            echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
           fi
 
       - name: Send success notification
-        if: success()
+        if: success() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL }}
         run: |
           if [ -n "$SLACK_WEBHOOK_URL" ]; then
             curl -X POST -H 'Content-type: application/json' --data "{
-              \"text\": \"Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks.\"
+              \"text\": \"Borealis Engine Lib Network Tests PASSED - Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks.\"
             }" $SLACK_WEBHOOK_URL
           else
-            echo "SLACK_WEBHOOK_URL not configured, skipping notification"
+            echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
           fi
+
+      - name: Slack notifications disabled message
+        if: vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS != 'true'
+        run: echo "Borealis network test notifications are currently disabled. Set ENABLE_BOREALIS_NETWORK_NOTIFICATIONS to 'true' to re-enable."
