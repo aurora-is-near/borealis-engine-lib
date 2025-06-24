@@ -7,19 +7,6 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  fmt:
-    name: Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Formatting
-        run: echo "Intentionally skipped"
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clippy
-        run: echo "Intentionally skipped"
-
   network-tests:
     name: Borealis Engine Lib Network-dependent tests
     runs-on: selfhosted
@@ -47,7 +34,7 @@ jobs:
 
       - name: Run network-dependent tests
         run: |
-          # Run the specific network tests with verbose output
+          # Run all network tests from the near_block module
           cargo test -p aurora-refiner-types near_block -- --ignored --nocapture --test-threads=1
         env:
           RUST_LOG: debug
