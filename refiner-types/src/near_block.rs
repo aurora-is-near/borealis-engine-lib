@@ -432,7 +432,7 @@ mod tests {
         serde_json::from_str::<NEARBlock>(&response_text)
             .inspect_err(|e| {
                 let height = extract_block_height(&response_text);
-                println!("NEARBlock parse error: {}, height: {}", e, height);
+                println!("NEARBlock parse error: {e}, height: {height}");
             })
             .expect("Failed to parse block");
     }
