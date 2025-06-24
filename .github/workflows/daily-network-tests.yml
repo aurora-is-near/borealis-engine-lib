@@ -42,6 +42,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-network-tests-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Fix issue with dubious ownership in repository
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+
       - name: Run network-dependent tests
         run: |
           # Run the specific network tests with verbose output
@@ -74,4 +77,4 @@ jobs:
             }" $SLACK_WEBHOOK_URL
           else
             echo "SLACK_WEBHOOK_URL not configured, skipping notification"
-          fi 
+          fi
