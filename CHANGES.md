@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* fix: use selfhosted runners for rust tests by [@aleksuss] in [#230]
+* fix: Add missing serde flag to ChunkHeaderView by [@aleksandr-borodulya] in [#231]
+
+[#230]: https://github.com/aurora-is-near/borealis-engine-lib/pull/230
+[#231]: https://github.com/aurora-is-near/borealis-engine-lib/pull/231
+
 ## [0.30.5-2.6.3] 2025-06-03
 
 * fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#226]

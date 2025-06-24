@@ -156,6 +156,7 @@ pub struct ChunkHeaderView {
     pub shard_id: ShardId,
     pub gas_used: Gas,
     pub gas_limit: Gas,
+    #[serde(with = "dec_format")]
     pub validator_reward: Balance,
     #[serde(with = "dec_format")]
     pub balance_burnt: Balance,
@@ -402,5 +403,111 @@ impl From<views::ReceiptView> for ReceiptView {
             receipt: value.receipt.clone(),
             priority: value.priority,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test block 151768255 from mainnet
+    #[test]
+    fn test_de_nearblock_151768255_mainnet_from_json() {
+        serde_json::from_str::<NEARBlock>(include_str!(
+            "../tests/res/near_block/block_151768255_mainnet.json"
+        ))
+        .expect("Failed to load NEARBlock");
+    }
+
+    // Test latest block from mainnet using request GET https://mainnet.neardata.xyz/v0/last_block/final
+    #[test]
+    #[ignore]
+    fn test_de_nearblock_mainnet_latest_finalized_api_fetch() {
+        let response = reqwest::blocking::Client::new()
+            .get("https://mainnet.neardata.xyz/v0/last_block/final")
+            .send()
+            .expect("Failed to fetch latest block from mainnet");
+
+        let response_text = response.text().expect("Failed to get response text");
+        let latest_height = extract_block_height(&response_text);
+        println!("Latest finalized block height on mainnet: {latest_height}");
+
+        serde_json::from_str::<NEARBlock>(&response_text)
+            .inspect_err(|e| {
+                let height = extract_block_height(&response_text);
+                println!("NEARBlock parse error: {e}, height: {height}");
+            })
+            .expect("Failed to parse block");
+    }
+
+    // Test latest block from testnet using request GET https://testnet.neardata.xyz/v0/last_block/final
+    #[test]
+    #[ignore]
+    fn test_de_nearblock_testnet_latest_finalized_api_fetch() {
+        let response = reqwest::blocking::Client::new()
+            .get("https://testnet.neardata.xyz/v0/last_block/final")
+            .send()
+            .expect("Failed to fetch latest block from testnet");
+
+        let response_text = response.text().expect("Failed to get response text");
+        let latest_height = extract_block_height(&response_text);
+        println!("Latest finalized block height on testnet: {latest_height}");
+
+        serde_json::from_str::<NEARBlock>(&response_text)
+            .inspect_err(|e| {
+                let height = extract_block_height(&response_text);
+                println!("NEARBlock parse error: {e}, height: {height}");
+            })
+            .expect("Failed to parse block");
+    }
+
+    // Test block range from 100_000_000 to LATEST on both mainnet and testnet with step 10_000_000
+    // The purpose of this test is to identify the block range that is not supported by the NEARBlock deserialization
+    #[test]
+    #[ignore]
+    fn test_de_nearblock_both_networks_range_100m_to_latest_10m_step_api_fetch() {
+        let networks = [
+            ("mainnet", "https://mainnet.neardata.xyz/v0"),
+            ("testnet", "https://testnet.neardata.xyz/v0"),
+        ];
+
+        for (network_name, base_url) in networks {
+            println!("Testing {} network...", network_name);
+
+            // Get latest block height
+            let response = reqwest::blocking::Client::new()
+                .get(format!("{}/last_block/final", base_url))
+                .send()
+                .unwrap_or_else(|_| panic!("Failed to fetch latest block from {network_name}"));
+            let response_text = response.text().expect("Failed to get response text");
+            let latest_height = extract_block_height(&response_text);
+
+            for height in (100_000_000..=latest_height).step_by(10_000_000) {
+                println!("Test NEARBlock at height: {} on {}", height, network_name);
+
+                let response = reqwest::blocking::Client::new()
+                    .get(format!("{}/block/{}", base_url, height))
+                    .send()
+                    .unwrap_or_else(|_| panic!("Failed to fetch block from {network_name}"));
+
+                let response_text = response.text().expect("Failed to get response text");
+
+                serde_json::from_str::<NEARBlock>(&response_text)
+                    .inspect_err(|e| {
+                        let height = extract_block_height(&response_text);
+                        println!(
+                            "NEARBlock parse error: {}, height: {}, network: {}",
+                            e, height, network_name
+                        );
+                    })
+                    .unwrap_or_else(|_| panic!("Failed to parse block on {network_name}"));
+            }
+        }
+    }
+
+    // Helper function to extract block height from JSON response text
+    fn extract_block_height(response_text: &str) -> u64 {
+        let json: serde_json::Value = serde_json::from_str(response_text).unwrap();
+        json["block"]["header"]["height"].as_u64().unwrap()
     }
 }
