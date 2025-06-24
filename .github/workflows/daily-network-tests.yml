@@ -45,11 +45,7 @@ jobs:
       - name: Run network-dependent tests
         run: |
           # Run the specific network tests with verbose output
-          cargo test -p refiner-types \
-            test_de_nearblock_latest_mainnet_from_json_get \
-            test_de_nearblock_latest_testnet_from_json_get \
-            test_de_nearblock_mainnet_range_from_json_get \
-            -- --nocapture --test-threads=1
+          cargo test -p aurora-refiner-types near_block -- --ignored --nocapture --test-threads=1
         env:
           RUST_LOG: debug
 
