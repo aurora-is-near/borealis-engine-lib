@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * fix: use selfhosted runners for rust tests by [@aleksuss] in [#230]
 * fix: Add missing serde flag to ChunkHeaderView by [@aleksandr-borodulya] in [#231]
+* fix: Correct sh syntax for the BEL gh action by [@aleksandr-borodulya] in [#232]
 
 [#230]: https://github.com/aurora-is-near/borealis-engine-lib/pull/230
 [#231]: https://github.com/aurora-is-near/borealis-engine-lib/pull/231
+[#232]: https://github.com/aurora-is-near/borealis-engine-lib/pull/232
 
 ## [0.30.5-2.6.3] 2025-06-03
 
