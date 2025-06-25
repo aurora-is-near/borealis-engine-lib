@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.30.6-2.6.3] 2025-06-25
 
-* fix: Correct sh syntax for the BEL gh action by [@aleksandr-borodulya] in [#232]
-* fix: Add missing serde flag to ChunkHeaderView by [@aleksandr-borodulya] in [#231]
+* fix: Correct sh syntax for the BEL gh action by [@aleksander-borodulya] in [#232]
+* fix: Add missing serde flag to ChunkHeaderView by [@aleksander-borodulya] in [#231]
 * fix: use selfhosted runners for rust tests by [@aleksuss] in [#230]
 
 [#232]: https://github.com/aurora-is-near/borealis-engine-lib/pull/232
@@ -19,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.30.5-2.6.3] 2025-06-03
 
-* fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#226]
-* fix: Add benchmarks for `StreamerMessage` to `NEARBlock` conversion by [@aleksandr-borodulya] in [#227]
+* fix: Rework `StreamerMessage` to `NEARBlock` conversion by [@aleksander-borodulya] in [#226]
+* fix: Add benchmarks for `StreamerMessage` to `NEARBlock` conversion by [@aleksander-borodulya] in [#227]
 
 [#226]: https://github.com/aurora-is-near/borealis-engine-lib/pull/226
 [#227]: https://github.com/aurora-is-near/borealis-engine-lib/pull/227
