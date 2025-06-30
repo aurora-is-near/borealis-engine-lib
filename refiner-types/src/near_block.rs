@@ -1,6 +1,6 @@
 use borsh::BorshSerialize;
 use near_crypto::{PublicKey, Signature};
-use near_primitives::challenge::ChallengesResult;
+use near_primitives::challenge::SlashedValidator;
 use near_primitives::hash::CryptoHash;
 use near_primitives::serialize::dec_format;
 use near_primitives::types::{
@@ -62,7 +62,7 @@ pub struct IndexerBlockHeaderView {
     pub block_ordinal: Option<NumBlocks>,
     #[serde(with = "dec_format")]
     pub total_supply: Balance,
-    pub challenges_result: ChallengesResult,
+    pub challenges_result: Vec<SlashedValidator>,
     pub last_final_block: CryptoHash,
     pub last_ds_final_block: CryptoHash,
     pub next_bp_hash: CryptoHash,
@@ -263,7 +263,6 @@ impl Clone for Shard {
                             StateChangeCauseView::ValidatorAccountsUpdate
                         }
                         StateChangeCauseView::Migration => StateChangeCauseView::Migration,
-                        StateChangeCauseView::ReshardingV2 => StateChangeCauseView::ReshardingV2,
                         StateChangeCauseView::BandwidthSchedulerStateUpdate => {
                             StateChangeCauseView::BandwidthSchedulerStateUpdate
                         }

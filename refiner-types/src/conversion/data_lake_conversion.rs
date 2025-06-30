@@ -1154,18 +1154,19 @@ impl Converter<StorageError> for near_primitives_crates_io::errors::StorageError
         match self {
             Self::StorageInternalError => StorageError::StorageInternalError,
             Self::MissingTrieValue(missing_trie_value_context, crypto_hash) => {
-                StorageError::MissingTrieValue(
-                    missing_trie_value_context.convert(),
-                    crypto_hash.convert(),
-                )
+                StorageError::MissingTrieValue(near_primitives::errors::MissingTrieValue {
+                    context: missing_trie_value_context.convert(),
+                    hash: crypto_hash.convert(),
+                })
             }
             Self::UnexpectedTrieValue => StorageError::UnexpectedTrieValue,
             Self::StorageInconsistentState(s) => StorageError::StorageInconsistentState(s),
             Self::FlatStorageBlockNotSupported(s) => StorageError::FlatStorageBlockNotSupported(s),
             Self::MemTrieLoadingError(s) => StorageError::MemTrieLoadingError(s),
-            Self::FlatStorageReshardingAlreadyInProgress => {
-                StorageError::FlatStorageReshardingAlreadyInProgress
-            }
+            // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-b19914e5b0f572c2fa2ef167a0a5ac69b8937e6274a12c419d7112f76f28a9e0L149-L151
+            Self::FlatStorageReshardingAlreadyInProgress => panic!(
+                "FlatStorageReshardingAlreadyInProgress removed in near-primitives 2.7.0-rc.1 but exists in crates.io 0.30.1"
+            ),
         }
     }
 }
@@ -1274,7 +1275,10 @@ impl Converter<StateChangeCauseView>
             Self::UpdatedDelayedReceipts => StateChangeCauseView::UpdatedDelayedReceipts,
             Self::ValidatorAccountsUpdate => StateChangeCauseView::ValidatorAccountsUpdate,
             Self::Migration => StateChangeCauseView::Migration,
-            Self::ReshardingV2 => StateChangeCauseView::ReshardingV2,
+            // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-1e4fc99d32e48420a9bd37050fa1412758cba37825851edea40cbdfcab406944L2341
+            Self::ReshardingV2 => panic!(
+                "StateChangeCauseView::ReshardingV2 removed in near-primitives 2.7.0-rc.1 but exists in crates.io 0.30.1"
+            ),
             Self::BandwidthSchedulerStateUpdate => {
                 StateChangeCauseView::BandwidthSchedulerStateUpdate
             }
