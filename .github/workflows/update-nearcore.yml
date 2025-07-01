@@ -258,9 +258,29 @@ jobs:
             exit 0
           fi
 
+      - name: Check PR labels
+        id: check_labels
+        if: steps.set_pr_number.outputs.pr_exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          # Get labels for the PR
+          labels=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name')
+          
+          # Check if "need review" label exists
+          if echo "$labels" | grep -q "need review"; then
+            echo "PR has 'need review' label. Skipping auto-merge workflow."
+            echo "has_need_review_label=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "PR does not have 'need review' label. Continuing with workflow."
+            echo "has_need_review_label=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Wait for checks to complete
         id: wait_for_checks
-        if: steps.set_pr_number.outputs.pr_exists == 'true'
+        if: steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
@@ -322,7 +342,7 @@ jobs:
           done
 
       - name: Send notification if PR checks failed
-        if: failure() && steps.wait_for_checks.outcome == 'failure' && steps.set_pr_number.outputs.pr_exists == 'true'
+        if: failure() && steps.wait_for_checks.outcome == 'failure' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.ALERTS_SLACK_WEBHOOK_URL }}
           PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
@@ -335,7 +355,7 @@ jobs:
 
       - name: Check PR author
         id: check_pr_author
-        if: steps.set_pr_number.outputs.pr_exists == 'true'
+        if: steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
@@ -372,13 +392,13 @@ jobs:
           fi
 
       - name: Set up Python
-        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
       - name: Update CHANGES.md
-        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
@@ -409,7 +429,7 @@ jobs:
           fi
 
       - name: Approve PR
-        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         env:
           GH_TOKEN: ${{ secrets.APPROVER_PAT_TOKEN }}
           PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
@@ -425,7 +445,7 @@ jobs:
           fi
 
       - name: Merge PR
-        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true'
+        if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
         id: merge_pr
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT_TOKEN }}
