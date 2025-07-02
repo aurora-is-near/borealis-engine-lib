@@ -35,7 +35,10 @@ pub fn convert(message: StreamerMessage) -> NEARBlock {
                             receipt: r.receipt.into(),
                         })
                         .collect(),
-                    state_changes: indexer_shard.state_changes,
+                    // Own impl for state changes for backward compatibility, caused by nearcore update from 2.6.3 to 2.7.0-rc.1
+                    state_changes: crate::near_block::convert_state_changes(
+                        indexer_shard.state_changes,
+                    ),
                 }
             })
             .collect(),
