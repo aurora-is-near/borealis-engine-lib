@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changes
+
+* fix: Added backward compatible StateChangeCauseView by [@aleksander-borodulya] in [#238]
+
+[#238]: https://github.com/aurora-is-near/borealis-engine-lib/pull/238
+
 ## [0.30.6-2.7.0-rc.2] 2025-07-01
 
 ### Changes
