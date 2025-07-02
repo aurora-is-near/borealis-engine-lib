@@ -7,10 +7,8 @@ use near_primitives::types::{
     AccountId, Balance, BlockHeight, Gas, Nonce, NumBlocks, ProtocolVersion, ShardId, StateRoot,
 };
 use near_primitives::views;
+use near_primitives::views::ActionView;
 use near_primitives::views::validator_stake_view::ValidatorStakeView;
-use near_primitives::views::{
-    ActionView, StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView,
-};
 use serde::{Deserialize, Serialize};
 
 /// Resulting struct represents block with chunks
@@ -19,6 +17,44 @@ pub struct NEARBlock {
     pub block: BlockView,
     pub shards: Vec<Shard>,
 }
+
+/// Backward-compatible version of StateChangeCauseView that includes removed variants
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum StateChangeCauseView {
+    NotWritableToDisk,
+    InitialState,
+    TransactionProcessing {
+        tx_hash: CryptoHash,
+    },
+    ActionReceiptProcessingStarted {
+        receipt_hash: CryptoHash,
+    },
+    ActionReceiptGasReward {
+        receipt_hash: CryptoHash,
+    },
+    ReceiptProcessing {
+        receipt_hash: CryptoHash,
+    },
+    PostponedReceipt {
+        receipt_hash: CryptoHash,
+    },
+    UpdatedDelayedReceipts,
+    ValidatorAccountsUpdate,
+    Migration,
+    /// Removed in nearcore 2.7.0-rc.1 but we keep it for backward compatibility
+    ReshardingV2,
+    BandwidthSchedulerStateUpdate,
+}
+
+/// Backward-compatible version of StateChangeWithCauseView
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateChangeWithCauseView {
+    pub cause: StateChangeCauseView,
+    pub value: views::StateChangeValueView,
+}
+
+/// Backward-compatible version of StateChangesView
+pub type StateChangesView = Vec<StateChangeWithCauseView>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockView {
@@ -215,7 +251,7 @@ pub struct Shard {
     pub shard_id: ShardId,
     pub chunk: Option<ChunkView>,
     pub receipt_execution_outcomes: Vec<ExecutionOutcomeWithReceipt>,
-    pub state_changes: views::StateChangesView,
+    pub state_changes: StateChangesView,
 }
 
 impl Clone for Shard {
@@ -263,62 +299,63 @@ impl Clone for Shard {
                             StateChangeCauseView::ValidatorAccountsUpdate
                         }
                         StateChangeCauseView::Migration => StateChangeCauseView::Migration,
+                        StateChangeCauseView::ReshardingV2 => StateChangeCauseView::ReshardingV2,
                         StateChangeCauseView::BandwidthSchedulerStateUpdate => {
                             StateChangeCauseView::BandwidthSchedulerStateUpdate
                         }
                     },
                     value: match &v.value {
-                        StateChangeValueView::AccountUpdate {
+                        views::StateChangeValueView::AccountUpdate {
                             account_id,
                             account,
-                        } => StateChangeValueView::AccountUpdate {
+                        } => views::StateChangeValueView::AccountUpdate {
                             account_id: account_id.clone(),
                             account: account.clone(),
                         },
-                        StateChangeValueView::AccountDeletion { account_id } => {
-                            StateChangeValueView::AccountDeletion {
+                        views::StateChangeValueView::AccountDeletion { account_id } => {
+                            views::StateChangeValueView::AccountDeletion {
                                 account_id: account_id.clone(),
                             }
                         }
-                        StateChangeValueView::AccessKeyUpdate {
+                        views::StateChangeValueView::AccessKeyUpdate {
                             account_id,
                             public_key,
                             access_key,
-                        } => StateChangeValueView::AccessKeyUpdate {
+                        } => views::StateChangeValueView::AccessKeyUpdate {
                             account_id: account_id.clone(),
                             public_key: public_key.clone(),
                             access_key: access_key.clone(),
                         },
-                        StateChangeValueView::AccessKeyDeletion {
+                        views::StateChangeValueView::AccessKeyDeletion {
                             account_id,
                             public_key,
-                        } => StateChangeValueView::AccessKeyDeletion {
+                        } => views::StateChangeValueView::AccessKeyDeletion {
                             account_id: account_id.clone(),
                             public_key: public_key.clone(),
                         },
-                        StateChangeValueView::DataUpdate {
+                        views::StateChangeValueView::DataUpdate {
                             account_id,
                             key,
                             value,
-                        } => StateChangeValueView::DataUpdate {
+                        } => views::StateChangeValueView::DataUpdate {
                             account_id: account_id.clone(),
                             key: key.clone(),
                             value: value.clone(),
                         },
-                        StateChangeValueView::DataDeletion { account_id, key } => {
-                            StateChangeValueView::DataDeletion {
+                        views::StateChangeValueView::DataDeletion { account_id, key } => {
+                            views::StateChangeValueView::DataDeletion {
                                 account_id: account_id.clone(),
                                 key: key.clone(),
                             }
                         }
-                        StateChangeValueView::ContractCodeUpdate { account_id, code } => {
-                            StateChangeValueView::ContractCodeUpdate {
+                        views::StateChangeValueView::ContractCodeUpdate { account_id, code } => {
+                            views::StateChangeValueView::ContractCodeUpdate {
                                 account_id: account_id.clone(),
                                 code: code.clone(),
                             }
                         }
-                        StateChangeValueView::ContractCodeDeletion { account_id } => {
-                            StateChangeValueView::ContractCodeDeletion {
+                        views::StateChangeValueView::ContractCodeDeletion { account_id } => {
+                            views::StateChangeValueView::ContractCodeDeletion {
                                 account_id: account_id.clone(),
                             }
                         }
@@ -403,6 +440,53 @@ impl From<views::ReceiptView> for ReceiptView {
             priority: value.priority,
         }
     }
+}
+
+// Conversion functions for backward-compatible types
+impl StateChangeCauseView {
+    pub const fn from_nearcore(cause: views::StateChangeCauseView) -> Self {
+        match cause {
+            views::StateChangeCauseView::NotWritableToDisk => Self::NotWritableToDisk,
+            views::StateChangeCauseView::InitialState => Self::InitialState,
+            views::StateChangeCauseView::TransactionProcessing { tx_hash } => {
+                Self::TransactionProcessing { tx_hash }
+            }
+            views::StateChangeCauseView::ActionReceiptProcessingStarted { receipt_hash } => {
+                Self::ActionReceiptProcessingStarted { receipt_hash }
+            }
+            views::StateChangeCauseView::ActionReceiptGasReward { receipt_hash } => {
+                Self::ActionReceiptGasReward { receipt_hash }
+            }
+            views::StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
+                Self::ReceiptProcessing { receipt_hash }
+            }
+            views::StateChangeCauseView::PostponedReceipt { receipt_hash } => {
+                Self::PostponedReceipt { receipt_hash }
+            }
+            views::StateChangeCauseView::UpdatedDelayedReceipts => Self::UpdatedDelayedReceipts,
+            views::StateChangeCauseView::ValidatorAccountsUpdate => Self::ValidatorAccountsUpdate,
+            views::StateChangeCauseView::Migration => Self::Migration,
+            views::StateChangeCauseView::BandwidthSchedulerStateUpdate => {
+                Self::BandwidthSchedulerStateUpdate
+            }
+        }
+    }
+}
+
+impl StateChangeWithCauseView {
+    pub fn from_nearcore(change: views::StateChangeWithCauseView) -> Self {
+        Self {
+            cause: StateChangeCauseView::from_nearcore(change.cause),
+            value: change.value,
+        }
+    }
+}
+
+pub fn convert_state_changes(changes: views::StateChangesView) -> StateChangesView {
+    changes
+        .into_iter()
+        .map(StateChangeWithCauseView::from_nearcore)
+        .collect()
 }
 
 #[cfg(test)]

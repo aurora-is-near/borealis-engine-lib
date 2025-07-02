@@ -18,8 +18,7 @@ use near_primitives::{
     views::{
         AccessKeyView, AccountView, ActionView, CostGasUsed, DataReceiverView,
         ExecutionOutcomeView, ExecutionOutcomeWithIdView, ExecutionStatusView, ReceiptEnumView,
-        StateChangeCauseView, StateChangeValueView, StateChangeWithCauseView, StateChangesView,
-        validator_stake_view::ValidatorStakeView,
+        StateChangeValueView, validator_stake_view::ValidatorStakeView,
     },
 };
 
@@ -1164,9 +1163,13 @@ impl Converter<StorageError> for near_primitives_crates_io::errors::StorageError
             Self::FlatStorageBlockNotSupported(s) => StorageError::FlatStorageBlockNotSupported(s),
             Self::MemTrieLoadingError(s) => StorageError::MemTrieLoadingError(s),
             // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-b19914e5b0f572c2fa2ef167a0a5ac69b8937e6274a12c419d7112f76f28a9e0L149-L151
-            Self::FlatStorageReshardingAlreadyInProgress => panic!(
-                "FlatStorageReshardingAlreadyInProgress removed in near-primitives 2.7.0-rc.1 but exists in crates.io 0.30.1"
-            ),
+            Self::FlatStorageReshardingAlreadyInProgress => {
+                // FlatStorageReshardingAlreadyInProgress was removed in nearcore 2.7.0-rc.1
+                // Map it to a generic storage error for backward compatibility
+                StorageError::StorageInconsistentState(
+                    "FlatStorageReshardingAlreadyInProgress encountered".to_string(),
+                )
+            }
         }
     }
 }
@@ -1225,62 +1228,72 @@ impl Converter<InvalidAccessKeyError> for near_primitives_crates_io::errors::Inv
 // From IndexerShard to Shard
 //
 
-impl Converter<StateChangesView>
+impl Converter<crate::near_block::StateChangesView>
     for near_lake_framework::near_indexer_primitives::views::StateChangesView
 {
-    fn convert(self) -> StateChangesView {
+    fn convert(self) -> crate::near_block::StateChangesView {
         self.into_iter().map(Converter::convert).collect()
     }
 }
 
-impl Converter<StateChangeWithCauseView>
+impl Converter<crate::near_block::StateChangeWithCauseView>
     for near_lake_framework::near_indexer_primitives::views::StateChangeWithCauseView
 {
-    fn convert(self) -> StateChangeWithCauseView {
-        StateChangeWithCauseView {
+    fn convert(self) -> crate::near_block::StateChangeWithCauseView {
+        crate::near_block::StateChangeWithCauseView {
             cause: self.cause.convert(),
             value: self.value.convert(),
         }
     }
 }
 
-impl Converter<StateChangeCauseView>
+impl Converter<crate::near_block::StateChangeCauseView>
     for near_lake_framework::near_indexer_primitives::views::StateChangeCauseView
 {
-    fn convert(self) -> StateChangeCauseView {
+    fn convert(self) -> crate::near_block::StateChangeCauseView {
         match self {
-            Self::NotWritableToDisk => StateChangeCauseView::NotWritableToDisk,
-            Self::InitialState => StateChangeCauseView::InitialState,
+            Self::NotWritableToDisk => crate::near_block::StateChangeCauseView::NotWritableToDisk,
+            Self::InitialState => crate::near_block::StateChangeCauseView::InitialState,
             Self::TransactionProcessing { tx_hash } => {
-                StateChangeCauseView::TransactionProcessing {
+                crate::near_block::StateChangeCauseView::TransactionProcessing {
                     tx_hash: tx_hash.convert(),
                 }
             }
             Self::ActionReceiptProcessingStarted { receipt_hash } => {
-                StateChangeCauseView::ActionReceiptProcessingStarted {
+                crate::near_block::StateChangeCauseView::ActionReceiptProcessingStarted {
                     receipt_hash: receipt_hash.convert(),
                 }
             }
             Self::ActionReceiptGasReward { receipt_hash } => {
-                StateChangeCauseView::ActionReceiptGasReward {
+                crate::near_block::StateChangeCauseView::ActionReceiptGasReward {
                     receipt_hash: receipt_hash.convert(),
                 }
             }
-            Self::ReceiptProcessing { receipt_hash } => StateChangeCauseView::ReceiptProcessing {
-                receipt_hash: receipt_hash.convert(),
-            },
-            Self::PostponedReceipt { receipt_hash } => StateChangeCauseView::PostponedReceipt {
-                receipt_hash: receipt_hash.convert(),
-            },
-            Self::UpdatedDelayedReceipts => StateChangeCauseView::UpdatedDelayedReceipts,
-            Self::ValidatorAccountsUpdate => StateChangeCauseView::ValidatorAccountsUpdate,
-            Self::Migration => StateChangeCauseView::Migration,
+            Self::ReceiptProcessing { receipt_hash } => {
+                crate::near_block::StateChangeCauseView::ReceiptProcessing {
+                    receipt_hash: receipt_hash.convert(),
+                }
+            }
+            Self::PostponedReceipt { receipt_hash } => {
+                crate::near_block::StateChangeCauseView::PostponedReceipt {
+                    receipt_hash: receipt_hash.convert(),
+                }
+            }
+            Self::UpdatedDelayedReceipts => {
+                crate::near_block::StateChangeCauseView::UpdatedDelayedReceipts
+            }
+            Self::ValidatorAccountsUpdate => {
+                crate::near_block::StateChangeCauseView::ValidatorAccountsUpdate
+            }
+            Self::Migration => crate::near_block::StateChangeCauseView::Migration,
             // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-1e4fc99d32e48420a9bd37050fa1412758cba37825851edea40cbdfcab406944L2341
-            Self::ReshardingV2 => panic!(
-                "StateChangeCauseView::ReshardingV2 removed in near-primitives 2.7.0-rc.1 but exists in crates.io 0.30.1"
-            ),
+            Self::ReshardingV2 => {
+                // ReshardingV2 was removed in nearcore 2.7.0-rc.1, but we handle it for backward compatibility
+                // Map it to our custom StateChangeCauseView which retains this variant
+                crate::near_block::StateChangeCauseView::ReshardingV2
+            }
             Self::BandwidthSchedulerStateUpdate => {
-                StateChangeCauseView::BandwidthSchedulerStateUpdate
+                crate::near_block::StateChangeCauseView::BandwidthSchedulerStateUpdate
             }
         }
     }

@@ -72,9 +72,9 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     let mut expected_diffs: HashMap<H256, Diff> = HashMap::new();
     for (_, key, expected_value, cause) in aurora_state_changes {
         let receipt_id: H256 = match cause {
-            near_primitives::views::StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
-                receipt_hash.0.into()
-            }
+            aurora_refiner_types::near_block::StateChangeCauseView::ReceiptProcessing {
+                receipt_hash,
+            } => receipt_hash.0.into(),
             other => panic!("Unexpected state change cause {:?}", other),
         };
 
