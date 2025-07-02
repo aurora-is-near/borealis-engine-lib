@@ -20,6 +20,7 @@ pub struct NEARBlock {
 
 /// Backward-compatible version of StateChangeCauseView that includes removed variants
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum StateChangeCauseView {
     NotWritableToDisk,
     InitialState,
@@ -50,6 +51,7 @@ pub enum StateChangeCauseView {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StateChangeWithCauseView {
     pub cause: StateChangeCauseView,
+    #[serde(flatten)]
     pub value: views::StateChangeValueView,
 }
 
@@ -252,6 +254,7 @@ pub struct Shard {
     pub chunk: Option<ChunkView>,
     pub receipt_execution_outcomes: Vec<ExecutionOutcomeWithReceipt>,
     pub state_changes: StateChangesView,
+    // pub state_changes_views: views::StateChangesView,
 }
 
 impl Clone for Shard {
