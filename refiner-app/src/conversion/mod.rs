@@ -2,6 +2,11 @@ use aurora_refiner_types::near_block::{ChunkHeaderView, ChunkView, NEARBlock, Sh
 use near_lake_framework::near_indexer_primitives::StreamerMessage;
 use serde::{Serialize, de::DeserializeOwned};
 
+#[deprecated(
+    since = "0.30.4-2.6.3",
+    note = "Use the conversion in refiner-types::conversion::data_lake or refiner-types::conversion::nearcore instead"
+)]
+#[allow(dead_code)]
 pub fn convert(block: StreamerMessage) -> NEARBlock {
     NEARBlock {
         block: ch_json(block.block),

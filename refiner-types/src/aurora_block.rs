@@ -290,10 +290,10 @@ mod tests {
 
     #[test]
     fn test_aurora_block_deserialization() {
-        let serialized_block = std::fs::read_to_string("src/res/aurora_70077007.json").unwrap();
-        let given_block_json: serde_json::Value = serde_json::from_str(&serialized_block).unwrap();
+        let serialized_block = include_str!("../tests/res/aurora_block/aurora_70077007.json");
+        let given_block_json: serde_json::Value = serde_json::from_str(serialized_block).unwrap();
 
-        let block: AuroraBlock = serde_json::from_str(&serialized_block).unwrap();
+        let block: AuroraBlock = serde_json::from_str(serialized_block).unwrap();
         let computed_block_json = {
             let mut tmp = serde_json::to_value(block).unwrap();
             // The gas limit field used to be equal to `U256::MAX`, however we now represent that

@@ -13,21 +13,30 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
-aurora-engine.workspace = true
-aurora-engine-sdk.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
+aurora-engine.workspace = true
 borsh.workspace = true
 derive_builder.workspace = true
 fixed-hash.workspace = true
 impl-serde.workspace = true
+near-crypto-crates-io.workspace = true
+near-primitives-crates-io.workspace = true
 near-crypto.workspace = true
+near-indexer.workspace = true
+near-lake-framework.workspace = true
 near-primitives = { workspace = true, features = ["rand"] }
 serde.workspace = true
 sha3.workspace = true
 
 [dev-dependencies]
+criterion = "0.6"
 serde_json.workspace = true
+reqwest = { version = "0.12", features = ["blocking"] }
+
+[[bench]]
+name = "convert"
+harness = false
 
 [features]
 dev = [] # Required by the construct_fixed_hash macro

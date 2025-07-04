@@ -58,15 +58,15 @@ async fn main() -> anyhow::Result<()> {
             let mut shutdown_rx_socket = shutdown_tx.subscribe();
 
             // Build input stream
-            let (input_stream, task_input_stream) = match config.input_mode {
+            let (input_stream, task_input_stream) = match &config.input_mode {
                 config::InputMode::DataLake(config) => input::data_lake::get_near_data_lake_stream(
                     next_block,
-                    &config,
+                    config,
                     shutdown_rx_input_stream,
                 ),
                 config::InputMode::Nearcore(config) => input::nearcore::get_nearcore_stream(
                     next_block,
-                    &config,
+                    config,
                     shutdown_rx_input_stream,
                 ),
             };

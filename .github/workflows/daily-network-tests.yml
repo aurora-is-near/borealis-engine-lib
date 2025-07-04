@@ -1,0 +1,67 @@
+name: Daily Borealis Engine Lib Network Tests
+
+on:
+  schedule:
+    # Runs daily at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  network-tests:
+    name: Borealis Engine Lib Network-dependent tests
+    runs-on: selfhosted
+    container: rust:latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: .github/ci-deps.sh
+
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-network-tests-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Fix issue with dubious ownership in repository
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+
+      - name: Run network-dependent tests
+        run: |
+          # Run all network tests from the near_block module
+          cargo test -p aurora-refiner-types near_block -- --ignored --nocapture --test-threads=1
+        env:
+          RUST_LOG: debug
+
+      - name: Send Slack notification
+        if: always() && vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            if [ "$JOB_STATUS" = "success" ]; then
+              MESSAGE="Borealis Engine Lib Network Tests PASSED - Daily network tests passed successfully in borealis-engine-lib. NEAR block deserialization is working correctly with latest mainnet and testnet blocks."
+            elif [ "$JOB_STATUS" = "failure" ]; then
+              MESSAGE="Borealis Engine Lib Network Tests FAILED - Daily network tests failed in borealis-engine-lib. This could indicate issues with NEAR block deserialization or network connectivity. See details: $WORKFLOW_URL"
+            else
+              MESSAGE="Borealis Engine Lib Network Tests completed with status: $JOB_STATUS"
+            fi
+            set -e
+            curl --fail-with-body -sS -X POST -H 'Content-type: application/json' --data "{
+              \"text\": \"$MESSAGE\"
+            }" "$SLACK_WEBHOOK_URL"
+          else
+            echo "BOREALIS_NETWORK_TESTS_SLACK_WEBHOOK_URL not configured, skipping notification"
+          fi
+
+      - name: Slack notifications disabled message
+        if: vars.ENABLE_BOREALIS_NETWORK_NOTIFICATIONS != 'true'
+        run: echo "Borealis network test notifications are currently disabled. Set ENABLE_BOREALIS_NETWORK_NOTIFICATIONS to 'true' to re-enable."

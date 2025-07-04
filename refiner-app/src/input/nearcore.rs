@@ -1,10 +1,7 @@
 use aurora_refiner_lib::BlockWithMetadata;
 use aurora_refiner_types::near_block::NEARBlock;
 
-use crate::{
-    config::NearcoreConfig,
-    conversion::{ch_json, convert},
-};
+use crate::config::NearcoreConfig;
 
 pub fn get_nearcore_stream(
     block_height: u64,
@@ -36,11 +33,13 @@ pub fn get_nearcore_stream(
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
-                    // TODO: Slow conversion between types. Fix
                     sender
-                        .send(BlockWithMetadata::new(convert(ch_json(block)), ()))
+                        .send(BlockWithMetadata::new(
+                            aurora_refiner_types::conversion::nearcore::convert(block),
+                            ())
+                        )
                         .await
-                        .expect("Failed to send block to channel from nearcore stream");
+                        .expect("Failed to send block to the channel from nearcore stream");
                 }
                 _ = shutdown_rx.recv() => {
                     // Explicitly close the channel, so the tx side should stop sending blocks
