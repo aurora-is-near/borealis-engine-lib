@@ -109,10 +109,6 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     });
 
     let transaction_messages = receipt_execution_outcomes.iter().filter_map(|outcome| {
-        if outcome.receipt.receiver_id.as_str() != engine_account_id.as_ref() {
-            return None;
-        }
-
         // Ignore failed transactions since they do not impact the engine state
         let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
             near_primitives::views::ExecutionStatusView::Unknown => return None,
