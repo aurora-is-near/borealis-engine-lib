@@ -98,7 +98,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .shards
         .iter()
         .flat_map(|shard| shard.receipt_execution_outcomes.iter())
-        .filter(|o| o.receipt.receiver_id.as_str() != engine_account_id.as_ref())
+        .filter(|o| o.receipt.receiver_id.as_str() == engine_account_id.as_ref())
         .collect::<Vec<_>>();
 
     receipt_execution_outcomes.sort_by_key(|item| {
