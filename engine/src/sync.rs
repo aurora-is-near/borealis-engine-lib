@@ -105,7 +105,13 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         receipt_mapping
             .get(&item.receipt.receipt_id)
             .copied()
-            .unwrap_or(usize::MAX)
+            .unwrap_or_else(|| {
+                warn!(
+                    "Receipt {:?} not found in mapping",
+                    item.receipt.receipt_id
+                );
+                usize::MAX
+            })
     });
 
     let transaction_messages = receipt_execution_outcomes.iter().filter_map(|outcome| {
