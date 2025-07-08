@@ -1,6 +1,6 @@
-use aurora_engine_sdk::io::IO;
+use aurora_engine_sdk::io::{IO, StorageIntermediate};
 use engine_standalone_storage::Diff;
-use std::{borrow::Cow, cell::RefCell};
+use std::cell::RefCell;
 
 #[derive(Clone, Copy)]
 pub struct BatchIO<'local, I> {
@@ -9,11 +9,11 @@ pub struct BatchIO<'local, I> {
     pub current_diff: &'local RefCell<Diff>,
 }
 
-impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for BatchIO<'_, I> {
-    type StorageValue = Cow<'db, [u8]>;
+impl<I: IO> IO for BatchIO<'_, I> {
+    type StorageValue = Vec<u8>;
 
     fn read_input(&self) -> Self::StorageValue {
-        self.fallback.read_input()
+        self.fallback.read_input().to_vec()
     }
 
     fn return_output(&mut self, value: &[u8]) {
@@ -27,9 +27,9 @@ impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for BatchIO<'_, I> {
             .get(key)
             .or_else(|| self.cumulative_diff.get(key))
         {
-            return diff.value().map(|bytes| Cow::Owned(bytes.to_vec()));
+            return diff.value().map(|bytes| bytes.to_vec());
         }
-        self.fallback.read_storage(key)
+        self.fallback.read_storage(key).map(|v| v.to_vec())
     }
 
     fn storage_has_key(&self, key: &[u8]) -> bool {
@@ -51,7 +51,7 @@ impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for BatchIO<'_, I> {
         key: &[u8],
         value: Self::StorageValue,
     ) -> Option<Self::StorageValue> {
-        self.write_storage(key, value.as_ref())
+        self.write_storage(key, &value.to_vec())
     }
 
     fn remove_storage(&mut self, key: &[u8]) -> Option<Self::StorageValue> {

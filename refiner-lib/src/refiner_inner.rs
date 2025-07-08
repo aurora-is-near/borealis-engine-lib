@@ -5,6 +5,7 @@ use aurora_engine::engine::{GetErc20FromNep141Error, create_legacy_address};
 use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
 };
+use aurora_engine_sdk::near_runtime::Runtime;
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
 use aurora_engine_transactions::{
@@ -783,7 +784,7 @@ fn build_transaction(
                                 near_block.header.height,
                                 transaction_index.try_into().unwrap_or(u16::MAX),
                                 &[],
-                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                                || aurora_engine::engine::get_nonce(&Runtime, &from_address),
                             )
                             .result;
 
@@ -833,7 +834,7 @@ fn build_transaction(
                             near_block.header.height,
                             transaction_index.try_into().unwrap_or(u16::MAX),
                             &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            || aurora_engine::engine::get_nonce(&Runtime, &from_address),
                         )
                         .result;
                     let contract_address = create_legacy_address(&from_address, &nonce);
@@ -888,7 +889,7 @@ fn build_transaction(
                             near_block.header.height,
                             transaction_index.try_into().unwrap_or(u16::MAX),
                             &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            || aurora_engine::engine::get_nonce(&Runtime, &from_address),
                         )
                         .result;
                     let contract_address = create_legacy_address(&from_address, &nonce);
@@ -944,7 +945,7 @@ fn build_transaction(
                             near_block.header.height,
                             transaction_index.try_into().unwrap_or(u16::MAX),
                             &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                            || aurora_engine::engine::get_nonce(&Runtime, &from_address),
                         )
                         .result;
                     let contract_address = create_legacy_address(&from_address, &nonce);
@@ -1008,7 +1009,7 @@ fn build_transaction(
                                 near_block.header.height,
                                 transaction_index.try_into().unwrap_or(u16::MAX),
                                 &[],
-                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
+                                || aurora_engine::engine::get_nonce(&Runtime, &from_address),
                             )
                             .result;
 
@@ -1178,7 +1179,7 @@ fn determine_ft_on_transfer_recipient(
                         u16::MAX
                     }),
                     &[],
-                    |io| {
+                    || {
                         let from_address_nep141 = aurora_engine_types::account_id::AccountId::new(
                             predecessor_id.as_str(),
                         )
@@ -1186,7 +1187,7 @@ fn determine_ft_on_transfer_recipient(
                             tracing::error!("Error parsing predecessor_id: {predecessor_id:?}. Error: {err}. Falling back to aurora_engine_types::account_id::AccountId::default()");
                             aurora_engine_types::account_id::AccountId::default()
                         });
-                        aurora_engine::engine::get_erc20_from_nep141(&io, &from_address_nep141)
+                        aurora_engine::engine::get_erc20_from_nep141(&Runtime, &from_address_nep141)
                     },
                 )
                 .result

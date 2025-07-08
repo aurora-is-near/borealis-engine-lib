@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap};
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
+use aurora_engine_sdk::near_runtime::Runtime;
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
@@ -472,10 +473,10 @@ impl TransactionBatch {
                             block_height,
                             transaction_position,
                             &tx.raw_input,
-                            |io| {
+                            || {
                                 let local_diff = RefCell::new(Diff::default());
                                 let batch_io = BatchIO {
-                                    fallback: io,
+                                    fallback: Runtime,
                                     cumulative_diff: &cumulative_diff,
                                     current_diff: &local_diff,
                                 };
@@ -509,10 +510,10 @@ impl TransactionBatch {
                                 block_height,
                                 transaction_position,
                                 &tx.raw_input,
-                                |io| {
+                                || {
                                     let local_diff = RefCell::new(Diff::default());
                                     let batch_io = BatchIO {
-                                        fallback: io,
+                                        fallback: Runtime,
                                         cumulative_diff: &cumulative_diff,
                                         current_diff: &local_diff,
                                     };

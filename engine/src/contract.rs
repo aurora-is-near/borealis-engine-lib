@@ -52,10 +52,9 @@ pub async fn load(height: u64, mainnet: bool) -> Result<(), UpdateError> {
     let result = client.call(request).await?;
     match result.kind {
         QueryResponseKind::CallResult(r) => {
-            let path = format!(
-                "libaurora_engine_native_{}.{LIB_SUFFIX}",
-                String::from_utf8(r.result).unwrap().trim_end()
-            );
+            // TODO(vlad): download the library of the version and put it into the right place
+            let _version = String::from_utf8(r.result).unwrap().trim_end();
+            let path = "libaurora-engine-native.so";
             native_ffi::load(path)?;
         }
         _ => panic!("wrong response"),
@@ -106,16 +105,17 @@ pub fn update(wasm_code: Vec<u8>) -> Result<(), UpdateError> {
     )?;
 
     if let ReturnData::Value(version) = outcome.return_data {
+        // TODO(vlad): download the library of the version and put it into the right place
         let version = std::str::from_utf8(&version)
             .map_err(|_| UpdateError::BadReturnData)?
             .trim_end();
-        let path = format!("libaurora_engine_native_{version}.{LIB_SUFFIX}");
+        let path = format!("libaurora-engine-native-{version}.{LIB_SUFFIX}");
         native_ffi::load(path)?;
 
         native_ffi::lock()
             .get_version()
             .map_err(UpdateError::BadNativeLibrary)?;
-        let native_version = native_ffi::state().take_output();
+        let native_version = native_ffi::read_state(|s| s.take_output());
         let native_version =
             String::from_utf8(native_version).map_err(|_| UpdateError::BadReturnData)?;
         let native_version = native_version.trim_end();

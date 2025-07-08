@@ -3,14 +3,17 @@ use aurora_engine::{
     parameters::SubmitResult,
 };
 use aurora_engine_modexp::AuroraModExp;
-use aurora_engine_sdk::io::IO;
+use aurora_engine_sdk::{
+    io::{IO, StorageIntermediate},
+    near_runtime::Runtime,
+};
 use aurora_engine_transactions::NormalizedEthTransaction;
 use aurora_engine_types::{
     H160, H256, U256, storage,
     types::{Address, NearGas, Wei},
 };
 use engine_standalone_storage::Storage;
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 fn parse_hex_int(
     body_obj: &serde_json::Map<String, serde_json::Value>,
@@ -298,9 +301,9 @@ fn eth_call(
         used_gas: NearGas::new(0),
     };
     storage
-        .with_engine_access(block_height + 1, 0, &[], |io| {
-            let current_nonce = aurora_engine::engine::get_nonce(&io, &from).low_u64();
-            let mut local_io = io;
+        .with_engine_access(block_height + 1, 0, &[], || {
+            let current_nonce = aurora_engine::engine::get_nonce(&Runtime, &from).low_u64();
+            let mut local_io = Runtime;
             let mut full_override = HashMap::new();
             for (address, state_override) in state_override {
                 if let Some(balance) = state_override.balance {
@@ -368,11 +371,11 @@ pub struct EngineStateOverride<'state, I> {
     pub state_override: &'state HashMap<H160, HashMap<H256, H256>>,
 }
 
-impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for EngineStateOverride<'_, I> {
-    type StorageValue = Cow<'db, [u8]>;
+impl<I: IO> IO for EngineStateOverride<'_, I> {
+    type StorageValue = Vec<u8>;
 
     fn read_input(&self) -> Self::StorageValue {
-        self.inner.read_input()
+        self.inner.read_input().to_vec()
     }
 
     fn return_output(&mut self, value: &[u8]) {
@@ -381,13 +384,13 @@ impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for EngineStateOverride<'_, I
 
     fn read_storage(&self, key: &[u8]) -> Option<Self::StorageValue> {
         match deconstruct_storage_key(key) {
-            None => self.inner.read_storage(key),
+            None => self.inner.read_storage(key).map(|v| v.to_vec()),
             Some((address, index)) => self.state_override.get(&address).map_or_else(
-                || self.inner.read_storage(key),
+                || self.inner.read_storage(key).map(|v| v.to_vec()),
                 |state_override| {
                     state_override
                         .get(&index)
-                        .map(|value| Cow::Owned(value.as_bytes().to_vec()))
+                        .map(|value| value.as_bytes().to_vec())
                 },
             ),
         }
@@ -398,7 +401,7 @@ impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for EngineStateOverride<'_, I
     }
 
     fn write_storage(&mut self, key: &[u8], value: &[u8]) -> Option<Self::StorageValue> {
-        self.inner.write_storage(key, value)
+        self.inner.write_storage(key, value).map(|v| v.to_vec())
     }
 
     fn write_storage_direct(
@@ -406,11 +409,11 @@ impl<'db, I: IO<StorageValue = Cow<'db, [u8]>>> IO for EngineStateOverride<'_, I
         key: &[u8],
         value: Self::StorageValue,
     ) -> Option<Self::StorageValue> {
-        self.inner.write_storage_direct(key, value)
+        self.inner.write_storage(key, &value).map(|v| v.to_vec())
     }
 
     fn remove_storage(&mut self, key: &[u8]) -> Option<Self::StorageValue> {
-        self.inner.remove_storage(key)
+        self.inner.remove_storage(key).map(|v| v.to_vec())
     }
 }
 
