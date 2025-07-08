@@ -106,10 +106,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             .get(&item.receipt.receipt_id)
             .copied()
             .unwrap_or_else(|| {
-                warn!(
-                    "Receipt {:?} not found in mapping",
-                    item.receipt.receipt_id
-                );
+                warn!("Receipt {:?} not found in mapping", item.receipt.receipt_id);
                 usize::MAX
             })
     });
