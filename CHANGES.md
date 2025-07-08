@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.8-2.6.5] 2025-07-03
+
+### Fixes
+
+* fix: receipt_execution_outcomes order by [@aleksuss] in [#240]
+
+[#240]: https://github.com/aurora-is-near/borealis-engine-lib/pull/240
+
 ## [0.30.6-2.6.5] 2025-07-03
 
 ### Changes
@@ -291,7 +299,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.6-2.6.5...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.8-2.6.5...main
+[0.30.8-2.6.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.6-2.6.3...0.30.8-2.6.5
 [0.30.6-2.6.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.6-2.6.3...0.30.6-2.6.5
 [0.30.6-2.6.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.5-2.6.3...0.30.6-2.6.3
 [0.30.5-2.6.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.4-2.6.3...0.30.5-2.6.3

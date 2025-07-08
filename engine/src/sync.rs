@@ -35,21 +35,29 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;
 
-    // Capture data receipts (for using in promises)
-    message
+    // Capture data receipts (for using in promises). Also, we create a mapping here because the
+    // order of the `receipts` and `receipt_execution_outcomes` is different (probably BUG) and we
+    // need to handle the behavior.
+    let receipt_mapping = message
         .shards
         .iter()
         .filter_map(|shard| shard.chunk.as_ref())
         .flat_map(|chunk| chunk.receipts.as_slice())
-        .for_each(|r| {
+        .enumerate()
+        .filter_map(|(i, r)| {
             if r.receiver_id.as_str() == engine_account_id.as_ref() {
                 if let near_primitives::views::ReceiptEnumView::Data { data_id, data, .. } =
                     &r.receipt
                 {
                     data_id_mapping.put(*data_id, data.clone());
                 }
+
+                Some((r.receipt_id, i))
+            } else {
+                None
             }
-        });
+        })
+        .collect::<HashMap<_, _>>();
 
     // Get expected state changes based on data in the streamer message
     let aurora_state_changes = message
@@ -86,145 +94,154 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     }
 
     let mut position_counter = 0;
-    let transaction_messages = message
+    let mut receipt_execution_outcomes = message
         .shards
         .iter()
         .flat_map(|shard| shard.receipt_execution_outcomes.iter())
-        .filter_map(|outcome| {
-            if outcome.receipt.receiver_id.as_str() != engine_account_id.as_ref() {
+        .filter(|o| o.receipt.receiver_id.as_str() == engine_account_id.as_ref())
+        .collect::<Vec<_>>();
+
+    receipt_execution_outcomes.sort_by_key(|item| {
+        receipt_mapping
+            .get(&item.receipt.receipt_id)
+            .copied()
+            .unwrap_or_else(|| {
+                warn!("Receipt {:?} not found in mapping", item.receipt.receipt_id);
+                usize::MAX
+            })
+    });
+
+    let transaction_messages = receipt_execution_outcomes.iter().filter_map(|outcome| {
+        // Ignore failed transactions since they do not impact the engine state
+        let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
+            near_primitives::views::ExecutionStatusView::Unknown => return None,
+            near_primitives::views::ExecutionStatusView::Failure(_) => return None,
+            near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => Some(bytes),
+            near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
+        };
+
+        let (signer, maybe_tx, promise_data) = match &outcome.receipt.receipt {
+            near_primitives::views::ReceiptEnumView::Action {
+                signer_id,
+                actions,
+                input_data_ids,
+                ..
+            } => {
+                let input_data: Vec<_> = input_data_ids
+                    .iter()
+                    .map(|id| data_id_mapping.pop(id).flatten())
+                    .collect();
+                let maybe_tx = parse_actions(actions, &input_data);
+
+                (signer_id, maybe_tx, input_data)
+            }
+            near_primitives::views::ReceiptEnumView::Data { .. } => return None,
+            near_primitives::views::ReceiptEnumView::GlobalContractDistribution { .. } => {
                 return None;
             }
+        };
 
-            // Ignore failed transactions since they do not impact the engine state
-            let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
-                near_primitives::views::ExecutionStatusView::Unknown => return None,
-                near_primitives::views::ExecutionStatusView::Failure(_) => return None,
-                near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => Some(bytes),
-                near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
-            };
-
-            let (signer, maybe_tx, promise_data) = match &outcome.receipt.receipt {
-                near_primitives::views::ReceiptEnumView::Action {
-                    signer_id,
-                    actions,
-                    input_data_ids,
-                    ..
-                } => {
-                    let input_data: Vec<_> = input_data_ids
-                        .iter()
-                        .map(|id| data_id_mapping.pop(id).flatten())
-                        .collect();
-                    let maybe_tx = parse_actions(actions, &input_data);
-
-                    (signer_id, maybe_tx, input_data)
-                }
-                near_primitives::views::ReceiptEnumView::Data { .. } => return None,
-                near_primitives::views::ReceiptEnumView::GlobalContractDistribution { .. } => {
+        let signer = signer.as_str().parse().ok()?;
+        let caller = outcome.receipt.predecessor_id.as_str().parse().ok()?;
+        let near_receipt_id = outcome.receipt.receipt_id.0.into();
+        let maybe_batch_actions = match maybe_tx {
+            Some(tn) => tn,
+            None => {
+                if expected_diffs.contains_key(&near_receipt_id) {
+                    warn!(
+                        "Receipt {:?} not parsed as transaction, but has state changes",
+                        near_receipt_id,
+                    );
+                    ParsedActions::Single(SingleParsedAction::default())
+                } else {
                     return None;
                 }
-            };
+            }
+        };
 
-            let signer = signer.as_str().parse().ok()?;
-            let caller = outcome.receipt.predecessor_id.as_str().parse().ok()?;
-            let near_receipt_id = outcome.receipt.receipt_id.0.into();
-            let maybe_batch_actions = match maybe_tx {
-                Some(tn) => tn,
-                None => {
-                    if expected_diffs.contains_key(&near_receipt_id) {
-                        warn!(
-                            "Receipt {:?} not parsed as transaction, but has state changes",
-                            near_receipt_id,
+        let transaction_messages = match maybe_batch_actions {
+            ParsedActions::Single(parsed_action) => {
+                let action_hash =
+                    compute_action_hash(&outcome.receipt.receipt_id, near_block_hash, 0);
+                let transaction_message = types::TransactionMessage {
+                    block_hash,
+                    near_receipt_id,
+                    position: position_counter,
+                    succeeded: true, // we drop failed transactions above
+                    signer,
+                    caller,
+                    attached_near: parsed_action.deposit,
+                    transaction: *parsed_action.transaction_kind,
+                    promise_data,
+                    raw_input: parsed_action.raw_input,
+                    action_hash,
+                };
+                position_counter += 1;
+
+                TransactionBatch::Single(transaction_message)
+            }
+
+            ParsedActions::Batch(txs) => {
+                let mut non_last_actions: Vec<_> = txs
+                    .into_iter()
+                    .map(|(index, parsed_action)| {
+                        let action_index = match index {
+                            BatchIndex::Index(i) => i.into(),
+                            BatchIndex::Last(i) => i.into(),
+                        };
+                        let action_hash = compute_action_hash(
+                            &outcome.receipt.receipt_id,
+                            near_block_hash,
+                            action_index,
                         );
-                        ParsedActions::Single(SingleParsedAction::default())
-                    } else {
-                        return None;
-                    }
+                        let virtual_receipt_id = match index {
+                            BatchIndex::Index(i) => {
+                                let mut bytes = [0u8; 36];
+                                bytes[0..32].copy_from_slice(near_receipt_id.as_bytes());
+                                bytes[32..36].copy_from_slice(&i.to_be_bytes());
+                                aurora_refiner_types::utils::keccak256(&bytes)
+                            }
+                            BatchIndex::Last(_) => near_receipt_id,
+                        };
+                        let transaction_message = types::TransactionMessage {
+                            block_hash,
+                            near_receipt_id: virtual_receipt_id,
+                            position: position_counter,
+                            succeeded: true, // we drop failed transactions above
+                            signer: signer.clone(),
+                            caller: caller.clone(),
+                            attached_near: parsed_action.deposit,
+                            transaction: *parsed_action.transaction_kind,
+                            promise_data: promise_data.clone(),
+                            raw_input: parsed_action.raw_input,
+                            action_hash,
+                        };
+                        position_counter += 1;
+
+                        transaction_message
+                    })
+                    .collect();
+
+                let has_last_action = non_last_actions
+                    .last()
+                    .map(|t| t.near_receipt_id == near_receipt_id)
+                    .unwrap_or(false);
+                let last_action = if has_last_action {
+                    non_last_actions.pop()
+                } else {
+                    None
+                };
+
+                TransactionBatch::Batch {
+                    near_receipt_id,
+                    non_last_actions,
+                    last_action,
                 }
-            };
+            }
+        };
 
-            let transaction_messages = match maybe_batch_actions {
-                ParsedActions::Single(parsed_action) => {
-                    let action_hash =
-                        compute_action_hash(&outcome.receipt.receipt_id, near_block_hash, 0);
-                    let transaction_message = types::TransactionMessage {
-                        block_hash,
-                        near_receipt_id,
-                        position: position_counter,
-                        succeeded: true, // we drop failed transactions above
-                        signer,
-                        caller,
-                        attached_near: parsed_action.deposit,
-                        transaction: *parsed_action.transaction_kind,
-                        promise_data,
-                        raw_input: parsed_action.raw_input,
-                        action_hash,
-                    };
-                    position_counter += 1;
-
-                    TransactionBatch::Single(transaction_message)
-                }
-
-                ParsedActions::Batch(txs) => {
-                    let mut non_last_actions: Vec<_> = txs
-                        .into_iter()
-                        .map(|(index, parsed_action)| {
-                            let action_index = match index {
-                                BatchIndex::Index(i) => i.into(),
-                                BatchIndex::Last(i) => i.into(),
-                            };
-                            let action_hash = compute_action_hash(
-                                &outcome.receipt.receipt_id,
-                                near_block_hash,
-                                action_index,
-                            );
-                            let virtual_receipt_id = match index {
-                                BatchIndex::Index(i) => {
-                                    let mut bytes = [0u8; 36];
-                                    bytes[0..32].copy_from_slice(near_receipt_id.as_bytes());
-                                    bytes[32..36].copy_from_slice(&i.to_be_bytes());
-                                    aurora_refiner_types::utils::keccak256(&bytes)
-                                }
-                                BatchIndex::Last(_) => near_receipt_id,
-                            };
-                            let transaction_message = types::TransactionMessage {
-                                block_hash,
-                                near_receipt_id: virtual_receipt_id,
-                                position: position_counter,
-                                succeeded: true, // we drop failed transactions above
-                                signer: signer.clone(),
-                                caller: caller.clone(),
-                                attached_near: parsed_action.deposit,
-                                transaction: *parsed_action.transaction_kind,
-                                promise_data: promise_data.clone(),
-                                raw_input: parsed_action.raw_input,
-                                action_hash,
-                            };
-                            position_counter += 1;
-
-                            transaction_message
-                        })
-                        .collect();
-
-                    let has_last_action = non_last_actions
-                        .last()
-                        .map(|t| t.near_receipt_id == near_receipt_id)
-                        .unwrap_or(false);
-                    let last_action = if has_last_action {
-                        non_last_actions.pop()
-                    } else {
-                        None
-                    };
-
-                    TransactionBatch::Batch {
-                        near_receipt_id,
-                        non_last_actions,
-                        last_action,
-                    }
-                }
-            };
-
-            Some((transaction_messages, execution_result_bytes))
-        });
+        Some((transaction_messages, execution_result_bytes))
+    });
 
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
