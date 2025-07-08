@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixes
+
+* fix: receipt_execution_outcomes order by [@aleksuss] in [#240]
+
+[#240]: https://github.com/aurora-is-near/borealis-engine-lib/pull/240
+
 ## [0.30.7-2.7.0-rc.2] 2025-07-02
 
 ### Changes
