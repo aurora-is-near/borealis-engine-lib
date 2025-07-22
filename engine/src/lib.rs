@@ -8,6 +8,7 @@ use std::path::Path;
 
 mod batch_tx_processing;
 pub mod gas;
+pub mod log_file;
 pub mod sync;
 #[cfg(test)]
 mod tests;

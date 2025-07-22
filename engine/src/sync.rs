@@ -21,6 +21,184 @@ use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
+use crate::log_file;
+
+/// Helper function to decode and analyze storage keys/values for debugging
+fn debug_storage_entry(key: &[u8], value: &[u8]) -> String {
+    // Analyze the key structure
+    if key.is_empty() {
+        return "Empty key".to_string();
+    }
+
+    let mut result = String::new();
+
+    let version = key[0];
+    result.push_str(&format!("Key[v{}]: ", version));
+
+    // Try to decode Aurora storage key structure
+    if key.len() > 1 {
+        // Key prefix is the second byte that indicates the type of Aurora storage entry
+        // Common prefixes: 4=Storage, 5=Code, 6=Nonce, 7=Balance, etc.
+        let key_prefix = key.get(1).copied().unwrap_or(0);
+        result.push_str(&format!("prefix({}) ", key_prefix));
+
+        // Decode common Aurora key structures
+        if key.len() >= 22 && (key_prefix == 4 || key_prefix == 5) {
+            // Likely Storage or Code keys
+            // Extract address (20 bytes after version and prefix)
+            let address_bytes = &key[2..22];
+            result.push_str(&format!("addr(0x{}) ", hex::encode(address_bytes)));
+
+            // If there's more data, it might be a storage slot
+            if key.len() > 22 {
+                let slot_data = &key[22..];
+                if slot_data.len() == 32 {
+                    // 32-byte storage slot
+                    result.push_str(&format!("slot(0x{}) ", hex::encode(&slot_data[..8])));
+                } else if slot_data.len() == 36 {
+                    // 32-byte slot + 4-byte generation
+                    let generation = u32::from_le_bytes([
+                        slot_data[32],
+                        slot_data[33],
+                        slot_data[34],
+                        slot_data[35],
+                    ]);
+                    result.push_str(&format!(
+                        "slot(0x{}) gen({}) ",
+                        hex::encode(&slot_data[..8]),
+                        generation
+                    ));
+                } else {
+                    result.push_str(&format!("extra({} bytes) ", slot_data.len()));
+                }
+            }
+        } else {
+            // Unknown structure, show raw bytes
+            let key_suffix = &key[1..];
+            result.push_str(&format!(
+                "raw({}) ",
+                hex::encode(&key_suffix[..key_suffix.len().min(16)])
+            ));
+        }
+
+        // Look for ASCII strings in key
+        if let Some(ascii) = extract_ascii_strings(&key[1..]) {
+            if !ascii.is_empty() {
+                result.push_str(&format!("key_strings:[{}] ", ascii.join(", ")));
+            }
+        }
+    }
+
+    // Analyze the value
+    result.push_str(&format!("\nValue({} bytes): ", value.len()));
+
+    if value.len() <= 32 {
+        // Small values - show as hex and try as number
+        result.push_str(&format!("0x{}", hex::encode(value)));
+        if value.len() <= 8 && !value.is_empty() {
+            if let Some(num) = bytes_to_number(value) {
+                result.push_str(&format!(" ({})", num));
+            }
+        }
+    } else {
+        // Large values - likely bytecode
+        result.push_str(&format!(
+            "{}...{}",
+            hex::encode(&value[..16.min(value.len())]),
+            hex::encode(&value[value.len().saturating_sub(16)..])
+        ));
+
+        // For bytecode, try to identify if it's contract code
+        if value.len() > 100 {
+            // Look for common Solidity patterns
+            let mut patterns = Vec::new();
+
+            // Check for constructor signature
+            if value.starts_with(&[0x60, 0x80]) {
+                patterns.push("Solidity_Constructor");
+            }
+
+            // Check for function selector patterns
+            if value.windows(4).any(|w| w == [0x63, 0x77, 0xd3, 0x2e]) {
+                // common selector pattern
+                patterns.push("Function_Selectors");
+            }
+
+            if !patterns.is_empty() {
+                result.push_str(&format!(" patterns:[{}]", patterns.join(", ")));
+            }
+        }
+
+        // Extract ASCII strings from bytecode/data
+        if let Some(strings) = extract_ascii_strings(value) {
+            if !strings.is_empty() {
+                let important_strings: Vec<_> = strings
+                    .into_iter()
+                    .filter(|s| {
+                        s.len() > 3
+                            && (s.contains("Transaction")
+                                || s.contains("Value")
+                                || s.contains("Event")
+                                || s.contains("Function")
+                                || s.contains("Contract")
+                                || s.contains("Error")
+                                || s.len() > 8)
+                    })
+                    .take(5) // Limit to 5 strings to prevent log spam from large bytecode
+                    .collect();
+
+                if !important_strings.is_empty() {
+                    result.push_str(&format!(" strings:[{}]", important_strings.join(", ")));
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Extract ASCII strings from byte data (minimum 4 chars, printable only)
+fn extract_ascii_strings(data: &[u8]) -> Option<Vec<String>> {
+    let mut strings = Vec::new();
+    let mut current_string = String::new();
+
+    for &byte in data {
+        if byte >= 32 && byte <= 126 {
+            // Printable ASCII
+            current_string.push(byte as char);
+        } else {
+            if current_string.len() >= 4 {
+                // Minimum 4 characters
+                strings.push(current_string.clone());
+            }
+            current_string.clear();
+        }
+    }
+
+    // Don't forget the last string
+    if current_string.len() >= 4 {
+        strings.push(current_string);
+    }
+
+    if strings.is_empty() {
+        None
+    } else {
+        Some(strings)
+    }
+}
+
+/// Convert bytes to number (little-endian)
+fn bytes_to_number(bytes: &[u8]) -> Option<u64> {
+    match bytes.len() {
+        1 => Some(bytes[0] as u64),
+        2 => Some(u16::from_le_bytes([bytes[0], bytes[1]]) as u64),
+        4 => Some(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64),
+        8 => Some(u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ])),
+        _ => None,
+    }
+}
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
@@ -34,6 +212,10 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     let block_hash =
         add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;
+
+    if message.block.header.height == 42384870 {
+        warn!("debug");
+    }
 
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
     // order of the `receipts` and `receipt_execution_outcomes` is different (probably BUG) and we
@@ -148,11 +330,25 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             Some(tn) => tn,
             None => {
                 if expected_diffs.contains_key(&near_receipt_id) {
-                    warn!(
-                        "Receipt {:?} not parsed as transaction, but has state changes",
-                        near_receipt_id,
+                    // Log the method names that failed to parse
+                    let method_names: Vec<String> = if let near_primitives::views::ReceiptEnumView::Action { actions, .. } = &outcome.receipt.receipt {
+                        actions.iter().filter_map(|action| {
+                            if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action {
+                                Some(method_name.clone())
+                            } else {
+                                None
+                            }
+                        }).collect()
+                    } else {
+                        Vec::new()
+                    };
+                    let block_height = message.block.header.height;
+                    let expected_diff_count = expected_diffs.get(&near_receipt_id).map(|d| d.iter().count()).unwrap_or(0);
+                    crate::warn_and_log_to_file!(
+                        "consume_near_block {} :: Receipt {:?} not parsed as transaction, but has state changes. Methods: {:?}, Expected diff count: {}",
+                        block_height, near_receipt_id, method_names, expected_diff_count
                     );
-                    ParsedActions::Single(SingleParsedAction::default())
+                    ParsedActions::Single(SingleParsedAction::default()) // <- TransactionKind::Unknown
                 } else {
                     return None;
                 }
@@ -299,14 +495,85 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                 }
             }
             Some(expected_diff) => {
-                if expected_diff == tx_outcome.diff() {
+                let computed_diff = tx_outcome.diff();
+                if expected_diff == computed_diff {
                     // Diff was correct, so commit it to the storage
                     tx_outcome.commit(storage)?;
                 } else {
+                    let diff_mismatch_count = log_file::diff_mismatch_increment() + 1;
+                    let block_height = message.block.header.height;
+
+                    crate::log_to_file!(
+                        "=== consume_near_block {} :: START :: {} ===\n",
+                        block_height,
+                        diff_mismatch_count
+                    );
+
                     // Diff was incorrect, so log a warning and commit
                     // the one from the Near block instead
-                    warn!("Receipt {receipt_id:?} diff mismatch with computed diff");
+                    warn!(
+                        "Receipt {receipt_id:?} diff mismatch with computed diff,\nblock height: {:?},\nexpected diff count: {:?},\ncomputed diff count: {:?}",
+                        message.block.header.height,
+                        expected_diff.iter().count(),
+                        computed_diff.iter().count()
+                    );
+
+                    log_file::log_to_file!(
+                        "Receipt {receipt_id:?} diff mismatch with computed diff,\nblock height: {:?},\nexpected diff count: {:?},\nexpected diff: {:?},\ncomputed diff count: {:?},\ncomputed diff: {:?}\n",
+                        message.block.header.height,
+                        expected_diff.iter().count(),
+                        expected_diff,
+                        computed_diff.iter().count(),
+                        computed_diff
+                    );
+
+                    // Debug: Analyze the expected diff entries
+                    crate::log_to_file!("EXPECTED DIFF :: START");
+                    for (key, diff_op) in expected_diff.iter() {
+                        match diff_op.value() {
+                            Some(value) => {
+                                crate::log_to_file!(
+                                    "EXPECTED MODIFIED:\n{}",
+                                    debug_storage_entry(&key, &value)
+                                );
+                            }
+                            None => {
+                                crate::log_to_file!(
+                                    "EXPECTED DELETE:\nKey[v{}]: ({})",
+                                    key.get(0).unwrap_or(&0),
+                                    hex::encode(&key[..key.len().min(16)])
+                                );
+                            }
+                        }
+                    }
+                    crate::log_to_file!("EXPECTED DIFF :: END");
+
+                    // Debug: Analyze the computed diff entries
+                    crate::log_to_file!("COMPUTED DIFF :: START");
+                    for (key, diff_op) in computed_diff.iter() {
+                        match diff_op.value() {
+                            Some(value) => {
+                                crate::log_to_file!(
+                                    "COMPUTED MODIFIED:\n{}",
+                                    debug_storage_entry(&key, &value)
+                                );
+                            }
+                            None => {
+                                crate::log_to_file!(
+                                    "COMPUTED DELETE:\nKey[v{}]: ({})",
+                                    key.get(0).unwrap_or(&0),
+                                    hex::encode(&key[..key.len().min(16)])
+                                );
+                            }
+                        }
+                    }
+
+                    crate::log_to_file!("COMPUTED DIFF :: END");
+
+                    // The engine state is correct according to Near, so we commit the expected diff
                     tx_outcome.update_diff(storage, expected_diff)?;
+
+                    crate::log_to_file!("\n=== consume_near_block {} :: END ===\n\n", block_height);
                 }
             }
         }
@@ -369,7 +636,9 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
         },
     };
 
-    debug!("Consuming block {}", block_message.height);
+    if block_message.height % 10000 == 0 {
+        debug!("Consuming block {}", block_message.height);
+    }
     sync::consume_message::<M>(storage, Message::Block(block_message))?;
 
     Ok(block_hash)
