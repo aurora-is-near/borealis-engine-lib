@@ -17,14 +17,16 @@ use engine_standalone_storage::{
     },
 };
 use lru::LruCache;
-use std::{cell::RefCell, collections::HashMap};
+use std::{collections::HashMap, sync::Mutex};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
+use crate::runner::ContractRunner;
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
+    runner: &ContractRunner,
     message: &aurora_refiner_types::near_block::NEARBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
     engine_account_id: &AccountId,
@@ -32,7 +34,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), engine_standalone_storage::Error> {
     let block_hash =
-        add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
+        add_block_data_from_near_block::<M>(storage, runner, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;
 
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
@@ -246,7 +248,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
         debug!("Processing receipt {:?}", receipt_id);
-        let tx_outcome = t.process::<M>(storage)?;
+        let tx_outcome = t.process::<M>(storage, runner)?;
         let computed_result = match &tx_outcome {
             TransactionBatchOutcome::Single(tx_outcome) => tx_outcome
                 .maybe_result
@@ -353,6 +355,7 @@ fn compute_action_hash(
 
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
+    runner: &ContractRunner,
     message: &aurora_refiner_types::near_block::NEARBlock,
     chain_id: [u8; 32],
     account_id: &AccountId,
@@ -370,7 +373,7 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     };
 
     debug!("Consuming block {}", block_message.height);
-    sync::consume_message::<M>(storage, Message::Block(block_message))?;
+    sync::consume_message::<M, _>(storage, runner, Message::Block(block_message))?;
 
     Ok(block_hash)
 }
@@ -428,10 +431,15 @@ impl TransactionBatch {
     fn process<M: ModExpAlgorithm>(
         self,
         storage: &mut Storage,
+        runner: &ContractRunner,
     ) -> Result<TransactionBatchOutcome, engine_standalone_storage::Error> {
         match self {
             Self::Single(tx) => {
-                match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
+                match sync::consume_message::<M, _>(
+                    storage,
+                    runner,
+                    Message::Transaction(Box::new(tx)),
+                )? {
                     ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Ok(TransactionBatchOutcome::Single(tx_outcome))
@@ -464,6 +472,10 @@ impl TransactionBatch {
                 let block_height = storage.get_block_height_by_hash(block_hash)?;
                 let block_metadata = storage.get_block_metadata(block_hash)?;
                 let engine_account_id = storage.get_engine_account_id()?;
+                let mut context = storage
+                    .get_custom_data(b"more_context")?
+                    .and_then(|data| data.try_into().ok())
+                    .unwrap_or_default();
                 // We need to use `BatchIO` here instead of simply calling `sync::consume_message` because
                 // the latter no longer persists to the DB right away (we wait util checking the expected diff first now),
                 // but a later transaction in a batch can see earlier ones, therefore we need to keep track all
@@ -471,36 +483,29 @@ impl TransactionBatch {
                 for tx in non_last_actions {
                     let transaction_position = tx.position;
                     let local_engine_account_id = engine_account_id.clone();
-                    let (tx_hash, diff, result) = storage
-                        .with_engine_access(
-                            block_height,
-                            transaction_position,
-                            &tx.raw_input,
-                            |io| {
-                                let local_diff = RefCell::new(Diff::default());
-                                let batch_io = BatchIO {
-                                    fallback: io,
-                                    cumulative_diff: &cumulative_diff,
-                                    current_diff: &local_diff,
-                                };
-                                sync::execute_transaction::<_, M, _>(
-                                    &tx,
-                                    block_height,
-                                    &block_metadata,
-                                    local_engine_account_id,
-                                    batch_io,
-                                    |x| x.current_diff.borrow().clone(),
-                                )
-                            },
-                        )
+                    let raw_input = tx.raw_input.clone();
+                    let tx_outcome = storage
+                        .with_engine_access(block_height, transaction_position, &raw_input, |io| {
+                            let local_diff = Mutex::new(Diff::default());
+                            let batch_io = BatchIO {
+                                fallback: io,
+                                cumulative_diff: &cumulative_diff,
+                                current_diff: &local_diff,
+                            };
+                            sync::execute_transaction::<_, _, _>(
+                                runner,
+                                tx,
+                                block_height,
+                                &block_metadata,
+                                local_engine_account_id,
+                                None,
+                                batch_io,
+                                &mut context,
+                                |x| x.current_diff.lock().unwrap().clone(),
+                            )
+                        })
                         .result;
-                    cumulative_diff.append(diff.clone());
-                    let tx_outcome = TransactionIncludedOutcome {
-                        hash: tx_hash,
-                        info: tx,
-                        diff,
-                        maybe_result: result,
-                    };
+                    cumulative_diff.append(tx_outcome.diff.clone());
                     debug!("COMPLETED {:?}", tx_outcome.hash);
                     non_last_outcomes.push(tx_outcome);
                 }
@@ -508,40 +513,39 @@ impl TransactionBatch {
                     None => None,
                     Some(tx) => {
                         let transaction_position = tx.position;
-                        let (tx_hash, diff, result) = storage
+                        let raw_input = tx.raw_input.clone();
+                        let tx_outcome = storage
                             .with_engine_access(
                                 block_height,
                                 transaction_position,
-                                &tx.raw_input,
+                                &raw_input,
                                 |io| {
-                                    let local_diff = RefCell::new(Diff::default());
+                                    let local_diff = Mutex::new(Diff::default());
                                     let batch_io = BatchIO {
                                         fallback: io,
                                         cumulative_diff: &cumulative_diff,
                                         current_diff: &local_diff,
                                     };
-                                    sync::execute_transaction::<_, M, _>(
-                                        &tx,
+                                    sync::execute_transaction::<_, _, _>(
+                                        runner,
+                                        tx,
                                         block_height,
                                         &block_metadata,
                                         engine_account_id,
+                                        None,
                                         batch_io,
-                                        |x| x.current_diff.borrow().clone(),
+                                        &mut context,
+                                        |x| x.current_diff.lock().unwrap().clone(),
                                     )
                                 },
                             )
                             .result;
-                        cumulative_diff.append(diff.clone());
-                        let tx_outcome = TransactionIncludedOutcome {
-                            hash: tx_hash,
-                            info: tx,
-                            diff,
-                            maybe_result: result,
-                        };
+                        cumulative_diff.append(tx_outcome.diff.clone());
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Some(Box::new(tx_outcome))
                     }
                 };
+                storage.set_custom_data(b"more_context", &context)?;
                 Ok(TransactionBatchOutcome::Batch {
                     cumulative_diff,
                     non_last_outcomes,

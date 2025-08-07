@@ -3,13 +3,13 @@ use engine_standalone_storage::{
     Diff,
     engine_state::{EngineStateAccess, EngineStorageValue},
 };
-use std::cell::RefCell;
+use std::sync::Mutex;
 
 #[derive(Clone, Copy)]
 pub struct BatchIO<'db, 'local> {
     pub fallback: EngineStateAccess<'db, 'db, 'db>,
     pub cumulative_diff: &'local Diff,
-    pub current_diff: &'local RefCell<Diff>,
+    pub current_diff: &'local Mutex<Diff>,
 }
 
 impl<'db> IO for BatchIO<'db, '_> {
@@ -26,7 +26,8 @@ impl<'db> IO for BatchIO<'db, '_> {
     fn read_storage(&self, key: &[u8]) -> Option<Self::StorageValue> {
         if let Some(diff) = self
             .current_diff
-            .borrow()
+            .lock()
+            .unwrap()
             .get(key)
             .or_else(|| self.cumulative_diff.get(key))
         {
@@ -45,7 +46,8 @@ impl<'db> IO for BatchIO<'db, '_> {
         let original_value = self.read_storage(key);
 
         self.current_diff
-            .borrow_mut()
+            .lock()
+            .unwrap()
             .modify(key.to_vec(), value.to_vec());
 
         original_value
@@ -62,7 +64,7 @@ impl<'db> IO for BatchIO<'db, '_> {
     fn remove_storage(&mut self, key: &[u8]) -> Option<Self::StorageValue> {
         let original_value = self.read_storage(key);
 
-        self.current_diff.borrow_mut().delete(key.to_vec());
+        self.current_diff.lock().unwrap().delete(key.to_vec());
 
         original_value
     }

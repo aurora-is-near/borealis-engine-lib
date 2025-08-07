@@ -11,6 +11,7 @@ pub struct Config {
     pub output_storage: OutputStoreConfig,
     pub input_mode: InputMode,
     pub socket_server: Option<SocketServer>,
+    pub contract_wasm_code_path: PathBuf,
 }
 
 #[derive(Deserialize, Clone, Debug)]

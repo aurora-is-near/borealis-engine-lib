@@ -100,12 +100,14 @@ async fn main() -> anyhow::Result<()> {
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
+                config.contract_wasm_code_path,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
+            let runner = ctx.runner.clone();
 
             let (signals_result, input_result, output_result, ..) = tokio::join!(
                 // Handle all signals
@@ -119,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
+                            runner,
                             Path::new(&socket_config.path),
                             &mut shutdown_rx_socket,
                         )
