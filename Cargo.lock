@@ -481,8 +481,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-engine"
-version = "3.9.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
+version = "3.9.2"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -504,7 +503,6 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -515,7 +513,6 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "hex",
  "num",
@@ -524,7 +521,6 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -533,20 +529,19 @@ dependencies = [
  "ethabi",
  "hex",
  "num",
- "ripemd",
- "sha2 0.10.9",
- "sha3",
+ "serde",
+ "serde_json",
  "zeropool-bn",
 ]
 
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine-types",
  "base64 0.22.1",
  "libsecp256k1",
+ "ripemd",
  "sha2 0.10.9",
  "sha3",
 ]
@@ -554,7 +549,6 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -565,10 +559,8 @@ dependencies = [
 
 [[package]]
 name = "aurora-engine-types"
-version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
+version = "2.0.0"
 dependencies = [
- "base64 0.22.1",
  "borsh 1.5.7",
  "bs58 0.5.1",
  "hex",
@@ -704,6 +696,10 @@ dependencies = [
  "engine-standalone-tracing",
  "hex",
  "lru 0.12.5",
+ "near-crypto 2.8.0-rc.1",
+ "near-parameters 2.8.0-rc.1",
+ "near-primitives-core 2.8.0-rc.1",
+ "near-vm-runner",
  "serde",
  "serde_json",
  "tempfile",
@@ -2642,7 +2638,6 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2650,21 +2645,23 @@ dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-transactions",
  "aurora-engine-types",
+ "engine-standalone-tracing",
  "hex",
  "postgres",
  "rocksdb",
  "serde",
  "serde_json",
- "strum 0.26.3",
+ "strum 0.27.2",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.9.0#69a864f790f7dfd750c1e7f6eec8d65b16c118f4"
 dependencies = [
  "aurora-engine-types",
  "aurora-evm",
+ "borsh 1.5.7",
  "hex",
  "serde",
 ]
@@ -7948,11 +7945,11 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.26.3"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
 dependencies = [
- "strum_macros 0.26.4",
+ "strum_macros 0.27.2",
 ]
 
 [[package]]
@@ -7970,14 +7967,13 @@ dependencies = [
 
 [[package]]
 name = "strum_macros"
-version = "0.26.4"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "rustversion",
  "syn 2.0.106",
 ]
 
