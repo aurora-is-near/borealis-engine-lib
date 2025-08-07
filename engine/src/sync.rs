@@ -1,26 +1,28 @@
-use aurora_engine::parameters;
+use std::collections::HashMap;
+use std::time::Instant;
+
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
 use aurora_engine_types::borsh::BorshDeserialize;
+use aurora_engine_types::parameters::engine::{SubmitResult, TransactionExecutionResult};
 use aurora_engine_types::{H256, account_id::AccountId};
+use aurora_refiner_types::near_block::StateChangeCauseView;
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
     views::{ActionView, StateChangeValueView},
 };
-use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
     sync::{
-        self, ConsumeMessageOutcome, TransactionExecutionResult, TransactionIncludedOutcome,
-        types::{self, Message},
+        self, ConsumeMessageOutcome, TransactionIncludedOutcome,
+        types::{self, Message, TransactionKind},
     },
 };
 use lru::LruCache;
-use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
-use crate::batch_tx_processing::BatchIO;
+use crate::contract;
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
@@ -60,6 +62,55 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             }
         })
         .collect::<HashMap<_, _>>();
+
+    // trigger contract dynamic library reload if needed
+    for shard in &message.shards {
+        for change in &shard.state_changes {
+            // Use the `std::hint::unlikely` to hint to the compiler that the pattern is unlikely
+            if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
+                if account_id.as_str() == engine_account_id.as_ref() {
+                    let height = message.block.header.height;
+                    let tx_pos = match &change.cause {
+                        StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
+                            // Find the index of this receipt in the execution outcomes
+                            shard
+                                .receipt_execution_outcomes
+                                .iter()
+                                .position(|outcome| outcome.execution_outcome.id == *receipt_hash)
+                                .unwrap_or_default()
+                        }
+                        _ => 0,
+                    };
+                    let time = Instant::now();
+                    if let Err(err) = storage.runner_mut().set_code(code.clone()) {
+                        tracing::error!(
+                            err = format!("{err:?}"),
+                            height = height,
+                            "the onchain code is not valid WASM",
+                        );
+                    } else if let Ok(version) = storage.runner_mut().get_version() {
+                        let version = version.as_str().trim_end();
+                        if let Err(err) =
+                            contract::apply(storage, height, tx_pos as u16, Some(version))
+                        {
+                            tracing::error!(
+                                err = format!("{err:?}"),
+                                height = height,
+                                "failed to apply updated contract code",
+                            );
+                        }
+                    } else {
+                        debug!(
+                            "Contract code updated at block height {} (code size {}), time elapsed {:?}",
+                            height,
+                            code.len(),
+                            time.elapsed()
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     // Get expected state changes based on data in the streamer message
     let aurora_state_changes = message
@@ -175,8 +226,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     attached_near: parsed_action.deposit,
                     transaction: *parsed_action.transaction_kind,
                     promise_data,
-                    raw_input: parsed_action.raw_input,
                     action_hash,
+                    trace_kind: None,
                 };
                 position_counter += 1;
 
@@ -215,8 +266,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             attached_near: parsed_action.deposit,
                             transaction: *parsed_action.transaction_kind,
                             promise_data: promise_data.clone(),
-                            raw_input: parsed_action.raw_input,
                             action_hash,
+                            trace_kind: None,
                         };
                         position_counter += 1;
 
@@ -248,7 +299,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
         debug!("Processing receipt {:?}", receipt_id);
-        let tx_outcome = t.process::<M>(storage)?;
+        let tx_outcome = t.process(storage)?;
         let computed_result = match &tx_outcome {
             TransactionBatchOutcome::Single(tx_outcome) => tx_outcome
                 .maybe_result
@@ -270,22 +321,18 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         // Validate result (note: only the result of the last action in a batch is returned in NEAR)
         if let Some(TransactionExecutionResult::Submit(submit_result)) = computed_result {
             match result_bytes.as_ref() {
-                Some(result_bytes) => {
-                    match parameters::SubmitResult::try_from_slice(result_bytes) {
-                        Ok(expected_result) => {
-                            if submit_result.is_err()
-                                || submit_result.as_ref().unwrap() != &expected_result
-                            {
-                                warn!(
-                                    "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
-                                );
-                            }
-                        }
-                        Err(_) => {
-                            warn!("Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",)
+                Some(result_bytes) => match SubmitResult::try_from_slice(result_bytes) {
+                    Ok(expected_result) => {
+                        if submit_result != &expected_result {
+                            warn!(
+                                "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
+                            );
                         }
                     }
-                }
+                    Err(_) => {
+                        warn!("Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",)
+                    }
+                },
                 None => warn!(
                     "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
                 ),
@@ -372,7 +419,7 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     };
 
     debug!("Consuming block {}", block_message.height);
-    sync::consume_message::<M>(storage, Message::Block(block_message))?;
+    sync::consume_message::<false>(storage, Message::Block(block_message))?;
 
     Ok(block_hash)
 }
@@ -393,15 +440,13 @@ enum ParsedActions {
 
 struct SingleParsedAction {
     pub transaction_kind: Box<TransactionKind>,
-    pub raw_input: Vec<u8>,
     pub deposit: u128,
 }
 
 impl Default for SingleParsedAction {
     fn default() -> Self {
         Self {
-            transaction_kind: Box::new(TransactionKind::Unknown),
-            raw_input: Vec::new(),
+            transaction_kind: Box::new(TransactionKind::unknown()),
             deposit: 0,
         }
     }
@@ -427,13 +472,13 @@ impl TransactionBatch {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    fn process<M: ModExpAlgorithm>(
+    fn process(
         self,
         storage: &mut Storage,
     ) -> Result<TransactionBatchOutcome, engine_standalone_storage::Error> {
         match self {
             Self::Single(tx) => {
-                match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
+                match sync::consume_message::<false>(storage, Message::Transaction(Box::new(tx)))? {
                     ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Ok(TransactionBatchOutcome::Single(tx_outcome))
@@ -449,103 +494,22 @@ impl TransactionBatch {
                 ..
             } => {
                 let mut non_last_outcomes = Vec::with_capacity(non_last_actions.len());
-                let mut cumulative_diff = Diff::default();
 
-                let block_hash = match last_action.as_ref() {
-                    Some(tx_msg) => tx_msg.block_hash,
-                    None => {
-                        // This case should never come up because empty
-                        // batches are thrown out before processing.
-                        return Ok(TransactionBatchOutcome::Batch {
-                            cumulative_diff: Diff::default(),
-                            non_last_outcomes: Vec::new(),
-                            last_outcome: None,
-                        });
-                    }
-                };
-                let block_height = storage.get_block_height_by_hash(block_hash)?;
-                let block_metadata = storage.get_block_metadata(block_hash)?;
-                let engine_account_id = storage.get_engine_account_id()?;
-                // We need to use `BatchIO` here instead of simply calling `sync::consume_message` because
-                // the latter no longer persists to the DB right away (we wait util checking the expected diff first now),
-                // but a later transaction in a batch can see earlier ones, therefore we need to keep track all
-                // changes made and expose them as if they had been committed to the DB.
                 for tx in non_last_actions {
-                    let transaction_position = tx.position;
-                    let local_engine_account_id = engine_account_id.clone();
-                    let (tx_hash, diff, result) = storage
-                        .with_engine_access(
-                            block_height,
-                            transaction_position,
-                            &tx.raw_input,
-                            |io| {
-                                let local_diff = RefCell::new(Diff::default());
-                                let batch_io = BatchIO {
-                                    fallback: io,
-                                    cumulative_diff: &cumulative_diff,
-                                    current_diff: &local_diff,
-                                };
-                                sync::execute_transaction::<_, M, _>(
-                                    &tx,
-                                    block_height,
-                                    &block_metadata,
-                                    local_engine_account_id,
-                                    batch_io,
-                                    |x| x.current_diff.borrow().clone(),
-                                )
-                            },
-                        )
-                        .result;
-                    cumulative_diff.append(diff.clone());
-                    let tx_outcome = TransactionIncludedOutcome {
-                        hash: tx_hash,
-                        info: tx,
-                        diff,
-                        maybe_result: result,
-                    };
+                    let tx_outcome = sync::execute_transaction_message::<true>(storage, tx)?;
                     debug!("COMPLETED {:?}", tx_outcome.hash);
                     non_last_outcomes.push(tx_outcome);
                 }
                 let last_outcome = match last_action {
                     None => None,
                     Some(tx) => {
-                        let transaction_position = tx.position;
-                        let (tx_hash, diff, result) = storage
-                            .with_engine_access(
-                                block_height,
-                                transaction_position,
-                                &tx.raw_input,
-                                |io| {
-                                    let local_diff = RefCell::new(Diff::default());
-                                    let batch_io = BatchIO {
-                                        fallback: io,
-                                        cumulative_diff: &cumulative_diff,
-                                        current_diff: &local_diff,
-                                    };
-                                    sync::execute_transaction::<_, M, _>(
-                                        &tx,
-                                        block_height,
-                                        &block_metadata,
-                                        engine_account_id,
-                                        batch_io,
-                                        |x| x.current_diff.borrow().clone(),
-                                    )
-                                },
-                            )
-                            .result;
-                        cumulative_diff.append(diff.clone());
-                        let tx_outcome = TransactionIncludedOutcome {
-                            hash: tx_hash,
-                            info: tx,
-                            diff,
-                            maybe_result: result,
-                        };
+                        let tx_outcome = sync::execute_transaction_message::<true>(storage, tx)?;
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Some(Box::new(tx_outcome))
                     }
                 };
                 Ok(TransactionBatchOutcome::Batch {
-                    cumulative_diff,
+                    cumulative_diff: storage.runner_mut().take_cached_diff(),
                     non_last_outcomes,
                     last_outcome,
                 })
@@ -638,10 +602,9 @@ fn parse_actions(
 ) -> Option<ParsedActions> {
     let num_actions = actions.len();
     if num_actions == 1 {
-        parse_action(&actions[0], promise_data).map(|(tx, input, n)| {
+        parse_action(&actions[0], promise_data).map(|(tx, n)| {
             ParsedActions::Single(SingleParsedAction {
                 transaction_kind: Box::new(tx),
-                raw_input: input,
                 deposit: n,
             })
         })
@@ -653,7 +616,7 @@ fn parse_actions(
             .iter()
             .enumerate()
             .filter_map(|(i, action)| {
-                parse_action(action, promise_data).map(|(tx, input, n)| {
+                parse_action(action, promise_data).map(|(tx, n)| {
                     let index = if i == last_index {
                         BatchIndex::Last(i as u32)
                     } else {
@@ -664,7 +627,6 @@ fn parse_actions(
                         index,
                         SingleParsedAction {
                             transaction_kind: Box::new(tx),
-                            raw_input: input,
                             deposit: n,
                         },
                     )
@@ -688,7 +650,7 @@ fn parse_actions(
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
-) -> Option<(TransactionKind, Vec<u8>, u128)> {
+) -> Option<(TransactionKind, u128)> {
     if let ActionView::FunctionCall {
         method_name,
         args,
@@ -697,9 +659,8 @@ fn parse_action(
     } = action
     {
         let bytes = args.to_vec();
-        let transaction_kind =
-            sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, deposit.as_yoctonear()));
+        let transaction_kind = TransactionKind::new(method_name, bytes, promise_data);
+        return Some((transaction_kind, deposit.as_yoctonear()));
     }
 
     None

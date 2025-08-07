@@ -4,7 +4,7 @@ use crate::tx_hash_tracker::TxHashTracker;
 use aurora_engine_modexp::AuroraModExp;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
-use aurora_standalone_engine::EngineContext;
+use aurora_standalone_engine::{EngineContext, contract};
 
 pub struct NearStream {
     /// Keep track of last block seen, to report empty blocks
@@ -40,6 +40,17 @@ impl NearStream {
     async fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
         self.handler.on_block_start(near_block);
 
+        if !self.context.storage.runner_mut().initialized() {
+            let block_height = near_block.block.header.height;
+            if let Err(err) = contract::apply(&mut self.context.storage, block_height, 0, None) {
+                tracing::error!(
+                    "Failed to apply contracts at block {}: {:?}",
+                    block_height,
+                    err
+                );
+            }
+        }
+
         let mut txs = Default::default();
 
         // Can specify a concrete modexp algorithm here because only transactions
@@ -57,7 +68,6 @@ impl NearStream {
             .consume_near_block(near_block)
             .expect("Transaction tracker consume_near_block error");
 
-        let storage = self.context.storage.as_ref().write().await;
         near_block
             .shards
             .iter()
@@ -77,7 +87,7 @@ impl NearStream {
                     near_tx_hash,
                     outcome,
                     &txs,
-                    &storage,
+                    &mut self.context.storage,
                 );
             });
 
@@ -113,18 +123,17 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
-    use aurora_engine::{
-        engine::setup_receive_erc20_tokens_input, parameters::NEP141FtOnTransferArgs,
-        state::EngineStateError,
-    };
+    use aurora_engine::{engine::setup_receive_erc20_tokens_input, state::EngineStateError};
     use aurora_engine_sdk::types::near_account_to_evm_address;
     use aurora_engine_types::parameters::connector::Erc20Metadata;
     use aurora_engine_types::{
         U256,
         account_id::AccountId,
+        parameters::connector::FtOnTransferArgs,
         types::{Address, Balance, Wei},
     };
     use aurora_refiner_types::aurora_block::NearBlock;
+    use aurora_standalone_engine::contract;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches, str::FromStr};
 
@@ -164,8 +173,6 @@ pub mod tests {
             let result = stream
                 .context
                 .storage
-                .read()
-                .await
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -176,8 +183,6 @@ pub mod tests {
         let chain_id_from_state = stream
             .context
             .storage
-            .read()
-            .await
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -475,7 +480,7 @@ pub mod tests {
             // Expected arguments are extracted from the base64-encoded string of the NEAR receipt id "D4PhVsM2PFNgyc73mjR5oLYpz6rNAwBSy4rRo1Aariea"
             // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
             // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
-            let args = NEP141FtOnTransferArgs {
+            let args = FtOnTransferArgs {
                 sender_id: AccountId::from_str(
                     "66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e",
                 )
@@ -483,7 +488,7 @@ pub mod tests {
                 amount: Balance::new(11633748708758676689950),
                 msg: "0fe957e6acbb4fd935cee5ba033e00088df86adb".to_string(),
             };
-            setup_receive_erc20_tokens_input(&args, &expected_recipient)
+            setup_receive_erc20_tokens_input(&expected_recipient, args.amount.as_u128())
         };
 
         let aurora_block = aurora_blocks.first().unwrap();
@@ -605,7 +610,14 @@ pub mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
-            let engine_context = EngineContext::new(&engine_path, account_id, chain_id).unwrap();
+            let mut engine_context =
+                EngineContext::new(&engine_path, account_id, chain_id).unwrap();
+            let code = contract::bundled::get("3.7.0").unwrap();
+            engine_context
+                .storage
+                .runner_mut()
+                .set_code(code.to_vec())
+                .unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 
             Self {
@@ -620,8 +632,7 @@ pub mod tests {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
             };
-            let storage = self.engine_context.storage.as_ref().write().await;
-            initialize_engine_state(&storage, json_snapshot).unwrap();
+            initialize_engine_state(&self.engine_context.storage, json_snapshot).unwrap();
         }
 
         pub fn create_stream(self) -> NearStream {

@@ -9,5 +9,6 @@ pub mod storage;
 pub mod tx_hash_tracker;
 mod utils;
 pub use refiner::*;
+mod kind;
 mod legacy;
 pub mod signal_handlers;

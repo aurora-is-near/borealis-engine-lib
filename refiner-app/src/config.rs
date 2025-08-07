@@ -1,4 +1,5 @@
 use aurora_engine_types::account_id::AccountId;
+use aurora_refiner_types::source_config::ContractSource;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::path::PathBuf;
@@ -11,6 +12,7 @@ pub struct Config {
     pub output_storage: OutputStoreConfig,
     pub input_mode: InputMode,
     pub socket_server: Option<SocketServer>,
+    pub contract_source: Option<ContractSource>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

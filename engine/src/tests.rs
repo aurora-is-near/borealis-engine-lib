@@ -1,12 +1,58 @@
-use aurora_engine::parameters::TransactionStatus;
+use std::collections::HashMap;
+use std::fs;
+use std::num::NonZeroUsize;
+
 use aurora_engine_modexp::AuroraModExp;
+use aurora_engine_types::parameters::engine::{TransactionExecutionResult, TransactionStatus};
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
-use engine_standalone_storage::sync::TransactionExecutionResult;
-use std::collections::HashMap;
-use std::num::NonZeroUsize;
+
+use crate::contract;
+
+#[test]
+fn test_switch_contract() {
+    tracing_subscriber::fmt::try_init().unwrap_or_default();
+
+    let dir = fs::read_dir("src/res/deploy").unwrap();
+
+    let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
+    let mut outcomes_map = HashMap::new();
+    let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
+
+    let mut test_context =
+        TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
+    test_context.engine_account_id = "borealis.testnet".parse().unwrap();
+
+    let blocks = dir.map(|item| {
+        let path = item.unwrap().path();
+        let file = fs::File::open(path).unwrap();
+        serde_json::from_reader::<_, NEARBlock>(file).unwrap()
+    });
+    let versions = ["3.6.4", "3.7.0", "3.9.0", "3.9.1", "3.9.2"];
+    for (block, expected_version) in blocks.zip(versions) {
+        crate::sync::consume_near_block::<AuroraModExp>(
+            &mut test_context.storage,
+            &block,
+            &mut data_id_mapping,
+            &test_context.engine_account_id,
+            chain_id,
+            Some(&mut outcomes_map),
+        )
+        .unwrap();
+
+        // the contract version is updated
+        let actual_version = test_context
+            .storage
+            .runner_mut()
+            .get_version_at_wrapper()
+            .unwrap();
+        let actual_version = actual_version.as_str().trim_end();
+
+        assert_eq!(actual_version, expected_version);
+    }
+}
 
 /// This test processes a real block from mainnet:
 /// <https://nearblocks.io/blocks/5SRtKoD8JppC3LRv8uCp5bS26wCd4wUXtT6M1yziUFdN>
@@ -45,7 +91,7 @@ fn test_random_value() {
 
     let outcome = outcomes_map.remove(&expected_tx_hash).unwrap();
     let submit_result = match outcome.maybe_result.unwrap().unwrap() {
-        TransactionExecutionResult::Submit(x) => x.unwrap(),
+        TransactionExecutionResult::Submit(x) => x,
         other => panic!("Unexpected result {other:?}"),
     };
     let output = match submit_result.status {
@@ -163,7 +209,7 @@ fn test_batched_transactions() {
     for (tx_hash, gas_used) in expected_transactions {
         let outcome = outcomes_map.remove(&tx_hash).unwrap();
         let submit_result = match outcome.maybe_result.unwrap().unwrap() {
-            TransactionExecutionResult::Submit(x) => x.unwrap(),
+            TransactionExecutionResult::Submit(x) => x,
             other => panic!("Unexpected result {other:?}"),
         };
         assert!(matches!(
@@ -186,10 +232,12 @@ impl TestContext {
     fn load_snapshot(snapshot_path: &str) -> Self {
         let engine_account_id = "aurora".parse().unwrap();
         let storage_path = tempfile::tempdir().unwrap();
-        let mut storage = Storage::open(storage_path.path()).unwrap();
-        storage.set_engine_account_id(&engine_account_id).unwrap();
+        let mut storage =
+            Storage::open_ensure_account_id(storage_path.path(), &engine_account_id).unwrap();
         let snapshot = JsonSnapshot::load_from_file(snapshot_path).unwrap();
         json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
+        let code = contract::bundled::get("3.7.0").unwrap();
+        storage.runner_mut().set_code(code.to_vec()).unwrap();
         Self {
             storage,
             storage_path,

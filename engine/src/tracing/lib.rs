@@ -1,10 +1,11 @@
-use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::H256;
 use engine_standalone_storage::{
     Storage,
     sync::{self, TransactionIncludedOutcome},
 };
-use engine_standalone_tracing::{sputnik, types::call_tracer::CallTracer};
+use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
+
+use crate::contract;
 
 pub struct DebugTraceTransactionRequest {
     pub tx_hash: H256,
@@ -25,13 +26,26 @@ impl DebugTraceTransactionRequest {
 }
 
 pub fn trace_transaction(
-    storage: &Storage,
+    storage: &mut Storage,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
-    let tx_msg = storage.get_transaction_data(tx_hash)?;
-    let mut listener = CallTracer::default();
-    let outcome = sputnik::traced_call(&mut listener, || {
-        sync::execute_transaction_message::<AuroraModExp>(storage, tx_msg)
-    })?;
-    Ok((listener, outcome))
+    let (tx_msg, height) = {
+        let mut tx_msg = storage.get_transaction_data(tx_hash)?;
+        tx_msg.trace_kind = Some(TraceKind::CallFrame);
+        let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
+        (tx_msg, height)
+    };
+    if let Err(err) = contract::apply(storage, height, tx_msg.position, None) {
+        tracing::error!(
+            tx_hash = format!("{tx_hash:#x}"),
+            height,
+            pos = tx_msg.position,
+            err = format!("{err:?}"),
+            "Failed to apply contract for tracing",
+        );
+    }
+    let mut outcome = sync::execute_transaction_message::<false>(storage, tx_msg)?;
+
+    let tracer = outcome.call_tracer.take().unwrap();
+    Ok((tracer, outcome))
 }

@@ -4,7 +4,9 @@ mod conversion;
 mod input;
 mod socket;
 mod store;
+
 use anyhow::anyhow;
+use aurora_standalone_engine::contract;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -109,14 +111,33 @@ async fn run_refiner_app(
         .map(PathBuf::from)
         .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
-    let ctx = aurora_standalone_engine::EngineContext::new(
+    let mut ctx = aurora_standalone_engine::EngineContext::new(
         engine_path,
         engine_account_id.clone(),
         config.refiner.chain_id,
     )
     .map_err(|err| anyhow!("Failed to create engine context: {err:?}"))?;
+    let version = contract::version::get(next_block, true)
+        .await
+        .or_else(|err| {
+            if next_block == 0 || err.out_of_range() {
+                Ok("3.7.0".to_owned())
+            } else {
+                Err(err)
+            }
+        })?;
+    contract::apply(&mut ctx.storage, next_block, 0, Some(version.as_str()))?;
 
-    let socket_storage = ctx.storage.clone();
+    if let Some(link) = &config.contract_source {
+        tracing::info!("Fetching contracts from source: {:?}", link);
+        if let Err(err) = contract::fetch_all(&mut ctx.storage, link).await {
+            tracing::error!("Failed to fetch contracts: {:?}", err);
+        }
+    } else {
+        tracing::warn!("No contract source provided, skipping contract fetch");
+    }
+
+    let socket_storage = ctx.storage.share();
 
     let (signals_result, input_result, output_result, ..) = tokio::join!(
         // Handle all signals
@@ -130,6 +151,7 @@ async fn run_refiner_app(
             if let Some(socket_config) = &config.socket_server {
                 socket::start_socket_server(
                     socket_storage,
+                    config.contract_source.clone(),
                     Path::new(&socket_config.path),
                     &mut shutdown_rx_socket,
                 )

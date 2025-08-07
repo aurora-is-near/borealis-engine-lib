@@ -1,6 +1,7 @@
 use std::io;
 use std::path::Path;
 
+use aurora_refiner_types::source_config::ContractSource;
 use aurora_standalone_engine::{
     gas::{EthCallRequest, estimate_gas},
     tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
@@ -14,10 +15,9 @@ use tokio::{
 };
 use tracing::{error, info, warn};
 
-type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
-
 pub async fn start_socket_server(
-    storage: SharedStorage,
+    storage: Storage,
+    link: Option<ContractSource>,
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
@@ -36,11 +36,8 @@ pub async fn start_socket_server(
             _ = stop_signal.recv() => {
                 break
             },
-            Ok((mut stream, _)) = sock.accept() => {
-                let storage = storage.clone();
-                tokio::task::spawn(async move {
-                    handle_conn(storage, &mut stream).await;
-                });
+            Ok((stream, _)) = sock.accept() => {
+                tokio::task::spawn(handle_conn(storage.share(), link.clone(), stream));
             }
         }
     }
@@ -50,12 +47,12 @@ pub async fn start_socket_server(
     std::fs::remove_file(path).expect("Failed to remove socket file on shutdown");
 }
 
-async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
+async fn handle_conn(storage: Storage, link: Option<ContractSource>, mut stream: UnixStream) {
     loop {
         if stream.readable().await.is_err() || stream.writable().await.is_err() {
             continue;
         }
-        match wrapped_read(stream).await {
+        match wrapped_read(&mut stream).await {
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
             }
@@ -79,7 +76,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                                 .unwrap_or(serde_json::Value::Null),
                         );
 
-                        match handle_msg(storage.clone(), req).await {
+                        match handle_msg(storage.share(), link.clone(), req) {
                             Ok(v) => res.insert("result".into(), v),
                             Err(e) => res.insert(
                                 "error".into(),
@@ -88,7 +85,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                         };
 
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
-                        if let Err(e) = wrapped_write(stream, &res_body).await {
+                        if let Err(e) = wrapped_write(&mut stream, &res_body).await {
                             error!("error writing to stream: {:?}", e);
                         }
                     }
@@ -103,7 +100,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                             }
                         });
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
-                        if let Err(e) = wrapped_write(stream, &res_body).await {
+                        if let Err(e) = wrapped_write(&mut stream, &res_body).await {
                             error!("error writing to stream: {:?}", e);
                         }
                     }
@@ -114,8 +111,9 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
     let _ = stream.shutdown().await;
 }
 
-async fn handle_msg(
-    storage: SharedStorage,
+fn handle_msg(
+    storage: Storage,
+    link: Option<ContractSource>,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     match msg
@@ -127,8 +125,8 @@ async fn handle_msg(
         })?
         .as_str()
     {
-        Some("eth_estimateGas") => handle_estimate_gas(storage, msg).await,
-        Some("debug_traceTransaction") => handle_trace_transaction(storage, msg).await,
+        Some("eth_estimateGas") => handle_estimate_gas(storage, link, msg),
+        Some("debug_traceTransaction") => handle_trace_transaction(storage, link, msg),
         _ => Err(JsonRpcError {
             code: -32601,
             message: "Method not found".into(),
@@ -138,12 +136,12 @@ async fn handle_msg(
 }
 
 #[allow(clippy::significant_drop_tightening)]
-async fn handle_estimate_gas(
-    storage: SharedStorage,
+fn handle_estimate_gas(
+    storage: Storage,
+    _link: Option<ContractSource>,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req = EthCallRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
-    let storage = storage.as_ref().read().await;
     let (res, _nonce) = estimate_gas(&storage, req, 0);
     match res {
         Err(_) => Err(internal_err(None)),
@@ -156,15 +154,15 @@ async fn handle_estimate_gas(
 }
 
 #[allow(clippy::significant_drop_tightening)]
-async fn handle_trace_transaction(
-    storage: SharedStorage,
+fn handle_trace_transaction(
+    mut storage: Storage,
+    _link: Option<ContractSource>,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req =
         DebugTraceTransactionRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
-    let storage = storage.as_ref().read().await;
     let (res, _outcome) =
-        trace_transaction(&storage, req.tx_hash).map_err(|_| internal_err(None))?;
+        trace_transaction(&mut storage, req.tx_hash).map_err(|_| internal_err(None))?;
     let mut traces = Vec::with_capacity(res.call_stack.len());
     for t in res.call_stack {
         let val = serde_json::to_value(SerializableCallFrame::from(t))
@@ -222,17 +220,15 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 mod tests {
     use super::*;
     use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
 
     struct TestStorage {
         dir: tempfile::TempDir,
-        storage: SharedStorage,
+        storage: Storage,
     }
 
     impl TestStorage {
-        pub fn get(&self) -> SharedStorage {
-            self.storage.clone()
+        pub fn get(&self) -> Storage {
+            self.storage.share()
         }
 
         pub fn close(self) {
@@ -245,7 +241,7 @@ mod tests {
     async fn test_stream_open_and_close() {
         let storage = init_storage();
         let server_storage = storage.get();
-        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
                 client.shutdown().await.unwrap();
@@ -253,9 +249,7 @@ mod tests {
                 let res = client.read(&mut data).await.unwrap();
                 assert_eq!(0, res);
             }),
-            tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
-            })
+            tokio::task::spawn(handle_conn(server_storage, None, handler))
         )
         .unwrap();
         storage.close();
@@ -263,12 +257,11 @@ mod tests {
 
     fn init_storage() -> TestStorage {
         let dir = tempfile::tempdir().unwrap();
-        let mut storage = Storage::open(dir.path().join("storage")).unwrap();
+        let account_id = "aurora".parse().unwrap();
+        let mut storage =
+            Storage::open_ensure_account_id(dir.path().join("storage"), &account_id).unwrap();
 
         // Initialize storage with data so that Engine can process transactions
-        storage
-            .set_engine_account_id(&"aurora".parse().unwrap())
-            .unwrap();
         let snapshot =
             JsonSnapshot::load_from_file("src/tests/res/aurora_state_minimal.json").unwrap();
         let block_metadata = {
@@ -291,17 +284,14 @@ mod tests {
             .unwrap();
         json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
 
-        TestStorage {
-            dir,
-            storage: Arc::new(RwLock::new(storage)),
-        }
+        TestStorage { dir, storage }
     }
 
     #[tokio::test]
     async fn test_parse_error() {
         let storage = init_storage();
         let server_storage = storage.get();
-        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
                 client.writable().await.unwrap();
@@ -322,9 +312,7 @@ mod tests {
                 assert_eq!(std::io::ErrorKind::UnexpectedEof, data.unwrap_err().kind());
             }),
 
-            tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
-            })
+            tokio::task::spawn(handle_conn(server_storage, None, handler))
         ).unwrap();
         storage.close();
     }
@@ -333,7 +321,7 @@ mod tests {
     async fn test_trace_transaction() {
         let storage = init_storage();
         let server_storage = storage.get();
-        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
             tokio::task::spawn(async move {
                 client.writable().await.unwrap();
@@ -369,9 +357,7 @@ mod tests {
                 assert_eq!(std::io::ErrorKind::UnexpectedEof, data.unwrap_err().kind());
             }),
 
-            tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
-            })
+            tokio::task::spawn(handle_conn(server_storage, None, handler))
         ).unwrap();
         storage.close();
     }
@@ -380,7 +366,7 @@ mod tests {
     async fn test_estimate_gas() {
         let storage = init_storage();
         let server_storage = storage.get();
-        let (mut client, mut handler) = UnixStream::pair().unwrap();
+        let (mut client, handler) = UnixStream::pair().unwrap();
         let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();
 
         let req_task = tokio::task::spawn(async move {
@@ -409,9 +395,7 @@ mod tests {
             client.shutdown().await.unwrap();
         });
 
-        let server_task = tokio::task::spawn(async move {
-            handle_conn(server_storage, &mut handler).await;
-        });
+        let server_task = tokio::task::spawn(handle_conn(server_storage, None, handler));
 
         tokio::try_join!(req_task, server_task).unwrap();
         storage.close();

@@ -1,10 +1,10 @@
+use crate::kind::TxKind;
 use crate::legacy::decode_submit_result;
 use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
 use crate::utils::{TxMetadata, as_h256, keccak256};
-use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
 use aurora_engine::engine::{GetErc20FromNep141Error, create_legacy_address};
 use aurora_engine::parameters::{
-    CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
+    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
 };
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
@@ -13,7 +13,10 @@ use aurora_engine_transactions::{
 };
 use aurora_engine_types::account_id::ParseAccountError;
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::parameters::connector::Erc20Metadata;
+use aurora_engine_types::parameters::{
+    connector::{Erc20Metadata, FtOnTransferArgs, FtTransferMessageData},
+    engine::TransactionExecutionResult,
+};
 use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -30,9 +33,7 @@ use aurora_refiner_types::near_primitives::views::{
 };
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::Storage;
-use engine_standalone_storage::sync::{
-    TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
-};
+use engine_standalone_storage::sync::TransactionIncludedOutcome;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -381,7 +382,7 @@ struct BuiltTransaction {
 /// two raw outcomes match in the case that they are both present.
 fn normalize_output(
     receipt_id: &CryptoHash,
-    tx_kind: TransactionKindTag,
+    tx_kind: TxKind,
     execution_status: Option<&ExecutionStatusView>,
     engine_outcome: Option<&TransactionIncludedOutcome>,
 ) -> Result<(SubmitResult, HashchainOutputKind, Vec<u8>), RefinerError> {
@@ -389,16 +390,7 @@ fn normalize_output(
         .and_then(|x| x.maybe_result.as_ref().ok())
         .and_then(Option::as_ref)
         .map(|result| match result {
-            TransactionExecutionResult::Submit(result) => match result {
-                Ok(result) => result.clone(),
-                Err(err) => SubmitResult::new(
-                    aurora_engine::parameters::TransactionStatus::Revert(
-                        format!("{:?}", err.kind).into_bytes(),
-                    ),
-                    err.gas_used,
-                    Vec::new(),
-                ),
-            },
+            TransactionExecutionResult::Submit(result) => result.clone(),
             TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
                 MIN_EVM_GAS,
@@ -427,10 +419,7 @@ fn normalize_output(
         Some(ExecutionStatusView::SuccessValue(result)) => {
             let bytes = result.clone();
             match tx_kind {
-                TransactionKindTag::Submit
-                | TransactionKindTag::Call
-                | TransactionKindTag::Deploy
-                | TransactionKindTag::SubmitWithArgs => {
+                TxKind::Submit | TxKind::Call | TxKind::Deploy | TxKind::SubmitWithArgs => {
                     // These transaction kinds should have a `SubmitResult` as an outcome
                     let (result, output_kind) = decode_submit_result(&bytes).unwrap_or_else(|_| {
                         // This is now considered a fatal error because we must know how
@@ -460,7 +449,7 @@ fn normalize_output(
         // In terms of the hashchain, we still treat it as `HashchainOutputKind::None` because
         // `io.return_output` is never called since the promise is returned instead.
         Some(ExecutionStatusView::SuccessReceiptId(result))
-            if tx_kind == TransactionKindTag::WithdrawWnearToRouter =>
+            if tx_kind == TxKind::WithdrawWnearToRouter =>
         {
             let submit_result = engine_output.as_ref().cloned().unwrap_or_else(|| {
                 let bytes = result.0.to_vec();
@@ -496,7 +485,7 @@ fn normalize_output(
             // output cannot be a `SubmitResult`. But the Standalone Engine can still capture
             // the `SubmitResult` from the execution. Hence, in this case we combine the
             // Standalone's result with the on-chain output to get a complete picture.
-            if tx_kind == TransactionKindTag::FtOnTransfer {
+            if tx_kind == TxKind::FtOnTransfer {
                 return Ok((engine_output, near_output.1, near_output.2));
             }
             // We have a result from both sources, so we should compare them to
@@ -605,18 +594,16 @@ fn build_transaction(
 
             transaction_hash = sha256(raw_input.as_slice());
 
-            let raw_tx_kind: TransactionKindTag =
-                TransactionKindTag::from_str(method_name.as_str())
-                    .unwrap_or(TransactionKindTag::Unknown);
+            let raw_tx_kind = TxKind::from_str(method_name.as_str()).unwrap_or(TxKind::Unknown);
 
             record_metric(&raw_tx_kind);
 
-            if TransactionKindTag::Unknown == raw_tx_kind {
+            if TxKind::Unknown == raw_tx_kind {
                 tracing::warn!("Unknown method: {}", method_name);
             }
 
             tx = match raw_tx_kind {
-                TransactionKindTag::SubmitWithArgs => {
+                TxKind::SubmitWithArgs => {
                     let input_kind = match SubmitArgs::try_from_slice(&raw_input) {
                         Ok(args) => {
                             let bytes = args.tx_data;
@@ -695,7 +682,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::Submit => {
+                TxKind::Submit => {
                     let tx_metadata = TxMetadata::try_from(raw_input.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
 
@@ -749,7 +736,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::Call => {
+                TxKind::Call => {
                     hash = virtual_receipt_id.0.into();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
@@ -821,7 +808,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::Deploy => {
+                TxKind::Deploy => {
                     hash = virtual_receipt_id.0.into();
                     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
                     let nonce = storage
@@ -868,7 +855,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::DeployErc20 => {
+                TxKind::DeployErc20 => {
                     hash = virtual_receipt_id.0.into();
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
                         &engine_account_id.parse()
@@ -923,7 +910,7 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::MirrorErc20TokenCallback => {
+                TxKind::MirrorErc20TokenCallback => {
                     hash = virtual_receipt_id.0.into();
                     let erc20_metadata = get_erc20_metadata_from_promises(&promises_result)?;
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
@@ -979,11 +966,11 @@ fn build_transaction(
                     );
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
-                TransactionKindTag::FtOnTransfer => {
+                TxKind::FtOnTransfer => {
                     hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
-                    if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                    if let Ok(args) = serde_json::from_slice::<FtOnTransferArgs>(&raw_input) {
                         let token_mint_kind =
                             get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
                         // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
@@ -1015,7 +1002,10 @@ fn build_transaction(
                             // For ERC-20 transactions, encode the amount as part of the input, not value
                             TokenMintKind::Erc20 => (
                                 Wei::zero(),
-                                aurora_engine::engine::setup_receive_erc20_tokens_input(&args, &to),
+                                aurora_engine::engine::setup_receive_erc20_tokens_input(
+                                    &to,
+                                    args.amount.as_u128(),
+                                ),
                             ),
                         };
 
@@ -1146,13 +1136,13 @@ fn build_transaction(
 fn determine_ft_on_transfer_recipient(
     token_mint_kind: &TokenMintKind,
     execution_outcome: &ExecutionOutcomeWithReceipt,
-    args: &NEP141FtOnTransferArgs,
+    args: &FtOnTransferArgs,
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
 ) -> Address {
     match token_mint_kind {
-        TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
+        TokenMintKind::Eth => FtTransferMessageData::try_from(args.msg.as_str())
             .map(|msg_data| msg_data.recipient)
             .unwrap_or_else(|err| {
                 tracing::error!(
@@ -1183,10 +1173,10 @@ fn determine_ft_on_transfer_recipient(
                     },
                 )
                 .result
-                .and_then(|bytes| {
-                    Address::try_from_slice(&bytes)
+                .and_then(|address| {
+                    Address::try_from_slice(address.as_bytes())
                         .map_err(|err| {
-                            tracing::error!("Error parsing ERC20 address: {bytes:?}. Error: {err}");
+                            tracing::error!("Error parsing ERC20 address: {address:?}. Error: {err}");
                             GetErc20FromNep141Error::InvalidAddress
                         })
                 })
