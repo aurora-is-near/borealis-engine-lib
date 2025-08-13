@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.9-2.7.0] 2025-08-13
+
+### Changes
+
+* chore: bump crates.io near-primitives to 0.31.0 in [#246]
+
 ### Notes
 
 [StorageError::FlatStorageReshardingAlreadyInProgress](https://github.com/aurora-is-near/borealis-engine-lib/blob/f2f45a904b9646df25d4ae41f3e849ef00ecd214/refiner-types/src/conversion/data_lake_conversion.rs#L1151) variant was removed in nearcore [2.7.0-rc.1](https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-b19914e5b0f572c2fa2ef167a0a5ac69b8937e6274a12c419d7112f76f28a9e0L149-L151), 
@@ -14,6 +20,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 [StateChangeCauseView::ReshardingV2](https://github.com/aurora-is-near/borealis-engine-lib/blob/f2f45a904b9646df25d4ae41f3e849ef00ecd214/refiner-types/src/conversion/data_lake_conversion.rs#L1242) variant was removed in nearcore [2.7.0-rc.1](https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-1e4fc99d32e48420a9bd37050fa1412758cba37825851edea40cbdfcab406944L2341), 
 Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framework-rs` crate, this variant was also removed from the crates.io-based version of `StateChangeCauseView`
+
+[#246]: https://github.com/aurora-is-near/borealis-engine-lib/pull/246
 
 ## [0.30.8-2.7.0] 2025-08-12
 
