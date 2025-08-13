@@ -1152,24 +1152,16 @@ impl Converter<StorageError> for near_primitives_crates_io::errors::StorageError
     fn convert(self) -> StorageError {
         match self {
             Self::StorageInternalError => StorageError::StorageInternalError,
-            Self::MissingTrieValue(missing_trie_value_context, crypto_hash) => {
+            Self::MissingTrieValue(missing_trie_value) => {
                 StorageError::MissingTrieValue(near_primitives::errors::MissingTrieValue {
-                    context: missing_trie_value_context.convert(),
-                    hash: crypto_hash.convert(),
+                    context: missing_trie_value.context.convert(),
+                    hash: missing_trie_value.hash.convert(),
                 })
             }
             Self::UnexpectedTrieValue => StorageError::UnexpectedTrieValue,
             Self::StorageInconsistentState(s) => StorageError::StorageInconsistentState(s),
             Self::FlatStorageBlockNotSupported(s) => StorageError::FlatStorageBlockNotSupported(s),
             Self::MemTrieLoadingError(s) => StorageError::MemTrieLoadingError(s),
-            // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-b19914e5b0f572c2fa2ef167a0a5ac69b8937e6274a12c419d7112f76f28a9e0L149-L151
-            Self::FlatStorageReshardingAlreadyInProgress => {
-                // FlatStorageReshardingAlreadyInProgress was removed in nearcore 2.7.0-rc.1
-                // Map it to a generic storage error for backward compatibility
-                StorageError::StorageInconsistentState(
-                    "FlatStorageReshardingAlreadyInProgress encountered".to_string(),
-                )
-            }
         }
     }
 }
@@ -1286,12 +1278,6 @@ impl Converter<crate::near_block::StateChangeCauseView>
                 crate::near_block::StateChangeCauseView::ValidatorAccountsUpdate
             }
             Self::Migration => crate::near_block::StateChangeCauseView::Migration,
-            // https://github.com/near/nearcore/compare/2.6.3...2.7.0-rc.1#diff-1e4fc99d32e48420a9bd37050fa1412758cba37825851edea40cbdfcab406944L2341
-            Self::ReshardingV2 => {
-                // ReshardingV2 was removed in nearcore 2.7.0-rc.1, but we handle it for backward compatibility
-                // Map it to our custom StateChangeCauseView which retains this variant
-                crate::near_block::StateChangeCauseView::ReshardingV2
-            }
             Self::BandwidthSchedulerStateUpdate => {
                 crate::near_block::StateChangeCauseView::BandwidthSchedulerStateUpdate
             }

@@ -42,9 +42,9 @@ lru = "0.12"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "2.7.0" }
 near-indexer = { git = "https://github.com/near/nearcore", tag = "2.7.0" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "2.7.0" }
-near-crypto-crates-io = { version = "0.30.1", package = "near-crypto" }
-near-primitives-crates-io = { version = "0.30.1", package = "near-primitives" }
-near-lake-framework = "0.7"
+near-crypto-crates-io = { version = "0.31", package = "near-crypto" }
+near-primitives-crates-io = { version = "0.31", package = "near-primitives" }
+near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "13acf8c" }
 prometheus = "0.13"
 rlp = "0.6"
 rocksdb = { version = "0.21", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
