@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use aurora_engine_sdk::{env::Env, io::IO};
 use engine_standalone_storage::AbstractContractRunner;
@@ -9,7 +9,7 @@ use near_primitives_core::{
     types::{AccountId, Balance, Gas, GasWeight},
 };
 use near_vm_runner::{
-    Contract, ContractCode,
+    CompiledContractInfo, Contract, ContractCode, ContractRuntimeCache,
     logic::{
         External, StorageAccessTracker, VMContext, VMLogicError, VMOutcome, ValuePtr,
         errors::VMRunnerError,
@@ -18,6 +18,7 @@ use near_vm_runner::{
     },
 };
 
+use lru::LruCache;
 use memoffset::span_of;
 
 pub struct EngineStateVMAccess<I: IO> {
@@ -291,6 +292,7 @@ where
 pub struct ContractRunner {
     contract: CodeWrapper,
     runtime_config: Arc<RuntimeConfig>,
+    cache: SimpleContractRuntimeCache,
 }
 
 pub struct Context {
@@ -345,6 +347,9 @@ impl ContractRunner {
         Self {
             contract: CodeWrapper(Arc::new(ContractCode::new(code, hash))),
             runtime_config: runtime_config.clone(),
+            cache: SimpleContractRuntimeCache {
+                inner: Arc::new(Mutex::new(LruCache::new(10_000.try_into().unwrap()))),
+            },
         }
     }
 
@@ -395,7 +400,7 @@ impl ContractRunner {
         let contract = near_vm_runner::prepare(
             &self.contract,
             self.runtime_config.wasm_config.clone(),
-            None,
+            Some(&self.cache),
             ctx.make_gas_counter(&self.runtime_config.wasm_config),
             method,
         );
@@ -406,6 +411,26 @@ impl ContractRunner {
                 more_ctx.balance = outcome.balance;
             },
         )
+    }
+}
+
+#[derive(Clone)]
+pub struct SimpleContractRuntimeCache {
+    inner: Arc<Mutex<LruCache<CryptoHash, CompiledContractInfo>>>,
+}
+
+impl ContractRuntimeCache for SimpleContractRuntimeCache {
+    fn handle(&self) -> Box<dyn ContractRuntimeCache> {
+        Box::new(self.clone())
+    }
+
+    fn put(&self, key: &CryptoHash, value: CompiledContractInfo) -> std::io::Result<()> {
+        self.inner.lock().unwrap().put(dbg!(*key), value);
+        Ok(())
+    }
+
+    fn get(&self, key: &CryptoHash) -> std::io::Result<Option<CompiledContractInfo>> {
+        Ok(self.inner.lock().unwrap().get(key).cloned())
     }
 }
 
