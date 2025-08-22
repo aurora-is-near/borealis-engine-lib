@@ -15,7 +15,7 @@ env:
 
 jobs:
   create-pr:
-    runs-on: k8s-infrastructure-dind
+    runs-on: k8s-worker-2
 
     permissions:
       contents: write

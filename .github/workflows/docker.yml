@@ -14,7 +14,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: k8s-infrastructure-dind
+    runs-on: k8s-docker-2
     steps:
 
     - name: Set up Docker Buildx
