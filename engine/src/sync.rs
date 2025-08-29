@@ -1,6 +1,6 @@
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
-use aurora_engine_sdk::env;
+use aurora_engine_sdk::env::{self, DEFAULT_PREPAID_GAS};
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
@@ -175,8 +175,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     attached_near: parsed_action.deposit,
                     transaction: *parsed_action.transaction_kind,
                     promise_data,
-                    raw_input: parsed_action.raw_input,
                     action_hash,
+                    prepaid_gas: DEFAULT_PREPAID_GAS,
                 };
                 position_counter += 1;
 
@@ -215,8 +215,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             attached_near: parsed_action.deposit,
                             transaction: *parsed_action.transaction_kind,
                             promise_data: promise_data.clone(),
-                            raw_input: parsed_action.raw_input,
                             action_hash,
+                            prepaid_gas: DEFAULT_PREPAID_GAS,
                         };
                         position_counter += 1;
 
@@ -394,15 +394,13 @@ enum ParsedActions {
 
 struct SingleParsedAction {
     pub transaction_kind: Box<TransactionKind>,
-    pub raw_input: Vec<u8>,
     pub deposit: u128,
 }
 
 impl Default for SingleParsedAction {
     fn default() -> Self {
         Self {
-            transaction_kind: Box::new(TransactionKind::Unknown),
-            raw_input: Vec::new(),
+            transaction_kind: Box::new(TransactionKind::unknown()),
             deposit: 0,
         }
     }
@@ -472,10 +470,6 @@ impl TransactionBatch {
                 let block_height = storage.get_block_height_by_hash(block_hash)?;
                 let block_metadata = storage.get_block_metadata(block_hash)?;
                 let engine_account_id = storage.get_engine_account_id()?;
-                let mut context = storage
-                    .get_custom_data(b"more_context")?
-                    .and_then(|data| data.try_into().ok())
-                    .unwrap_or_default();
                 // We need to use `BatchIO` here instead of simply calling `sync::consume_message` because
                 // the latter no longer persists to the DB right away (we wait util checking the expected diff first now),
                 // but a later transaction in a batch can see earlier ones, therefore we need to keep track all
@@ -483,7 +477,7 @@ impl TransactionBatch {
                 for tx in non_last_actions {
                     let transaction_position = tx.position;
                     let local_engine_account_id = engine_account_id.clone();
-                    let raw_input = tx.raw_input.clone();
+                    let raw_input = tx.transaction.clone_raw_input();
                     let tx_outcome = storage
                         .with_engine_access(block_height, transaction_position, &raw_input, |io| {
                             let local_diff = Mutex::new(Diff::default());
@@ -500,7 +494,6 @@ impl TransactionBatch {
                                 local_engine_account_id,
                                 None,
                                 batch_io,
-                                &mut context,
                                 |x| x.current_diff.lock().unwrap().clone(),
                             )
                         })
@@ -513,7 +506,7 @@ impl TransactionBatch {
                     None => None,
                     Some(tx) => {
                         let transaction_position = tx.position;
-                        let raw_input = tx.raw_input.clone();
+                        let raw_input = tx.transaction.clone_raw_input();
                         let tx_outcome = storage
                             .with_engine_access(
                                 block_height,
@@ -534,7 +527,6 @@ impl TransactionBatch {
                                         engine_account_id,
                                         None,
                                         batch_io,
-                                        &mut context,
                                         |x| x.current_diff.lock().unwrap().clone(),
                                     )
                                 },
@@ -545,7 +537,6 @@ impl TransactionBatch {
                         Some(Box::new(tx_outcome))
                     }
                 };
-                storage.set_custom_data(b"more_context", &context)?;
                 Ok(TransactionBatchOutcome::Batch {
                     cumulative_diff,
                     non_last_outcomes,
@@ -640,10 +631,9 @@ fn parse_actions(
 ) -> Option<ParsedActions> {
     let num_actions = actions.len();
     if num_actions == 1 {
-        parse_action(&actions[0], promise_data).map(|(tx, input, n)| {
+        parse_action(&actions[0], promise_data).map(|(tx, n)| {
             ParsedActions::Single(SingleParsedAction {
                 transaction_kind: Box::new(tx),
-                raw_input: input,
                 deposit: n,
             })
         })
@@ -655,7 +645,7 @@ fn parse_actions(
             .iter()
             .enumerate()
             .filter_map(|(i, action)| {
-                parse_action(action, promise_data).map(|(tx, input, n)| {
+                parse_action(action, promise_data).map(|(tx, n)| {
                     let index = if i == last_index {
                         BatchIndex::Last(i as u32)
                     } else {
@@ -666,7 +656,6 @@ fn parse_actions(
                         index,
                         SingleParsedAction {
                             transaction_kind: Box::new(tx),
-                            raw_input: input,
                             deposit: n,
                         },
                     )
@@ -685,7 +674,7 @@ fn parse_actions(
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
-) -> Option<(TransactionKind, Vec<u8>, u128)> {
+) -> Option<(TransactionKind, u128)> {
     if let ActionView::FunctionCall {
         method_name,
         args,
@@ -694,9 +683,8 @@ fn parse_action(
     } = action
     {
         let bytes = args.to_vec();
-        let transaction_kind =
-            sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, *deposit));
+        let transaction_kind = TransactionKind::new(method_name, bytes, promise_data).ok()?;
+        return Some((transaction_kind, *deposit));
     }
 
     None

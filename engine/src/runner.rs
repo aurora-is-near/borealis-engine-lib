@@ -19,7 +19,6 @@ use near_vm_runner::{
 };
 
 use lru::LruCache;
-use memoffset::span_of;
 
 pub struct EngineStateVMAccess<I: IO> {
     pub io: I,
@@ -295,32 +294,6 @@ pub struct ContractRunner {
     cache: SimpleContractRuntimeCache,
 }
 
-pub struct Context {
-    balance: u128,
-    storage_usage: u64,
-}
-
-impl Context {
-    #[must_use]
-    pub fn serialize(&self) -> [u8; size_of::<Self>()] {
-        let mut out = <[u8; size_of::<Self>()]>::default();
-        out[span_of!(Self, balance)].clone_from_slice(&self.balance.to_le_bytes());
-        out[span_of!(Self, storage_usage)].clone_from_slice(&self.storage_usage.to_le_bytes());
-        out
-    }
-
-    #[must_use]
-    pub fn deserialize(v: [u8; size_of::<Self>()]) -> Self {
-        let balance = u128::from_le_bytes(v[span_of!(Self, balance)].try_into().unwrap());
-        let storage_usage =
-            u64::from_le_bytes(v[span_of!(Self, storage_usage)].try_into().unwrap());
-        Self {
-            balance,
-            storage_usage,
-        }
-    }
-}
-
 struct CodeWrapper(Arc<ContractCode>);
 impl Contract for CodeWrapper {
     fn get_code(&self) -> Option<Arc<near_vm_runner::ContractCode>> {
@@ -348,7 +321,9 @@ impl ContractRunner {
             contract: CodeWrapper(Arc::new(ContractCode::new(code, hash))),
             runtime_config: runtime_config.clone(),
             cache: SimpleContractRuntimeCache {
-                inner: Arc::new(Mutex::new(LruCache::new(10_000.try_into().unwrap()))),
+                inner: Arc::new(Mutex::new(LruCache::new(
+                    10.try_into().expect("`10` is non zero"),
+                ))),
             },
         }
     }
@@ -360,7 +335,6 @@ impl ContractRunner {
         promise_results: Arc<[PromiseResult]>,
         env: &impl Env,
         ext: &mut (impl External + Send),
-        more_ctx: &mut Context,
     ) -> Result<VMOutcome, VMRunnerError> {
         let current_account_id = env
             .current_account_id()
@@ -377,6 +351,8 @@ impl ContractRunner {
             .to_string()
             .parse::<AccountId>()
             .expect("incompatible account id");
+        let storage_usage =
+            100 + u64::try_from(self.contract.0.code().len()).expect("usize must fit in 64");
         let ctx = VMContext {
             current_account_id,
             signer_account_id,
@@ -387,9 +363,9 @@ impl ContractRunner {
             block_height: env.block_height(),
             block_timestamp: env.block_timestamp().nanos(),
             epoch_height: 0,
-            account_balance: more_ctx.balance,
+            account_balance: 10u128.pow(25),
             account_locked_balance: 0,
-            storage_usage: more_ctx.storage_usage,
+            storage_usage,
             attached_deposit: env.attached_deposit(),
             prepaid_gas: env.prepaid_gas().as_u64(),
             random_seed: env.random_seed().0.to_vec(),
@@ -405,12 +381,7 @@ impl ContractRunner {
             method,
         );
 
-        near_vm_runner::run(contract, ext, &ctx, self.runtime_config.fees.clone()).inspect(
-            |outcome| {
-                more_ctx.storage_usage = outcome.storage_usage;
-                more_ctx.balance = outcome.balance;
-            },
-        )
+        near_vm_runner::run(contract, ext, &ctx, self.runtime_config.fees.clone())
     }
 }
 
@@ -425,7 +396,7 @@ impl ContractRuntimeCache for SimpleContractRuntimeCache {
     }
 
     fn put(&self, key: &CryptoHash, value: CompiledContractInfo) -> std::io::Result<()> {
-        self.inner.lock().unwrap().put(dbg!(*key), value);
+        self.inner.lock().unwrap().put(*key, value);
         Ok(())
     }
 
@@ -443,7 +414,6 @@ impl AbstractContractRunner for ContractRunner {
         promise_data: Vec<Option<Vec<u8>>>,
         env: &E,
         io: I,
-        more_ctx: &mut [u8; 32],
         override_input: Option<Vec<u8>>,
     ) -> Result<Option<Vec<u8>>, Self::Error>
     where
@@ -451,10 +421,6 @@ impl AbstractContractRunner for ContractRunner {
         I: IO + Send,
         I::StorageValue: AsRef<[u8]>,
     {
-        let mut ctx = Context::deserialize(*more_ctx);
-        if ctx.storage_usage == 0 {
-            ctx.storage_usage = 100;
-        }
         let promise_results = promise_data
             .iter()
             .cloned()
@@ -468,12 +434,11 @@ impl AbstractContractRunner for ContractRunner {
             action_log: vec![],
         };
 
-        let vm_outcome = self.call(method, input, promise_results, env, &mut ext, &mut ctx)?;
+        let vm_outcome = self.call(method, input, promise_results, env, &mut ext)?;
         let output = vm_outcome.return_data.as_value();
         if let Some(data) = &output {
             ext.io.return_output(data);
         }
-        *more_ctx = ctx.serialize();
         Ok(output)
     }
 }
