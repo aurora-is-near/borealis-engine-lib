@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.9-2.8.0-rc.1] 2025-09-04
+
+### Changes
+
+* chore: bump nearcore to 2.8.0-rc.1 in [#250]
+
+[#250]: https://github.com/aurora-is-near/borealis-engine-lib/pull/250
+
 ## [0.30.9-2.7.1] 2025-08-29
 
 ### Changes
@@ -371,7 +379,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.9-2.7.1...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.9-2.8.0-rc.1...main
+[0.30.9-2.8.0-rc.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.7.1...0.30.9-2.8.0-rc.1
 [0.30.9-2.7.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.7.1-rc.1...0.30.9-2.7.1
 [0.30.9-2.7.1-rc.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.7.0...0.30.9-2.7.1-rc.1
 [0.30.9-2.7.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.8-2.7.0...0.30.9-2.7.0
