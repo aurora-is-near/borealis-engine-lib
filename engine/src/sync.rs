@@ -1,6 +1,6 @@
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
-use aurora_engine_sdk::env;
+use aurora_engine_sdk::env::{self, DEFAULT_PREPAID_GAS};
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
@@ -17,14 +17,16 @@ use engine_standalone_storage::{
     },
 };
 use lru::LruCache;
-use std::{cell::RefCell, collections::HashMap};
+use std::{collections::HashMap, sync::Mutex};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
+use crate::runner::ContractRunner;
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
+    runner: &ContractRunner,
     message: &aurora_refiner_types::near_block::NEARBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
     engine_account_id: &AccountId,
@@ -32,7 +34,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), engine_standalone_storage::Error> {
     let block_hash =
-        add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
+        add_block_data_from_near_block::<M>(storage, runner, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;
 
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
@@ -173,8 +175,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     attached_near: parsed_action.deposit,
                     transaction: *parsed_action.transaction_kind,
                     promise_data,
-                    raw_input: parsed_action.raw_input,
                     action_hash,
+                    prepaid_gas: DEFAULT_PREPAID_GAS,
                 };
                 position_counter += 1;
 
@@ -213,8 +215,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                             attached_near: parsed_action.deposit,
                             transaction: *parsed_action.transaction_kind,
                             promise_data: promise_data.clone(),
-                            raw_input: parsed_action.raw_input,
                             action_hash,
+                            prepaid_gas: DEFAULT_PREPAID_GAS,
                         };
                         position_counter += 1;
 
@@ -246,7 +248,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
         debug!("Processing receipt {:?}", receipt_id);
-        let tx_outcome = t.process::<M>(storage)?;
+        let tx_outcome = t.process::<M>(storage, runner)?;
         let computed_result = match &tx_outcome {
             TransactionBatchOutcome::Single(tx_outcome) => tx_outcome
                 .maybe_result
@@ -353,6 +355,7 @@ fn compute_action_hash(
 
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
+    runner: &ContractRunner,
     message: &aurora_refiner_types::near_block::NEARBlock,
     chain_id: [u8; 32],
     account_id: &AccountId,
@@ -370,7 +373,7 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     };
 
     debug!("Consuming block {}", block_message.height);
-    sync::consume_message::<M>(storage, Message::Block(block_message))?;
+    sync::consume_message::<M, _>(storage, runner, Message::Block(block_message))?;
 
     Ok(block_hash)
 }
@@ -391,15 +394,13 @@ enum ParsedActions {
 
 struct SingleParsedAction {
     pub transaction_kind: Box<TransactionKind>,
-    pub raw_input: Vec<u8>,
     pub deposit: u128,
 }
 
 impl Default for SingleParsedAction {
     fn default() -> Self {
         Self {
-            transaction_kind: Box::new(TransactionKind::Unknown),
-            raw_input: Vec::new(),
+            transaction_kind: Box::new(TransactionKind::unknown()),
             deposit: 0,
         }
     }
@@ -428,10 +429,15 @@ impl TransactionBatch {
     fn process<M: ModExpAlgorithm>(
         self,
         storage: &mut Storage,
+        runner: &ContractRunner,
     ) -> Result<TransactionBatchOutcome, engine_standalone_storage::Error> {
         match self {
             Self::Single(tx) => {
-                match sync::consume_message::<M>(storage, Message::Transaction(Box::new(tx)))? {
+                match sync::consume_message::<M, _>(
+                    storage,
+                    runner,
+                    Message::Transaction(Box::new(tx)),
+                )? {
                     ConsumeMessageOutcome::TransactionIncluded(tx_outcome) => {
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Ok(TransactionBatchOutcome::Single(tx_outcome))
@@ -471,36 +477,28 @@ impl TransactionBatch {
                 for tx in non_last_actions {
                     let transaction_position = tx.position;
                     let local_engine_account_id = engine_account_id.clone();
-                    let (tx_hash, diff, result) = storage
-                        .with_engine_access(
-                            block_height,
-                            transaction_position,
-                            &tx.raw_input,
-                            |io| {
-                                let local_diff = RefCell::new(Diff::default());
-                                let batch_io = BatchIO {
-                                    fallback: io,
-                                    cumulative_diff: &cumulative_diff,
-                                    current_diff: &local_diff,
-                                };
-                                sync::execute_transaction::<_, M, _>(
-                                    &tx,
-                                    block_height,
-                                    &block_metadata,
-                                    local_engine_account_id,
-                                    batch_io,
-                                    |x| x.current_diff.borrow().clone(),
-                                )
-                            },
-                        )
+                    let raw_input = tx.transaction.clone_raw_input();
+                    let tx_outcome = storage
+                        .with_engine_access(block_height, transaction_position, &raw_input, |io| {
+                            let local_diff = Mutex::new(Diff::default());
+                            let batch_io = BatchIO {
+                                fallback: io,
+                                cumulative_diff: &cumulative_diff,
+                                current_diff: &local_diff,
+                            };
+                            sync::execute_transaction::<_, _, _>(
+                                runner,
+                                tx,
+                                block_height,
+                                &block_metadata,
+                                local_engine_account_id,
+                                None,
+                                batch_io,
+                                |x| x.current_diff.lock().unwrap().clone(),
+                            )
+                        })
                         .result;
-                    cumulative_diff.append(diff.clone());
-                    let tx_outcome = TransactionIncludedOutcome {
-                        hash: tx_hash,
-                        info: tx,
-                        diff,
-                        maybe_result: result,
-                    };
+                    cumulative_diff.append(tx_outcome.diff.clone());
                     debug!("COMPLETED {:?}", tx_outcome.hash);
                     non_last_outcomes.push(tx_outcome);
                 }
@@ -508,36 +506,33 @@ impl TransactionBatch {
                     None => None,
                     Some(tx) => {
                         let transaction_position = tx.position;
-                        let (tx_hash, diff, result) = storage
+                        let raw_input = tx.transaction.clone_raw_input();
+                        let tx_outcome = storage
                             .with_engine_access(
                                 block_height,
                                 transaction_position,
-                                &tx.raw_input,
+                                &raw_input,
                                 |io| {
-                                    let local_diff = RefCell::new(Diff::default());
+                                    let local_diff = Mutex::new(Diff::default());
                                     let batch_io = BatchIO {
                                         fallback: io,
                                         cumulative_diff: &cumulative_diff,
                                         current_diff: &local_diff,
                                     };
-                                    sync::execute_transaction::<_, M, _>(
-                                        &tx,
+                                    sync::execute_transaction::<_, _, _>(
+                                        runner,
+                                        tx,
                                         block_height,
                                         &block_metadata,
                                         engine_account_id,
+                                        None,
                                         batch_io,
-                                        |x| x.current_diff.borrow().clone(),
+                                        |x| x.current_diff.lock().unwrap().clone(),
                                     )
                                 },
                             )
                             .result;
-                        cumulative_diff.append(diff.clone());
-                        let tx_outcome = TransactionIncludedOutcome {
-                            hash: tx_hash,
-                            info: tx,
-                            diff,
-                            maybe_result: result,
-                        };
+                        cumulative_diff.append(tx_outcome.diff.clone());
                         debug!("COMPLETED {:?}", tx_outcome.hash);
                         Some(Box::new(tx_outcome))
                     }
@@ -636,10 +631,9 @@ fn parse_actions(
 ) -> Option<ParsedActions> {
     let num_actions = actions.len();
     if num_actions == 1 {
-        parse_action(&actions[0], promise_data).map(|(tx, input, n)| {
+        parse_action(&actions[0], promise_data).map(|(tx, n)| {
             ParsedActions::Single(SingleParsedAction {
                 transaction_kind: Box::new(tx),
-                raw_input: input,
                 deposit: n,
             })
         })
@@ -651,7 +645,7 @@ fn parse_actions(
             .iter()
             .enumerate()
             .filter_map(|(i, action)| {
-                parse_action(action, promise_data).map(|(tx, input, n)| {
+                parse_action(action, promise_data).map(|(tx, n)| {
                     let index = if i == last_index {
                         BatchIndex::Last(i as u32)
                     } else {
@@ -662,7 +656,6 @@ fn parse_actions(
                         index,
                         SingleParsedAction {
                             transaction_kind: Box::new(tx),
-                            raw_input: input,
                             deposit: n,
                         },
                     )
@@ -681,7 +674,7 @@ fn parse_actions(
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
-) -> Option<(TransactionKind, Vec<u8>, u128)> {
+) -> Option<(TransactionKind, u128)> {
     if let ActionView::FunctionCall {
         method_name,
         args,
@@ -690,9 +683,8 @@ fn parse_action(
     } = action
     {
         let bytes = args.to_vec();
-        let transaction_kind =
-            sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, *deposit));
+        let transaction_kind = TransactionKind::new(method_name, bytes, promise_data).ok()?;
+        return Some((transaction_kind, *deposit));
     }
 
     None

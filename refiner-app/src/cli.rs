@@ -6,6 +6,9 @@ pub struct Cli {
     /// Path to config file
     #[clap(short, long)]
     pub config_path: Option<String>,
+    /// Path to contract wasm
+    #[clap(short, long)]
+    pub contract_path: Option<String>,
     #[clap(subcommand)]
     pub command: Command,
 }

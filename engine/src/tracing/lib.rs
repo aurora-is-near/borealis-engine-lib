@@ -4,7 +4,9 @@ use engine_standalone_storage::{
     Storage,
     sync::{self, TransactionIncludedOutcome},
 };
-use engine_standalone_tracing::{sputnik, types::call_tracer::CallTracer};
+use engine_standalone_tracing::types::call_tracer::CallTracer;
+
+use crate::runner::ContractRunner;
 
 pub struct DebugTraceTransactionRequest {
     pub tx_hash: H256,
@@ -26,12 +28,16 @@ impl DebugTraceTransactionRequest {
 
 pub fn trace_transaction(
     storage: &Storage,
+    runner: &ContractRunner,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
     let tx_msg = storage.get_transaction_data(tx_hash)?;
-    let mut listener = CallTracer::default();
-    let outcome = sputnik::traced_call(&mut listener, || {
-        sync::execute_transaction_message::<AuroraModExp>(storage, tx_msg)
-    })?;
-    Ok((listener, outcome))
+    let mut outcome = sync::execute_transaction_message::<AuroraModExp, _>(
+        storage,
+        runner,
+        tx_msg,
+        Some(sync::TraceKind::CallFrame),
+    )?;
+    let tracer = outcome.call_tracer.take().unwrap();
+    Ok((tracer, outcome))
 }
