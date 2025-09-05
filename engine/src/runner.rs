@@ -309,12 +309,11 @@ impl ContractRunner {
     #[cfg(test)]
     pub fn bundled() -> Self {
         let code = include_bytes!("res/aurora-engine-test.wasm").to_vec();
-        Self::new(code, None)
+        Self::new(near_primitives_core::chains::TESTNET, code, None)
     }
 
-    pub fn new(code: Vec<u8>, hash: Option<CryptoHash>) -> Self {
-        let runtime_config_store =
-            RuntimeConfigStore::for_chain_id(near_primitives_core::chains::TESTNET);
+    pub fn new(chain_id: &str, code: Vec<u8>, hash: Option<CryptoHash>) -> Self {
+        let runtime_config_store = RuntimeConfigStore::for_chain_id(chain_id);
         let runtime_config =
             runtime_config_store.get_config(near_primitives_core::version::PROTOCOL_VERSION);
         Self {

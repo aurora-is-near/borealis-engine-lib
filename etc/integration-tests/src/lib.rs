@@ -60,8 +60,6 @@ async fn test_refiner_starts() {
         }
     });
 
-    // TODO(vlad): prepare aurora-engine wasm contract somewhere is the temp directory and configure refiner to find it
-
     // Start refiner
     let mut refiner_process =
         refiner_utils::start_refiner(&refiner_binary, &repository_root, nearcore_root.path())

@@ -248,7 +248,7 @@ mod tests {
 
     fn runner() -> ContractRunner {
         let code = include_bytes!("tests/res/aurora-engine-test.wasm").to_vec();
-        ContractRunner::new(code, None)
+        ContractRunner::new(near_primitives_core::chains::TESTNET, code, None)
     }
 
     #[tokio::test]

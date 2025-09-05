@@ -44,7 +44,8 @@ impl EngineContext {
             engine_account_id,
             chain_id,
             data_id_mapping: lru::LruCache::new(NonZeroUsize::new(1000).unwrap()),
-            runner: Arc::new(ContractRunner::new(contract_bytes, None)),
+            // TODO(vlad): what near chain_id should use here?
+            runner: Arc::new(ContractRunner::new("mainnet", contract_bytes, None)),
         })
     }
 }

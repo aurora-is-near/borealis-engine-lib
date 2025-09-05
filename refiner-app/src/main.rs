@@ -33,6 +33,11 @@ async fn main() -> anyhow::Result<()> {
 
     let args: Cli = Cli::parse();
 
+    let contract_path = args
+        .contract_path
+        .as_deref()
+        .unwrap_or("aurora-contract.wasm");
+
     let config_path = args.config_path.as_deref().unwrap_or("default_config.json");
     let config: config::Config = {
         let file = fs::File::open(config_path)?;
@@ -100,7 +105,7 @@ async fn main() -> anyhow::Result<()> {
 
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                config.contract_wasm_code_path,
+                contract_path,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )

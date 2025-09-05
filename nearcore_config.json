@@ -12,6 +12,5 @@
     "output_storage": {
         "path": "output/refiner",
         "batch_size": 10000
-    },
-    "contract_wasm_code_path": "aurora-engine-test.wasm"
+    }
 }
