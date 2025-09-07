@@ -603,13 +603,8 @@ pub mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
-            let engine_context = EngineContext::new(
-                &engine_path,
-                "tests/res/aurora-engine-test.wasm",
-                account_id,
-                chain_id,
-            )
-            .unwrap();
+            let engine_context =
+                EngineContext::new(&engine_path, None, "3.7.0", account_id, chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 
             Self {

@@ -5,6 +5,7 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
+use aurora_standalone_engine::runner;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -32,11 +33,6 @@ async fn main() -> anyhow::Result<()> {
     setup_logs();
 
     let args: Cli = Cli::parse();
-
-    let contract_path = args
-        .contract_path
-        .as_deref()
-        .unwrap_or("aurora-contract.wasm");
 
     let config_path = args.config_path.as_deref().unwrap_or("default_config.json");
     let config: config::Config = {
@@ -103,9 +99,11 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
+            let contract_version = runner::version(height.unwrap_or(134229098), true).await?;
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                contract_path,
+                args.contract_path.map(PathBuf::from),
+                &contract_version,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )

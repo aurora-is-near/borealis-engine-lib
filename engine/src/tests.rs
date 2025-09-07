@@ -8,7 +8,7 @@ use engine_standalone_storage::sync::TransactionExecutionResult;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
-use crate::runner::ContractRunner;
+use crate::runner::{self, ContractRunner};
 
 /// This test processes a real block from mainnet:
 /// <https://nearblocks.io/blocks/5SRtKoD8JppC3LRv8uCp5bS26wCd4wUXtT6M1yziUFdN>
@@ -200,7 +200,10 @@ impl TestContext {
             storage,
             storage_path,
             engine_account_id,
-            runner: ContractRunner::bundled(),
+            runner: {
+                let (code, hash) = runner::load_from_file("3.7.0", None).unwrap();
+                ContractRunner::new(near_primitives_core::chains::TESTNET, code, hash)
+            },
         }
     }
 

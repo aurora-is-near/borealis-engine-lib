@@ -78,7 +78,7 @@ pub async fn start_refiner(
     let config_path = config
         .to_str()
         .ok_or_else(|| anyhow::Error::msg("Corrupt refiner config path"))?;
-    let contract = repository_root.join("refiner-app/src/tests/res/aurora-engine-test.wasm");
+    let contract = repository_root.join("etc/res");
     let contract_path = contract
         .to_str()
         .ok_or_else(|| anyhow::Error::msg("Corrupt contract path"))?;

@@ -2,8 +2,8 @@ use std::path::Path;
 use std::{io, sync::Arc};
 
 use aurora_standalone_engine::{
-    ContractRunner,
     gas::{EthCallRequest, estimate_gas},
+    runner::ContractRunner,
     tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
 };
 use engine_standalone_storage::Storage;
@@ -226,6 +226,7 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aurora_standalone_engine::runner;
     use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -247,8 +248,8 @@ mod tests {
     }
 
     fn runner() -> ContractRunner {
-        let code = include_bytes!("tests/res/aurora-engine-test.wasm").to_vec();
-        ContractRunner::new(near_primitives_core::chains::TESTNET, code, None)
+        let (code, hash) = runner::load_from_file("3.7.0", None).unwrap();
+        ContractRunner::new(near_primitives_core::chains::TESTNET, code, hash)
     }
 
     #[tokio::test]

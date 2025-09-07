@@ -3,16 +3,13 @@ use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
 use engine_standalone_storage::{Storage, error, sync::TransactionIncludedOutcome};
 use std::collections::HashMap;
-use std::fs;
 use std::num::NonZeroUsize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-pub use runner::ContractRunner;
 
 mod batch_tx_processing;
 pub mod gas;
-mod runner;
+pub mod runner;
 pub mod sync;
 #[cfg(test)]
 mod tests;
@@ -25,27 +22,31 @@ pub struct EngineContext {
     pub engine_account_id: AccountId,
     chain_id: [u8; 32],
     data_id_mapping: lru::LruCache<CryptoHash, Option<Vec<u8>>>,
-    pub runner: Arc<ContractRunner>,
+    pub runner: Arc<runner::ContractRunner>,
 }
 
 impl EngineContext {
-    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn new<P: AsRef<Path>>(
         storage_path: P,
-        contract_path: Q,
+        contract_prefix: Option<PathBuf>,
+        contract_version: &str,
         engine_account_id: AccountId,
         chain_id: u64,
     ) -> Result<Self, error::Error> {
         let storage = Storage::open(storage_path)?;
         let storage = std::sync::Arc::new(tokio::sync::RwLock::new(storage));
         let chain_id = aurora_engine_types::types::u256_to_arr(&(chain_id.into()));
-        let contract_bytes = fs::read(contract_path)?;
+        let (contract_bytes, contract_hash) =
+            runner::load_from_file(contract_version, contract_prefix)?;
         Ok(Self {
             storage,
             engine_account_id,
             chain_id,
             data_id_mapping: lru::LruCache::new(NonZeroUsize::new(1000).unwrap()),
-            // TODO(vlad): what near chain_id should use here?
-            runner: Arc::new(ContractRunner::new("mainnet", contract_bytes, None)),
+            runner: Arc::new(runner::ContractRunner::new_mainnet(
+                contract_bytes,
+                contract_hash,
+            )),
         })
     }
 }

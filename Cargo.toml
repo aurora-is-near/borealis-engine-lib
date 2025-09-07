@@ -40,10 +40,12 @@ impl-serde = "0.5"
 lazy_static = "1"
 lru = "0.12"
 near-crypto = { git = "https://github.com/near/nearcore", tag = "2.8.0-rc.1" }
+near-crypto-crates-io = { version = "0.31", package = "near-crypto" }
 near-indexer = { git = "https://github.com/near/nearcore", tag = "2.8.0-rc.1" }
+near-jsonrpc-client = "0.18.0"
+near-jsonrpc-primitives = "0.31.1"
 near-parameters = { git = "https://github.com/near/nearcore", tag = "2.8.0-rc.1" }
 near-primitives = { git = "https://github.com/near/nearcore", tag = "2.8.0-rc.1" }
-near-crypto-crates-io = { version = "0.31", package = "near-crypto" }
 near-primitives-core = { git = "https://github.com/near/nearcore", tag = "2.8.0-rc.1" }
 near-primitives-crates-io = { version = "0.31", package = "near-primitives" }
 # Temporary pin to pick up near-primitives 0.31 compatibility. Revert to crates.io once upstream releases.
@@ -58,6 +60,7 @@ semver = "1.0.25"
 sha3 = "0.10"
 # Based on: https://github.com/near/nearcore/issues/12944#issuecomment-2707438357
 tempfile = "=3.14.0"
+thiserror = "2.0"
 tokio = "1"
 toml = "0.8"
 tracing = "0.1"

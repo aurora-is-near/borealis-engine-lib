@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Mutex};
+
 use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env::{self, DEFAULT_PREPAID_GAS};
@@ -17,11 +19,10 @@ use engine_standalone_storage::{
     },
 };
 use lru::LruCache;
-use std::{collections::HashMap, sync::Mutex};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
-use crate::runner::ContractRunner;
+use crate::runner::{self, ContractRunner};
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
@@ -60,6 +61,29 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             }
         })
         .collect::<HashMap<_, _>>();
+
+    // trigger contract dynamic library reload if needed
+    for change in message.shards.iter().flat_map(|s| s.state_changes.iter()) {
+        // Use the `match` to hint to the compiler that the pattern is unlikely
+        // match &change.value {
+        //     StateChangeValueView::ContractCodeUpdate { account_id, code }
+        //         if std::hint::unlikely(true) => {}
+        //     _ => {}
+        // }
+        if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
+            if account_id.as_str() == engine_account_id.as_ref() {
+                runner.update_code(code.clone(), None);
+                let version = runner.get_version().unwrap();
+                let height = message.block.header.height;
+                tracing::info!("Aurora version at height {height}: {version}");
+                let (code, hash) = runner::load_from_file(&version, None).unwrap_or_else(|e| {
+                    // TODO: fallback
+                    panic!("Failed to load contract: {e}");
+                });
+                runner.update_code(code, hash);
+            }
+        }
+    }
 
     // Get expected state changes based on data in the streamer message
     let aurora_state_changes = message
