@@ -1,8 +1,9 @@
-use std::io;
 use std::path::Path;
+use std::{io, sync::Arc};
 
 use aurora_standalone_engine::{
     gas::{EthCallRequest, estimate_gas},
+    runner::ContractRunner,
     tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
 };
 use engine_standalone_storage::Storage;
@@ -18,6 +19,7 @@ type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
 pub async fn start_socket_server(
     storage: SharedStorage,
+    runner: Arc<ContractRunner>,
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
@@ -38,8 +40,9 @@ pub async fn start_socket_server(
             },
             Ok((mut stream, _)) = sock.accept() => {
                 let storage = storage.clone();
+                let runner = runner.clone();
                 tokio::task::spawn(async move {
-                    handle_conn(storage, &mut stream).await;
+                    handle_conn(storage, &runner, &mut stream).await;
                 });
             }
         }
@@ -50,7 +53,7 @@ pub async fn start_socket_server(
     std::fs::remove_file(path).expect("Failed to remove socket file on shutdown");
 }
 
-async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
+async fn handle_conn(storage: SharedStorage, runner: &ContractRunner, stream: &mut UnixStream) {
     loop {
         if stream.readable().await.is_err() || stream.writable().await.is_err() {
             continue;
@@ -79,7 +82,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                                 .unwrap_or(serde_json::Value::Null),
                         );
 
-                        match handle_msg(storage.clone(), req).await {
+                        match handle_msg(storage.clone(), runner, req).await {
                             Ok(v) => res.insert("result".into(), v),
                             Err(e) => res.insert(
                                 "error".into(),
@@ -116,6 +119,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
 
 async fn handle_msg(
     storage: SharedStorage,
+    runner: &ContractRunner,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     match msg
@@ -128,7 +132,7 @@ async fn handle_msg(
         .as_str()
     {
         Some("eth_estimateGas") => handle_estimate_gas(storage, msg).await,
-        Some("debug_traceTransaction") => handle_trace_transaction(storage, msg).await,
+        Some("debug_traceTransaction") => handle_trace_transaction(storage, runner, msg).await,
         _ => Err(JsonRpcError {
             code: -32601,
             message: "Method not found".into(),
@@ -158,13 +162,14 @@ async fn handle_estimate_gas(
 #[allow(clippy::significant_drop_tightening)]
 async fn handle_trace_transaction(
     storage: SharedStorage,
+    runner: &ContractRunner,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req =
         DebugTraceTransactionRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
     let storage = storage.as_ref().read().await;
     let (res, _outcome) =
-        trace_transaction(&storage, req.tx_hash).map_err(|_| internal_err(None))?;
+        trace_transaction(&storage, runner, req.tx_hash).map_err(|_| internal_err(None))?;
     let mut traces = Vec::with_capacity(res.call_stack.len());
     for t in res.call_stack {
         let val = serde_json::to_value(SerializableCallFrame::from(t))
@@ -221,6 +226,7 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aurora_standalone_engine::runner;
     use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -241,9 +247,15 @@ mod tests {
         }
     }
 
+    fn runner() -> ContractRunner {
+        let (code, hash) = runner::load_from_file("3.7.0", None).unwrap();
+        ContractRunner::new(near_primitives_core::chains::TESTNET, code, hash)
+    }
+
     #[tokio::test]
     async fn test_stream_open_and_close() {
         let storage = init_storage();
+        let runner = runner();
         let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -254,7 +266,7 @@ mod tests {
                 assert_eq!(0, res);
             }),
             tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
+                handle_conn(server_storage, &runner, &mut handler).await;
             })
         )
         .unwrap();
@@ -300,6 +312,7 @@ mod tests {
     #[tokio::test]
     async fn test_parse_error() {
         let storage = init_storage();
+        let runner = runner();
         let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -323,7 +336,7 @@ mod tests {
             }),
 
             tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
+                handle_conn(server_storage, &runner, &mut handler).await;
             })
         ).unwrap();
         storage.close();
@@ -332,6 +345,7 @@ mod tests {
     #[tokio::test]
     async fn test_trace_transaction() {
         let storage = init_storage();
+        let runner = runner();
         let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -370,7 +384,7 @@ mod tests {
             }),
 
             tokio::task::spawn(async move {
-                handle_conn(server_storage, &mut handler).await;
+                handle_conn(server_storage, &runner, &mut handler).await;
             })
         ).unwrap();
         storage.close();
@@ -379,6 +393,7 @@ mod tests {
     #[tokio::test]
     async fn test_estimate_gas() {
         let storage = init_storage();
+        let runner = runner();
         let server_storage = storage.get();
         let (mut client, mut handler) = UnixStream::pair().unwrap();
         let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();
@@ -410,7 +425,7 @@ mod tests {
         });
 
         let server_task = tokio::task::spawn(async move {
-            handle_conn(server_storage, &mut handler).await;
+            handle_conn(server_storage, &runner, &mut handler).await;
         });
 
         tokio::try_join!(req_task, server_task).unwrap();

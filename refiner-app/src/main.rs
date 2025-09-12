@@ -5,6 +5,7 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
+use aurora_standalone_engine::runner;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -98,14 +99,18 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
+            let contract_version = runner::version(height.unwrap_or(134229098), true).await?;
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
+                args.contract_path.map(PathBuf::from),
+                &contract_version,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
+            let runner = ctx.runner.clone();
 
             let (signals_result, input_result, output_result, ..) = tokio::join!(
                 // Handle all signals
@@ -119,6 +124,7 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
+                            runner,
                             Path::new(&socket_config.path),
                             &mut shutdown_rx_socket,
                         )

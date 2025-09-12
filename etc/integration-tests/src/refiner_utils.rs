@@ -78,10 +78,20 @@ pub async fn start_refiner(
     let config_path = config
         .to_str()
         .ok_or_else(|| anyhow::Error::msg("Corrupt refiner config path"))?;
+    let contract = repository_root.join("etc/res");
+    let contract_path = contract
+        .to_str()
+        .ok_or_else(|| anyhow::Error::msg("Corrupt contract path"))?;
 
     let child = Command::new(refiner_binary)
         .current_dir(nearcore_root)
-        .args(["--config-path", config_path, "run"])
+        .args([
+            "--config-path",
+            config_path,
+            "--contract-path",
+            contract_path,
+            "run",
+        ])
         .stdout(Stdio::piped())
         .spawn()?;
 

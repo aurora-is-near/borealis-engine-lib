@@ -28,7 +28,15 @@ lru.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+
+near-crypto.workspace = true
+near-jsonrpc-client.workspace = true
+near-jsonrpc-primitives.workspace = true
+near-parameters.workspace = true
+near-primitives-core.workspace = true
+near-vm-runner.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
