@@ -1,3 +1,4 @@
+use std::time::Instant;
 use std::{collections::HashMap, sync::Mutex};
 
 use aurora_engine::parameters;
@@ -72,15 +73,22 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         // }
         if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
             if account_id.as_str() == engine_account_id.as_ref() {
+                let time = Instant::now();
                 runner.update_code(code.clone(), None);
                 let version = runner.get_version().unwrap();
                 let height = message.block.header.height;
-                tracing::info!("Aurora version at height {height}: {version}");
-                let (code, hash) = runner::load_from_file(&version, None).unwrap_or_else(|e| {
-                    // TODO: fallback
-                    panic!("Failed to load contract: {e}");
-                });
-                runner.update_code(code, hash);
+                match runner::load_from_file(&version, None) {
+                    Ok((code, hash)) => {
+                        runner.update_code(code, hash);
+                        tracing::info!(
+                            "Aurora version at height {height}: {version}, updating took: {:?}",
+                            time.elapsed()
+                        );
+                    }
+                    Err(err) => {
+                        tracing::error!("Failed to load contract version: {version}, error: {err}");
+                    }
+                }
             }
         }
     }
