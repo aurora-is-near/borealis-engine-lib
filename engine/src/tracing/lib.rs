@@ -4,7 +4,7 @@ use engine_standalone_storage::{
     Storage,
     sync::{self, TransactionIncludedOutcome},
 };
-use engine_standalone_tracing::types::call_tracer::CallTracer;
+use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
 
 use crate::runner::ContractRunner;
 
@@ -36,7 +36,7 @@ pub fn trace_transaction(
         storage,
         runner,
         tx_msg,
-        Some(sync::TraceKind::CallFrame),
+        Some(TraceKind::CallFrame),
     )?;
     let tracer = outcome.call_tracer.take().unwrap();
     Ok((tracer, outcome))

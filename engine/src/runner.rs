@@ -616,7 +616,6 @@ impl AbstractContractRunner for ContractRunner {
         promise_data: Vec<Option<Vec<u8>>>,
         env: &E,
         io: I,
-        override_input: Option<Vec<u8>>,
     ) -> Result<Option<Vec<u8>>, Self::Error>
     where
         E: Env,
@@ -630,7 +629,7 @@ impl AbstractContractRunner for ContractRunner {
             .collect::<Vec<_>>()
             .into();
 
-        let input = override_input.unwrap_or_else(|| io.read_input().as_ref().to_vec());
+        let input = io.read_input().as_ref().to_vec();
         let mut ext = EngineStateVMAccess {
             io,
             action_log: vec![],

@@ -12,8 +12,9 @@ use aurora_engine_transactions::{
 };
 use aurora_engine_types::account_id::ParseAccountError;
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::parameters::connector::{
-    Erc20Metadata, FtOnTransferArgs, FtTransferMessageData,
+use aurora_engine_types::parameters::{
+    connector::{Erc20Metadata, FtOnTransferArgs, FtTransferMessageData},
+    engine::TransactionExecutionResult,
 };
 use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
@@ -31,9 +32,7 @@ use aurora_refiner_types::near_primitives::views::{
 };
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::Storage;
-use engine_standalone_storage::sync::{
-    TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
-};
+use engine_standalone_storage::sync::{TransactionIncludedOutcome, types::TransactionKindTag};
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -390,16 +389,7 @@ fn normalize_output(
         .and_then(|x| x.maybe_result.as_ref().ok())
         .and_then(Option::as_ref)
         .map(|result| match result {
-            TransactionExecutionResult::Submit(result) => match result {
-                Ok(result) => result.clone(),
-                Err(err) => SubmitResult::new(
-                    aurora_engine::parameters::TransactionStatus::Revert(
-                        format!("{:?}", err.kind).into_bytes(),
-                    ),
-                    err.gas_used,
-                    Vec::new(),
-                ),
-            },
+            TransactionExecutionResult::Submit(result) => result.clone(),
             TransactionExecutionResult::DeployErc20(address) => SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(address.as_bytes().to_vec()),
                 MIN_EVM_GAS,

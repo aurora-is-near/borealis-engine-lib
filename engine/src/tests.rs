@@ -1,12 +1,13 @@
+use std::collections::HashMap;
+use std::num::NonZeroUsize;
+
 use aurora_engine::parameters::TransactionStatus;
 use aurora_engine_modexp::AuroraModExp;
+use aurora_engine_types::parameters::engine::TransactionExecutionResult;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
-use engine_standalone_storage::sync::TransactionExecutionResult;
-use std::collections::HashMap;
-use std::num::NonZeroUsize;
 
 use crate::runner::{self, ContractRunner};
 
@@ -48,7 +49,7 @@ fn test_random_value() {
 
     let outcome = outcomes_map.remove(&expected_tx_hash).unwrap();
     let submit_result = match outcome.maybe_result.unwrap().unwrap() {
-        TransactionExecutionResult::Submit(x) => x.unwrap(),
+        TransactionExecutionResult::Submit(x) => x,
         other => panic!("Unexpected result {:?}", other),
     };
     let output = match submit_result.status {
@@ -168,7 +169,7 @@ fn test_batched_transactions() {
     for (tx_hash, gas_used) in expected_transactions {
         let outcome = outcomes_map.remove(&tx_hash).unwrap();
         let submit_result = match outcome.maybe_result.unwrap().unwrap() {
-            TransactionExecutionResult::Submit(x) => x.unwrap(),
+            TransactionExecutionResult::Submit(x) => x,
             other => panic!("Unexpected result {:?}", other),
         };
         assert!(matches!(

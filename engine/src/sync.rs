@@ -5,6 +5,7 @@ use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env::{self, DEFAULT_PREPAID_GAS};
 use aurora_engine_types::borsh::BorshDeserialize;
+use aurora_engine_types::parameters::engine::TransactionExecutionResult;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
     self,
@@ -15,7 +16,7 @@ use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
     BlockMetadata, Diff, Storage,
     sync::{
-        self, ConsumeMessageOutcome, TransactionExecutionResult, TransactionIncludedOutcome,
+        self, ConsumeMessageOutcome, TransactionIncludedOutcome,
         types::{self, Message},
     },
 };
@@ -305,9 +306,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                 Some(result_bytes) => {
                     match parameters::SubmitResult::try_from_slice(result_bytes) {
                         Ok(expected_result) => {
-                            if submit_result.is_err()
-                                || submit_result.as_ref().unwrap() != &expected_result
-                            {
+                            if submit_result != &expected_result {
                                 warn!(
                                     "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
                                 );
