@@ -110,7 +110,6 @@ async fn main() -> anyhow::Result<()> {
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
             let socket_storage = ctx.storage.clone();
-            let runner = ctx.runner.clone();
 
             let (signals_result, input_result, output_result, ..) = tokio::join!(
                 // Handle all signals
@@ -124,7 +123,6 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
-                            runner,
                             Path::new(&socket_config.path),
                             &mut shutdown_rx_socket,
                         )

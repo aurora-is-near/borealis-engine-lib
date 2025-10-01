@@ -6,7 +6,7 @@ use engine_standalone_storage::{
 };
 use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
 
-use crate::runner::ContractRunner;
+use crate::runner;
 
 pub struct DebugTraceTransactionRequest {
     pub tx_hash: H256,
@@ -28,16 +28,20 @@ impl DebugTraceTransactionRequest {
 
 pub fn trace_transaction(
     storage: &Storage,
-    runner: &ContractRunner,
+    cache: &runner::Cache,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
     let tx_msg = storage.get_transaction_data(tx_hash)?;
-    let mut outcome = sync::execute_transaction_message::<AuroraModExp, _>(
-        storage,
-        runner,
-        tx_msg,
-        Some(TraceKind::CallFrame),
-    )?;
+    let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
+    let mut outcome = cache.with_runner(height, |runner| {
+        sync::execute_transaction_message::<AuroraModExp, _>(
+            storage,
+            runner,
+            tx_msg,
+            Some(TraceKind::CallFrame),
+        )
+    })?;
+
     let tracer = outcome.call_tracer.take().unwrap();
     Ok((tracer, outcome))
 }

@@ -5,7 +5,6 @@ use engine_standalone_storage::{Storage, error, sync::TransactionIncludedOutcome
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 mod batch_tx_processing;
 pub mod gas;
@@ -22,7 +21,7 @@ pub struct EngineContext {
     pub engine_account_id: AccountId,
     chain_id: [u8; 32],
     data_id_mapping: lru::LruCache<CryptoHash, Option<Vec<u8>>>,
-    pub runner: Arc<runner::ContractRunner>,
+    pub runner: runner::ContractRunner,
 }
 
 impl EngineContext {
@@ -43,10 +42,7 @@ impl EngineContext {
             engine_account_id,
             chain_id,
             data_id_mapping: lru::LruCache::new(NonZeroUsize::new(1000).unwrap()),
-            runner: Arc::new(runner::ContractRunner::new_mainnet(
-                contract_bytes,
-                contract_hash,
-            )),
+            runner: runner::ContractRunner::new_mainnet(contract_bytes, contract_hash),
         })
     }
 }

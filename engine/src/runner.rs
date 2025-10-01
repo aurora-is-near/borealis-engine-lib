@@ -11,6 +11,10 @@ use aurora_engine_types::{H256, types::NearGas};
 use engine_standalone_storage::AbstractContractRunner;
 use lru::LruCache;
 use near_crypto::PublicKey;
+use near_jsonrpc_client::{
+    errors::{JsonRpcError, JsonRpcServerError},
+    methods::query::RpcQueryError,
+};
 use near_parameters::{RuntimeConfig, RuntimeConfigStore};
 use near_primitives_core::{
     hash::CryptoHash,
@@ -447,14 +451,15 @@ where
 }
 
 pub struct ContractRunner {
-    contract: Mutex<CodeWrapper>,
+    contract: Mutex<Option<CodeWrapper>>,
     runtime_config: Arc<RuntimeConfig>,
     cache: SimpleContractRuntimeCache,
 }
 
 struct CodeWrapper(Arc<ContractCode>);
+
 impl Contract for CodeWrapper {
-    fn get_code(&self) -> Option<Arc<near_vm_runner::ContractCode>> {
+    fn get_code(&self) -> Option<Arc<ContractCode>> {
         Some(self.0.clone())
     }
 
@@ -475,6 +480,17 @@ pub enum GetVersionError<E> {
     Timeout(#[from] tokio::time::error::Elapsed),
 }
 
+impl GetVersionError<JsonRpcError<RpcQueryError>> {
+    pub const fn out_of_range(&self) -> bool {
+        matches!(
+            self,
+            Self::Inner(JsonRpcError::ServerError(JsonRpcServerError::HandlerError(
+                RpcQueryError::UnknownBlock { .. },
+            )))
+        )
+    }
+}
+
 impl ContractRunner {
     pub fn new_mainnet(code: Vec<u8>, hash: Option<CryptoHash>) -> Self {
         Self::new(near_primitives_core::chains::MAINNET, code, hash)
@@ -484,12 +500,28 @@ impl ContractRunner {
         Self::new(near_primitives_core::chains::TESTNET, code, hash)
     }
 
+    pub fn new_empty() -> Self {
+        let runtime_config_store =
+            RuntimeConfigStore::for_chain_id(near_primitives_core::chains::MAINNET);
+        let runtime_config =
+            runtime_config_store.get_config(near_primitives_core::version::PROTOCOL_VERSION);
+        Self {
+            contract: Mutex::new(None),
+            runtime_config: runtime_config.clone(),
+            cache: SimpleContractRuntimeCache {
+                inner: Arc::new(Mutex::new(LruCache::new(
+                    10.try_into().expect("`10` is non zero"),
+                ))),
+            },
+        }
+    }
+
     pub fn new(chain_id: &str, code: Vec<u8>, hash: Option<CryptoHash>) -> Self {
         let runtime_config_store = RuntimeConfigStore::for_chain_id(chain_id);
         let runtime_config =
             runtime_config_store.get_config(near_primitives_core::version::PROTOCOL_VERSION);
         Self {
-            contract: Mutex::new(CodeWrapper(Arc::new(ContractCode::new(code, hash)))),
+            contract: Mutex::new(Some(CodeWrapper(Arc::new(ContractCode::new(code, hash))))),
             runtime_config: runtime_config.clone(),
             cache: SimpleContractRuntimeCache {
                 inner: Arc::new(Mutex::new(LruCache::new(
@@ -501,7 +533,7 @@ impl ContractRunner {
 
     pub fn update_code(&self, code: Vec<u8>, hash: Option<CryptoHash>) {
         *self.contract.lock().expect("poisoned") =
-            CodeWrapper(Arc::new(ContractCode::new(code, hash)));
+            Some(CodeWrapper(Arc::new(ContractCode::new(code, hash))));
     }
 
     pub fn get_version(&self) -> Result<String, GetVersionError<VMRunnerError>> {
@@ -536,6 +568,9 @@ impl ContractRunner {
         ext: &mut (impl External + Send),
     ) -> Result<VMOutcome, VMRunnerError> {
         let contract_lock = self.contract.lock().expect("poisoned");
+        let Some(wrapper) = &*contract_lock else {
+            return Err(VMRunnerError::ContractCodeNotPresent);
+        };
 
         let current_account_id = env
             .current_account_id()
@@ -553,7 +588,7 @@ impl ContractRunner {
             .parse::<AccountId>()
             .expect("incompatible account id");
         let storage_usage =
-            100 + u64::try_from(contract_lock.0.code().len()).expect("usize must fit in 64");
+            100 + u64::try_from(wrapper.0.code().len()).expect("usize must fit in 64");
         let ctx = VMContext {
             current_account_id,
             signer_account_id,
@@ -575,7 +610,7 @@ impl ContractRunner {
         };
 
         let contract = near_vm_runner::prepare(
-            &*contract_lock,
+            &*wrapper,
             self.runtime_config.wasm_config.clone(),
             Some(&self.cache),
             ctx.make_gas_counter(&self.runtime_config.wasm_config),
@@ -645,7 +680,14 @@ impl AbstractContractRunner for ContractRunner {
 }
 
 mod loader {
-    use std::{fs, io, path::PathBuf, str, time::Duration};
+    use std::{
+        collections::{BTreeMap, HashMap},
+        fmt, fs, io,
+        path::PathBuf,
+        str,
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
 
     use near_jsonrpc_client::{
         JsonRpcClient, NEAR_TESTNET_RPC_URL,
@@ -654,6 +696,7 @@ mod loader {
     };
     use near_jsonrpc_primitives::types::query::QueryResponseKind;
     use near_primitives_core::hash::CryptoHash;
+    use tokio::time::Instant;
 
     use super::GetVersionError;
 
@@ -686,6 +729,51 @@ mod loader {
         }
     }
 
+    pub struct VersionRequest {
+        last_response: Option<Instant>,
+        backoff: Duration,
+    }
+
+    impl Default for VersionRequest {
+        fn default() -> Self {
+            VersionRequest {
+                last_response: None,
+                backoff: Self::DEFAULT_DELAY,
+            }
+        }
+    }
+
+    impl VersionRequest {
+        const DEFAULT_DELAY: Duration = Duration::from_secs(2);
+        const EXPONENT: u32 = 2;
+
+        pub async fn run(
+            &mut self,
+            height: u64,
+        ) -> Result<String, GetVersionError<JsonRpcError<RpcQueryError>>> {
+            loop {
+                if let Some(last) = self.last_response {
+                    tokio::time::sleep_until(last + self.backoff).await;
+                } else {
+                    tokio::time::sleep(self.backoff).await;
+                }
+                let res = version(height, true).await;
+                self.last_response = Some(Instant::now());
+                println!("{} -> {:?}, {:?}", height, res, self.backoff);
+                if res.is_ok() {
+                    self.backoff = Self::DEFAULT_DELAY;
+                } else if let Err(err) = &res {
+                    println!("{err}");
+                    if err.to_string().contains("rate limit") {
+                        self.backoff = (self.backoff * Self::EXPONENT).min(Duration::from_secs(60));
+                        continue;
+                    }
+                }
+                break res;
+            }
+        }
+    }
+
     pub fn load_from_file(
         version: &str,
         override_prefix: Option<PathBuf>,
@@ -708,6 +796,243 @@ mod loader {
                     Err(err)
                 }
             })
+    }
+
+    #[derive(Clone)]
+    struct VersionMap(BTreeMap<u64, String>);
+
+    impl Default for VersionMap {
+        fn default() -> Self {
+            Self(
+                [
+                    (134229098, "3.7.0".to_owned()),
+                    (143772514, "3.9.0".to_owned()),
+                    (154664694, "3.9.1".to_owned()),
+                    (159429079, "3.9.2".to_owned()),
+                ]
+                .into_iter()
+                .collect(),
+            )
+        }
+    }
+
+    impl fmt::Display for VersionMap {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            for (height, version) in &self.0 {
+                writeln!(f, "{height} -> {version}")?;
+            }
+
+            Ok(())
+        }
+    }
+
+    impl VersionMap {
+        fn version_at_height(&self, height: u64) -> &str {
+            self.0
+                .iter()
+                .take_while(|(x, _)| **x <= height)
+                .last()
+                .map(|(_, x)| x.as_ref())
+                .unwrap_or_else(|| "3.6.4")
+        }
+
+        async fn populate(&mut self) {
+            let mut req = VersionRequest::default();
+            let (mut initial_height, mut current_version) =
+                self.0.last_key_value().map(|(h, v)| (*h, v)).unwrap();
+            while let (next_height, Some(next_version)) =
+                Self::populate_next(&mut req, initial_height, current_version).await
+            {
+                initial_height = next_height;
+                current_version = &*self.0.entry(next_height).or_insert(next_version);
+            }
+        }
+
+        async fn populate_next(
+            req: &mut VersionRequest,
+            initial_height: u64,
+            current_version: &str,
+        ) -> (u64, Option<String>) {
+            // initial step is 2^15 blocks,
+            // will return back if overrun
+            let mut step = 15;
+
+            // the supposed next version, it is not final, might be overrun
+            // `None` means out of range
+            let mut next_version = loop {
+                match req.run(initial_height + (1 << step)).await {
+                    Ok(version) if version.ne(current_version) => {
+                        break Some(version);
+                    }
+                    Err(err) if err.out_of_range() => {
+                        break None;
+                    }
+                    Ok(_) => {
+                        // go further
+                        step += 1;
+                    }
+                    Err(_) => {
+                        // TODO: limit retry
+                    }
+                }
+            };
+
+            step -= 1;
+            let mut offset = 1 << step;
+            let mut overrun;
+            loop {
+                match req.run(initial_height + offset).await {
+                    Ok(version) if version.ne(current_version) => {
+                        next_version = Some(version);
+                        overrun = true;
+                    }
+                    Err(err) if err.out_of_range() => {
+                        next_version = None;
+                        overrun = true;
+                    }
+                    Ok(_) => {
+                        overrun = false;
+                    }
+                    Err(_) => {
+                        continue;
+                    }
+                }
+                if step == 0 {
+                    if !overrun {
+                        offset += 1;
+                    }
+                    break;
+                } else {
+                    step -= 1;
+                    if overrun {
+                        offset -= 1 << step;
+                    } else {
+                        offset += 1 << step;
+                    }
+                }
+            }
+
+            (initial_height + offset, next_version)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests_version_map {
+        use super::{VersionMap, VersionRequest};
+
+        #[test]
+        fn version_map() {
+            let map = VersionMap::default();
+
+            assert_eq!(map.version_at_height(134229097), "3.6.4");
+            assert_eq!(map.version_at_height(134229098), "3.7.0");
+            assert_eq!(map.version_at_height(134229099), "3.7.0");
+
+            assert_eq!(map.version_at_height(143772513), "3.7.0");
+            assert_eq!(map.version_at_height(143772514), "3.9.0");
+            assert_eq!(map.version_at_height(143772515), "3.9.0");
+
+            assert_eq!(map.version_at_height(154664693), "3.9.0");
+            assert_eq!(map.version_at_height(154664694), "3.9.1");
+            assert_eq!(map.version_at_height(154664695), "3.9.1");
+
+            assert_eq!(map.version_at_height(159429078), "3.9.1");
+            assert_eq!(map.version_at_height(159429079), "3.9.2");
+            assert_eq!(map.version_at_height(159429080), "3.9.2");
+        }
+
+        #[tokio::test]
+        async fn out_of_range() {
+            let mut req = VersionRequest::default();
+            match req.run(200_000_000).await {
+                Ok(_) => {}
+                Err(err) if err.out_of_range() => {}
+                Err(err) => panic!("unexpected error: {err}"),
+            }
+        }
+
+        #[ignore = "rate limit for RPC is too strict, the test takes too long"]
+        #[tokio::test]
+        async fn version_map_rpc() {
+            let map = VersionMap::default();
+            let mut req = VersionRequest::default();
+
+            for height in [
+                (134229097..).take(3),
+                (143772513..).take(3),
+                (154664692..).take(3),
+                (159429077..).take(3),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                let actual = req.run(height).await.unwrap();
+                let expected = map.version_at_height(height);
+                assert_eq!(actual, expected, "{height}");
+            }
+        }
+
+        #[ignore = "rate limit for RPC is too strict, the test takes too long"]
+        #[tokio::test]
+        async fn version_map_populate() {
+            let mut map = VersionMap::default();
+            map.populate().await;
+            println!("{map}");
+        }
+    }
+
+    #[derive(Default, Clone)]
+    pub struct Cache {
+        version_map: VersionMap,
+        inner: Arc<Mutex<CacheInner>>,
+    }
+
+    #[derive(Default)]
+    struct CacheInner {
+        code: HashMap<String, (Vec<u8>, Option<CryptoHash>)>,
+        pool: Vec<super::ContractRunner>,
+    }
+
+    impl CacheInner {
+        fn take_runner(&mut self, version: &str) -> super::ContractRunner {
+            let (code, hash) = self
+                .code
+                .entry(version.to_string())
+                .or_insert_with(|| {
+                    load_from_file(version, None).unwrap_or_else(|err| {
+                        panic!("Failed to load contract version {version}: {err}")
+                    })
+                })
+                .clone();
+            let runner = self
+                .pool
+                .pop()
+                .unwrap_or_else(|| super::ContractRunner::new_empty());
+            runner.update_code(code, hash);
+            runner
+        }
+
+        fn reuse(&mut self, runner: super::ContractRunner) {
+            self.pool.push(runner);
+        }
+    }
+
+    impl Cache {
+        pub async fn populate_map(&mut self) -> impl fmt::Display {
+            self.version_map.populate().await;
+            &self.version_map
+        }
+
+        pub fn with_runner<F, T>(&self, height: u64, f: F) -> T
+        where
+            F: FnOnce(&super::ContractRunner) -> T,
+        {
+            let version = self.version_map.version_at_height(height);
+            let runner = self.inner.lock().unwrap().take_runner(version);
+            let result = f(&runner);
+            self.inner.lock().unwrap().reuse(runner);
+            result
+        }
     }
 }
 pub use self::loader::*;
