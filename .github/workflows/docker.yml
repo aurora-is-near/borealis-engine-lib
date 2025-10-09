@@ -14,8 +14,12 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: k8s-infrastructure-dind
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.4xlarge/image=ubuntu24-full-x64/extras=s3-cache
     steps:
+    - name: Setup RunsOn
+      uses: runs-on/action@v2
+      with:
+        metrics: cpu,network,memory,disk,io
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -42,6 +46,8 @@ jobs:
         push: true
         platforms: linux/amd64
         tags: ${{ env.TAGS }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         build-args: |
           VERSION=${{ env.VERSION }}
           RELEASE_TAG=${{ env.VERSION }}

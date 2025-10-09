@@ -10,7 +10,7 @@ on:
 jobs:
   fmt:
     name: Formatting
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.xlarge/image=ubuntu24-full-x64
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -22,23 +22,22 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: selfhosted
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.4xlarge/image=ubuntu24-full-x64/extras=s3-cache
     container: rust:latest
     steps:
+      - name: Setup RunsOn
+        uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
         run: .github/ci-deps.sh
-      - name: Cargo Cache
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          cache-on-failure: "true"
+          cache-all-crates: "true"
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -54,26 +53,26 @@ jobs:
         build: [ Linux, macOS ]
         include:
           - build: Linux
-            image: selfhosted
+            image: runs-on=${{ github.run_id }}/family=c6a.8xlarge/image=ubuntu24-full-x64/extras=s3-cache
             container: rust:latest
           - build: macOS
             image: macos-latest
     steps:
+      - name: Setup RunsOn
+        if: ${{ matrix.build == 'Linux' }}
+        uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
         if: ${{ matrix.build == 'Linux' }}
         run: .github/ci-deps.sh
-      - name: Cargo Cache
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          cache-on-failure: "true"
+          cache-all-crates: "true"
       - name: Fix issue with dubious ownership in repository
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Run tests
@@ -84,23 +83,22 @@ jobs:
 
   run-test:
     name: Run app test
-    runs-on: selfhosted
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.8xlarge/image=ubuntu24-full-x64/extras=s3-cache
     container: rust:latest
     steps:
+      - name: Setup RunsOn
+        uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Install dependencies
         run: .github/ci-deps.sh
-      - name: Cargo Cache
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.lock') }}
+          cache-on-failure: "true"
+          cache-all-crates: "true"
       - name: Fix issue with dubious ownership in repository
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Run integration tests

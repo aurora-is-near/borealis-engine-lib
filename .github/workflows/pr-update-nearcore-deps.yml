@@ -15,7 +15,7 @@ env:
 
 jobs:
   create-pr:
-    runs-on: k8s-infrastructure-dind
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.2xlarge/image=ubuntu24-full-x64
 
     permissions:
       contents: write

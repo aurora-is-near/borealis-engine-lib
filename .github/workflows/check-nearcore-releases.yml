@@ -5,7 +5,7 @@ on:
 
 jobs:
   check-releases:
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.large/image=ubuntu24-full-x64
 
     steps:
       - name: Restore last checked release
@@ -48,7 +48,7 @@ jobs:
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/aurora-is-near/borealis-engine-lib/dispatches \
             -d '{"event_type":"pr-update-nearcore-deps","client_payload":{"version":"'"${{ env.VERSION }}"'"}}'
-            
+
       - name: Summary
         run: |
           echo "## Nearcore Release Check Summary" >> $GITHUB_STEP_SUMMARY
