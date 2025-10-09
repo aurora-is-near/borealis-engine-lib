@@ -28,7 +28,7 @@ impl DebugTraceTransactionRequest {
 
 pub fn trace_transaction(
     storage: &Storage,
-    cache: &runner::Cache,
+    cache: &runner::RandomAccessContractCache,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
     let tx_msg = storage.get_transaction_data(tx_hash)?;

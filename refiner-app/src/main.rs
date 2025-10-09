@@ -99,11 +99,15 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
-            let contract_version = runner::version(height.unwrap_or(134229098), true).await?;
+            let contract_storage = runner::SeqAccessContractCache::initialize(
+                height.unwrap_or(134229098),
+                args.contract_path.map(PathBuf::from),
+                config.refiner.chain_id == 1313161554,
+            )
+            .await?;
             let ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                args.contract_path.map(PathBuf::from),
-                &contract_version,
+                contract_storage,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )

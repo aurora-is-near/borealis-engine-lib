@@ -123,6 +123,7 @@ pub mod tests {
         types::{Address, Balance, Wei},
     };
     use aurora_refiner_types::aurora_block::NearBlock;
+    use aurora_standalone_engine::runner::SeqAccessContractCache;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches, str::FromStr};
 
@@ -603,8 +604,9 @@ pub mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
+            let contract = SeqAccessContractCache::new_version("3.7.0").unwrap();
             let engine_context =
-                EngineContext::new(&engine_path, None, "3.7.0", account_id, chain_id).unwrap();
+                EngineContext::new(&engine_path, contract, account_id, chain_id).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 
             Self {

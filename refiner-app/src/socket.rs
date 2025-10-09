@@ -1,7 +1,7 @@
 use std::io;
 use std::path::Path;
 
-use aurora_standalone_engine::runner;
+use aurora_standalone_engine::runner::RandomAccessContractCache as Cache;
 use aurora_standalone_engine::{
     gas::{EthCallRequest, estimate_gas},
     tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
@@ -31,7 +31,7 @@ pub async fn start_socket_server(
     }
 
     let sock = UnixListener::bind(path).expect("Failed to open socket");
-    let cache = runner::Cache::default();
+    let cache = Cache::default();
 
     loop {
         tokio::select! {
@@ -49,7 +49,7 @@ pub async fn start_socket_server(
     std::fs::remove_file(path).expect("Failed to remove socket file on shutdown");
 }
 
-async fn handle_conn(storage: SharedStorage, cache: runner::Cache, mut stream: UnixStream) {
+async fn handle_conn(storage: SharedStorage, cache: Cache, mut stream: UnixStream) {
     loop {
         if stream.readable().await.is_err() || stream.writable().await.is_err() {
             continue;
@@ -115,7 +115,7 @@ async fn handle_conn(storage: SharedStorage, cache: runner::Cache, mut stream: U
 
 async fn handle_msg(
     storage: SharedStorage,
-    cache: &runner::Cache,
+    cache: &Cache,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     match msg
@@ -158,7 +158,7 @@ async fn handle_estimate_gas(
 #[allow(clippy::significant_drop_tightening)]
 async fn handle_trace_transaction(
     storage: SharedStorage,
-    cache: &runner::Cache,
+    cache: &Cache,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req =
@@ -222,7 +222,6 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_standalone_engine::runner;
     use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -246,7 +245,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_open_and_close() {
         let storage = init_storage();
-        let cache = runner::Cache::default();
+        let cache = Cache::default();
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -301,7 +300,7 @@ mod tests {
     #[tokio::test]
     async fn test_parse_error() {
         let storage = init_storage();
-        let cache = runner::Cache::default();
+        let cache = Cache::default();
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -332,7 +331,7 @@ mod tests {
     #[tokio::test]
     async fn test_trace_transaction() {
         let storage = init_storage();
-        let cache = runner::Cache::default();
+        let cache = Cache::default();
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -378,7 +377,7 @@ mod tests {
     #[tokio::test]
     async fn test_estimate_gas() {
         let storage = init_storage();
-        let cache = runner::Cache::default();
+        let cache = Cache::default();
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();

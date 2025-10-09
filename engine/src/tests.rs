@@ -10,7 +10,7 @@ use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 
-use crate::runner::{self, ContractRunner};
+use crate::runner::SeqAccessContractCache;
 
 #[test]
 fn test_switch_contract() {
@@ -33,7 +33,7 @@ fn test_switch_contract() {
     for (block, expected_version) in blocks.zip(versions) {
         crate::sync::consume_near_block::<AuroraModExp>(
             &mut test_context.storage,
-            &test_context.runner,
+            &mut test_context.contract,
             &block,
             &mut data_id_mapping,
             &test_context.engine_account_id,
@@ -43,7 +43,10 @@ fn test_switch_contract() {
         .unwrap();
 
         // the contract version is updated
-        assert_eq!(test_context.runner.get_version().unwrap(), expected_version);
+        assert_eq!(
+            test_context.contract.runner().get_version().unwrap(),
+            expected_version
+        );
     }
 }
 
@@ -66,7 +69,7 @@ fn test_random_value() {
 
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &test_context.runner,
+        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -113,7 +116,7 @@ fn test_empty_submit_input() {
 
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &test_context.runner,
+        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -143,7 +146,7 @@ fn test_batched_transactions() {
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &test_context.runner,
+        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -222,7 +225,7 @@ struct TestContext {
     storage: Storage,
     storage_path: tempfile::TempDir,
     engine_account_id: AccountId,
-    runner: ContractRunner,
+    contract: SeqAccessContractCache,
 }
 
 impl TestContext {
@@ -237,10 +240,7 @@ impl TestContext {
             storage,
             storage_path,
             engine_account_id,
-            runner: {
-                let (code, hash) = runner::load_from_file("3.7.0", None).unwrap();
-                ContractRunner::new(near_primitives_core::chains::TESTNET, code, hash)
-            },
+            contract: SeqAccessContractCache::new_version("3.7.0").unwrap(),
         }
     }
 

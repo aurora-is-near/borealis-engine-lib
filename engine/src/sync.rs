@@ -24,20 +24,25 @@ use lru::LruCache;
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
-use crate::runner::{self, ContractRunner};
+use crate::runner::{ContractRunner, SeqAccessContractCache};
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
-    runner: &ContractRunner,
+    contract: &mut SeqAccessContractCache,
     message: &aurora_refiner_types::near_block::NEARBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
     engine_account_id: &AccountId,
     chain_id: [u8; 32],
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), engine_standalone_storage::Error> {
-    let block_hash =
-        add_block_data_from_near_block::<M>(storage, runner, message, chain_id, engine_account_id)?;
+    let block_hash = add_block_data_from_near_block::<M>(
+        storage,
+        contract,
+        message,
+        chain_id,
+        engine_account_id,
+    )?;
     let near_block_hash = &message.block.header.hash;
 
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
@@ -74,22 +79,15 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         // }
         if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
             if account_id.as_str() == engine_account_id.as_ref() {
-                let time = Instant::now();
-                runner.update_code(code.clone(), None);
-                let version = runner.get_version().unwrap();
                 let height = message.block.header.height;
-                match runner::load_from_file(&version, None) {
-                    Ok((code, hash)) => {
-                        runner.update_code(code, hash);
-                        tracing::info!(
-                            "Aurora version at height {height}: {version}, updating took: {:?}",
-                            time.elapsed()
-                        );
-                    }
-                    Err(err) => {
-                        tracing::error!("Failed to load contract version: {version}, error: {err}");
-                    }
-                }
+                let time = Instant::now();
+                contract.update(code.clone(), None);
+                debug!(
+                    "Contract code updated at block height {} (code size {}), time elapsed {:?}",
+                    height,
+                    code.len(),
+                    time.elapsed()
+                );
             }
         }
     }
@@ -281,6 +279,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     for (t, result_bytes) in transaction_messages {
         let receipt_id = t.near_receipt_id();
         debug!("Processing receipt {:?}", receipt_id);
+        let runner = contract.runner();
         let tx_outcome = t.process::<M>(storage, runner)?;
         let computed_result = match &tx_outcome {
             TransactionBatchOutcome::Single(tx_outcome) => tx_outcome
@@ -386,7 +385,7 @@ fn compute_action_hash(
 
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
-    runner: &ContractRunner,
+    contract: &mut SeqAccessContractCache,
     message: &aurora_refiner_types::near_block::NEARBlock,
     chain_id: [u8; 32],
     account_id: &AccountId,
@@ -404,7 +403,7 @@ fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     };
 
     debug!("Consuming block {}", block_message.height);
-    sync::consume_message::<M, _>(storage, runner, Message::Block(block_message))?;
+    sync::consume_message::<M, _>(storage, contract.runner(), Message::Block(block_message))?;
 
     Ok(block_hash)
 }
