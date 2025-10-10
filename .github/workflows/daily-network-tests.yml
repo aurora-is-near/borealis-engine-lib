@@ -9,25 +9,25 @@ on:
 jobs:
   network-tests:
     name: Borealis Engine Lib Network-dependent tests
-    runs-on: selfhosted
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.2xlarge/image=ubuntu24-full-x64/extras=s3-cache
     container: rust:latest
     steps:
+      - name: Setup RunsOn
+        uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - name: Checkout sources
         uses: actions/checkout@v4
 
       - name: Install dependencies
         run: .github/ci-deps.sh
 
-      - name: Cargo Cache
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-network-tests-${{ hashFiles('**/Cargo.lock') }}
+          cache-on-failure: "true"
+          cache-all-crates: "true"
 
       - name: Fix issue with dubious ownership in repository
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}

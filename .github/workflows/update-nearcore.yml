@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   check-update-needed:
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.large/image=ubuntu24-full-x64
     outputs:
       update_needed: ${{ steps.compare.outputs.update_needed }}
       current_tag: ${{ steps.current_tag.outputs.tag }}
@@ -118,7 +118,7 @@ jobs:
   update-cargo:
     needs: check-update-needed
     if: needs.check-update-needed.outputs.update_needed == 'true' && needs.check-update-needed.outputs.pr_exists == 'false'
-    runs-on: selfhosted
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.xlarge/image=ubuntu24-full-x64
     outputs:
       new_version: ${{ steps.update_cargo.outputs.new_version }}
     steps:
@@ -201,7 +201,7 @@ jobs:
   create-pr:
     needs: [check-update-needed, update-cargo]
     if: needs.check-update-needed.outputs.update_needed == 'true' && needs.check-update-needed.outputs.pr_exists == 'false'
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.large/image=ubuntu24-full-x64
     outputs:
       pr_number: ${{ steps.create_pr.outputs.pr_number }}
     steps:
@@ -227,7 +227,7 @@ jobs:
   process-pr:
     needs: [check-update-needed, create-pr]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.large/image=ubuntu24-full-x64
     outputs:
       pr_merged: ${{ steps.merge_pr.outputs.merged }}
     steps:
@@ -267,7 +267,7 @@ jobs:
         run: |
           # Get labels for the PR
           labels=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name')
-          
+
           # Check if "need review" label exists
           if echo "$labels" | grep -q "need review"; then
             echo "PR has 'need review' label. Skipping auto-merge workflow."
@@ -464,7 +464,7 @@ jobs:
 
   create-release:
     needs: process-pr
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/family=c6a.large/image=ubuntu24-full-x64
     if: ${{ !cancelled() }}
     steps:
       - name: Check if we should create a release
