@@ -33,7 +33,7 @@ pub fn trace_transaction(
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
     let tx_msg = storage.get_transaction_data(tx_hash)?;
     let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
-    let mut outcome = cache.with_runner(height, |runner| {
+    let mut outcome = cache.with_runner(storage, height, |runner| {
         sync::execute_transaction_message::<AuroraModExp, _>(
             storage,
             runner,

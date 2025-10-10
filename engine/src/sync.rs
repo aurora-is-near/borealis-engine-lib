@@ -81,7 +81,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             if account_id.as_str() == engine_account_id.as_ref() {
                 let height = message.block.header.height;
                 let time = Instant::now();
-                contract.update(code.clone(), None);
+                contract.update(&*storage, &code, None, height);
                 debug!(
                     "Contract code updated at block height {} (code size {}), time elapsed {:?}",
                     height,

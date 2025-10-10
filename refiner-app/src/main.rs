@@ -5,7 +5,7 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
-use aurora_standalone_engine::runner;
+use aurora_standalone_engine::{fetch_contract, runner};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -99,10 +99,12 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
+            let (requests_tx, requests_rx) = tokio::sync::mpsc::unbounded_channel();
             let contract_storage = runner::SeqAccessContractCache::initialize(
                 height.unwrap_or(134229098),
                 args.contract_path.map(PathBuf::from),
                 config.refiner.chain_id == 1313161554,
+                requests_tx,
             )
             .await?;
             let ctx = aurora_standalone_engine::EngineContext::new(
@@ -112,6 +114,10 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.chain_id,
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
+
+            // TODO: read link from config
+            let link = "https://github.com/aurora-is-near/aurora-engine/releases/download/%version%/aurora-compat.wasm".to_owned();
+            tokio::spawn(fetch_contract::run(ctx.storage.clone(), link, requests_rx));
 
             let socket_storage = ctx.storage.clone();
 

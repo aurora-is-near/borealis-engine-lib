@@ -9,8 +9,10 @@ use std::path::Path;
 use crate::runner::SeqAccessContractCache;
 
 mod batch_tx_processing;
+pub mod fetch_contract;
 pub mod gas;
 pub mod runner;
+mod storage_ext;
 pub mod sync;
 #[cfg(test)]
 mod tests;
