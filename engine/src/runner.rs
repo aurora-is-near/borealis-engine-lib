@@ -451,7 +451,7 @@ where
 }
 
 pub struct ContractRunner {
-    contract: Option<CodeWrapper>,
+    contract: Vec<CodeWrapper>,
     runtime_config: Arc<RuntimeConfig>,
     cache: SimpleContractRuntimeCache,
 }
@@ -502,7 +502,7 @@ impl ContractRunner {
         let runtime_config =
             runtime_config_store.get_config(near_primitives_core::version::PROTOCOL_VERSION);
         Self {
-            contract: None,
+            contract: vec![],
             runtime_config: runtime_config.clone(),
             cache: SimpleContractRuntimeCache {
                 inner: Arc::new(Mutex::new(LruCache::new(
@@ -517,7 +517,7 @@ impl ContractRunner {
         let runtime_config =
             runtime_config_store.get_config(near_primitives_core::version::PROTOCOL_VERSION);
         Self {
-            contract: Some(CodeWrapper(Arc::new(ContractCode::new(code, hash)))),
+            contract: vec![CodeWrapper(Arc::new(ContractCode::new(code, hash)))],
             runtime_config: runtime_config.clone(),
             cache: SimpleContractRuntimeCache {
                 inner: Arc::new(Mutex::new(LruCache::new(
@@ -528,7 +528,16 @@ impl ContractRunner {
     }
 
     fn update_code(&mut self, code: Vec<u8>, hash: Option<CryptoHash>) {
-        self.contract = Some(CodeWrapper(Arc::new(ContractCode::new(code, hash))));
+        self.contract = vec![CodeWrapper(Arc::new(ContractCode::new(code, hash)))];
+    }
+
+    fn push_code(&mut self, code: Vec<u8>, hash: Option<CryptoHash>) {
+        self.contract
+            .push(CodeWrapper(Arc::new(ContractCode::new(code, hash))));
+    }
+
+    fn pop_code(&mut self) {
+        self.contract.pop();
     }
 
     pub fn get_version(&self) -> Result<String, GetVersionError<VMRunnerError>> {
@@ -561,7 +570,7 @@ impl ContractRunner {
         env: &impl Env,
         ext: &mut (impl External + Send),
     ) -> Result<VMOutcome, VMRunnerError> {
-        let Some(wrapper) = &self.contract else {
+        let Some(wrapper) = self.contract.last() else {
             return Err(VMRunnerError::ContractCodeNotPresent);
         };
 
@@ -675,7 +684,7 @@ mod loader {
     use std::{
         collections::BTreeMap,
         fmt, fs, io,
-        num::NonZero,
+        ops::Deref,
         path::PathBuf,
         str,
         sync::{Arc, Mutex},
@@ -683,7 +692,6 @@ mod loader {
     };
 
     use engine_standalone_storage::Storage;
-    use lru::LruCache;
     use near_jsonrpc_client::{
         JsonRpcClient, NEAR_TESTNET_RPC_URL,
         errors::JsonRpcError,
@@ -691,9 +699,9 @@ mod loader {
     };
     use near_jsonrpc_primitives::types::query::QueryResponseKind;
     use near_primitives_core::hash::CryptoHash;
-    use tokio::{sync::mpsc, time::Instant};
+    use tokio::{sync::RwLock, time::Instant};
 
-    use crate::{fetch_contract::ContractKey, storage_ext};
+    use crate::{fetch_contract, storage_ext};
 
     use super::{ContractRunner, GetVersionError};
 
@@ -978,8 +986,6 @@ mod loader {
 
     pub struct SeqAccessContractCache {
         current: ContractRunner,
-        _next: Option<(String, (CryptoHash, Vec<u8>))>,
-        requests_tx: Option<mpsc::UnboundedSender<ContractKey>>,
     }
 
     impl SeqAccessContractCache {
@@ -987,11 +993,7 @@ mod loader {
             let (contract_bytes, contract_hash) = load_from_file(version, None)?;
             let current = ContractRunner::new_mainnet(contract_bytes, contract_hash);
 
-            Ok(SeqAccessContractCache {
-                current,
-                _next: None,
-                requests_tx: None,
-            })
+            Ok(SeqAccessContractCache { current })
         }
 
         // TODO(vlad): workout error
@@ -999,18 +1001,13 @@ mod loader {
             height: u64,
             prefix: Option<PathBuf>,
             mainnet: bool,
-            requests_tx: mpsc::UnboundedSender<ContractKey>,
         ) -> io::Result<Self> {
             let contract_version = version(height, mainnet)
                 .await
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
             let (contract_bytes, contract_hash) = load_from_file(&contract_version, prefix)?;
             let current = ContractRunner::new_mainnet(contract_bytes, contract_hash);
-            Ok(SeqAccessContractCache {
-                current,
-                _next: None,
-                requests_tx: Some(requests_tx),
-            })
+            Ok(SeqAccessContractCache { current })
         }
 
         pub fn runner(&self) -> &ContractRunner {
@@ -1023,8 +1020,9 @@ mod loader {
             code: &[u8],
             hash: Option<CryptoHash>,
             block_height: u64,
+            tx_pos: u16,
         ) {
-            match storage_ext::get_contract(storage, block_height, 0) {
+            match storage_ext::get_contract(storage, block_height, tx_pos) {
                 Ok(Some(bytes)) => {
                     self.current.update_code(bytes, None);
                     return;
@@ -1038,69 +1036,68 @@ mod loader {
                     );
                 }
             }
-            self.current.update_code(code.to_vec(), hash);
+            self.current.push_code(code.to_vec(), hash);
             let version = self.current.get_version().unwrap();
             match load_from_file(&version, None) {
                 Ok((code, hash)) => {
                     self.current.update_code(code, hash);
                 }
                 Err(err) => {
-                    if let Some(tx) = &self.requests_tx {
-                        let _ = tx.send(ContractKey {
-                            version: version.to_owned(),
-                            height: block_height,
-                            pos: 0,
-                        });
-                    }
-
+                    self.current.pop_code();
                     tracing::error!(
                         err = format!("{err:?}"),
                         height = block_height,
+                        tx_pos = tx_pos,
                         new_version = &version,
-                        "Failed to load contract"
+                        "Failed to load contract. Send the contract via nats as soon as possible. Restart from {block_height}:{tx_pos}."
                     );
                 }
             }
         }
     }
 
-    #[derive(Default, Clone)]
+    #[derive(Clone)]
     pub struct RandomAccessContractCache {
         version_map: VersionMap,
-        inner: Arc<Mutex<CacheInner>>,
+        inner: CacheInner,
     }
 
+    impl RandomAccessContractCache {
+        pub fn new(link: String) -> Self {
+            RandomAccessContractCache {
+                version_map: VersionMap::default(),
+                inner: CacheInner::new(link),
+            }
+        }
+    }
+
+    #[derive(Clone)]
     struct CacheInner {
-        // is it really needed? I guess Linux will cache files anyway
-        cache: LruCache<String, (Vec<u8>, Option<CryptoHash>)>,
-        pool: Vec<ContractRunner>,
-        requests_tx: Option<mpsc::UnboundedSender<ContractKey>>,
+        pool: Arc<Mutex<Vec<ContractRunner>>>,
+        link: String,
     }
 
-    impl Default for CacheInner {
-        fn default() -> Self {
+    impl CacheInner {
+        pub fn new(link: String) -> Self {
             CacheInner {
-                cache: LruCache::new(NonZero::new(Self::MAX_CACHE_SIZE).unwrap()),
-                pool: Vec::default(),
-                requests_tx: None,
+                pool: Default::default(),
+                link,
             }
         }
     }
 
     impl CacheInner {
-        // The cache is used only for pre-bundled versions
-        // there are 5 such versions, and they stay the same
-        const MAX_CACHE_SIZE: usize = 5;
-
         // if the code is not available, return None and fail the RPC
         // in this case add a task to fetch the code from nats
-        fn take_code(
-            &mut self,
-            storage: &Storage,
+        async fn take_code(
+            &self,
+            storage: &RwLock<Storage>,
             block_height: u64,
+            tx_pos: u16,
             version: &str,
         ) -> (Vec<u8>, Option<CryptoHash>) {
-            match storage_ext::get_contract(storage, block_height, 0) {
+            let storage_lock = storage.read().await;
+            match storage_ext::get_contract(&storage_lock, block_height, tx_pos) {
                 Ok(Some(bytes)) => return (bytes, None),
                 Ok(None) => { /* fallthrough to file load */ }
                 Err(err) => {
@@ -1112,53 +1109,54 @@ mod loader {
                 }
             }
 
-            if let Some((code, hash)) = self.cache.get(version) {
-                return (code.clone(), *hash);
-            }
-
-            load_from_file(version, None)
-                .inspect(|v| {
-                    self.cache.put(version.to_owned(), v.clone());
-                })
-                .unwrap_or_else(|err| {
+            match load_from_file(version, None) {
+                Ok(v) => {
+                    return v;
+                }
+                Err(err) => {
                     tracing::error!(
                         err = format!("{err:?}"),
                         height = block_height,
-                        new_version = &version,
-                        "Failed to load contract for RPC"
+                        new_version = version,
+                        "Failed to load contract from file for RPC. Try to download."
                     );
+                }
+            }
 
-                    if let Some(tx) = &self.requests_tx {
-                        let _ = tx.send(ContractKey {
-                            version: version.to_owned(),
-                            height: block_height,
-                            pos: 0,
-                        });
-                    }
+            fetch_contract::fetch_and_store_contract(
+                storage,
+                &self.link,
+                version,
+                block_height,
+                tx_pos,
+            )
+            .await;
 
-                    // return something bundled, if RPC fails, so be it
-                    // client will retry and proper contract will be already fetched
-                    load_from_file("3.9.0", None).expect("cannot load fallback")
-                })
+            // return something bundled, if RPC fails, so be it
+            // client will retry and proper contract will be already fetched
+            load_from_file("3.9.0", None).expect("cannot load fallback")
         }
 
-        fn take_runner(
-            &mut self,
-            storage: &Storage,
+        async fn take_runner(
+            &self,
+            storage: &RwLock<Storage>,
             block_height: u64,
+            tx_pos: u16,
             version: &str,
         ) -> ContractRunner {
-            let (code, hash) = self.take_code(storage, block_height, version);
+            let (code, hash) = self.take_code(storage, block_height, tx_pos, version).await;
             let mut runner = self
                 .pool
+                .lock()
+                .expect("poisoned")
                 .pop()
                 .unwrap_or_else(|| ContractRunner::new_empty());
             runner.update_code(code, hash);
             runner
         }
 
-        fn reuse(&mut self, runner: ContractRunner) {
-            self.pool.push(runner);
+        fn reuse(&self, runner: ContractRunner) {
+            self.pool.lock().expect("poisoned").push(runner);
         }
     }
 
@@ -1169,19 +1167,46 @@ mod loader {
             self.version_map.populate().await;
         }
 
-        pub fn with_runner<F, T>(&self, storage: &Storage, height: u64, f: F) -> T
-        where
-            F: FnOnce(&ContractRunner) -> T,
-        {
+        pub async fn take_runner<'a>(
+            &'a self,
+            storage: &RwLock<Storage>,
+            height: u64,
+            tx_pos: u16,
+        ) -> ReusableContractRunner<'a> {
             let version = self.version_map.version_at_height(height);
             let runner = self
                 .inner
-                .lock()
-                .unwrap()
-                .take_runner(storage, height, version);
-            let result = f(&runner);
-            self.inner.lock().unwrap().reuse(runner);
-            result
+                .take_runner(storage, height, tx_pos, version)
+                .await;
+            ReusableContractRunner {
+                cache: self,
+                runner: Some(runner),
+            }
+        }
+
+        fn reuse(&self, runner: ContractRunner) {
+            self.inner.reuse(runner);
+        }
+    }
+
+    pub struct ReusableContractRunner<'a> {
+        cache: &'a RandomAccessContractCache,
+        runner: Option<ContractRunner>,
+    }
+
+    impl Drop for ReusableContractRunner<'_> {
+        fn drop(&mut self) {
+            if let Some(runner) = self.runner.take() {
+                self.cache.reuse(runner);
+            }
+        }
+    }
+
+    impl Deref for ReusableContractRunner<'_> {
+        type Target = ContractRunner;
+
+        fn deref(&self) -> &Self::Target {
+            self.runner.as_ref().expect("runner is present")
         }
     }
 }

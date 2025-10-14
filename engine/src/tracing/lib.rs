@@ -5,6 +5,7 @@ use engine_standalone_storage::{
     sync::{self, TransactionIncludedOutcome},
 };
 use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
+use tokio::sync::RwLock;
 
 use crate::runner;
 
@@ -26,21 +27,24 @@ impl DebugTraceTransactionRequest {
     }
 }
 
-pub fn trace_transaction(
-    storage: &Storage,
+pub async fn trace_transaction(
+    storage: &RwLock<Storage>,
     cache: &runner::RandomAccessContractCache,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
-    let tx_msg = storage.get_transaction_data(tx_hash)?;
-    let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
-    let mut outcome = cache.with_runner(storage, height, |runner| {
-        sync::execute_transaction_message::<AuroraModExp, _>(
-            storage,
-            runner,
-            tx_msg,
-            Some(TraceKind::CallFrame),
-        )
-    })?;
+    let storage_lock = storage.read().await;
+    let tx_msg = storage_lock.get_transaction_data(tx_hash)?;
+    let height = storage_lock.get_block_height_by_hash(tx_msg.block_hash)?;
+    drop(storage_lock);
+    let runner = cache.take_runner(storage, height, tx_msg.position).await;
+    let storage_lock = storage.read().await;
+    let mut outcome = sync::execute_transaction_message::<AuroraModExp, runner::ContractRunner>(
+        &storage_lock,
+        &*runner,
+        tx_msg,
+        Some(TraceKind::CallFrame),
+    )?;
+    drop(storage_lock);
 
     let tracer = outcome.call_tracer.take().unwrap();
     Ok((tracer, outcome))

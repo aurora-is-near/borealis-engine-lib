@@ -19,6 +19,7 @@ type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
 
 pub async fn start_socket_server(
     storage: SharedStorage,
+    link: String,
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
@@ -31,7 +32,7 @@ pub async fn start_socket_server(
     }
 
     let sock = UnixListener::bind(path).expect("Failed to open socket");
-    let cache = Cache::default();
+    let cache = Cache::new(link);
 
     loop {
         tokio::select! {
@@ -163,9 +164,9 @@ async fn handle_trace_transaction(
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req =
         DebugTraceTransactionRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
-    let storage = storage.as_ref().read().await;
-    let (res, _outcome) =
-        trace_transaction(&storage, cache, req.tx_hash).map_err(|_| internal_err(None))?;
+    let (res, _outcome) = trace_transaction(&storage, cache, req.tx_hash)
+        .await
+        .map_err(|_| internal_err(None))?;
     let mut traces = Vec::with_capacity(res.call_stack.len());
     for t in res.call_stack {
         let val = serde_json::to_value(SerializableCallFrame::from(t))
@@ -245,7 +246,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_open_and_close() {
         let storage = init_storage();
-        let cache = Cache::default();
+        let cache = Cache::new("https://example.com".to_string());
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -300,7 +301,7 @@ mod tests {
     #[tokio::test]
     async fn test_parse_error() {
         let storage = init_storage();
-        let cache = Cache::default();
+        let cache = Cache::new("https://example.com".to_string());
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -331,7 +332,7 @@ mod tests {
     #[tokio::test]
     async fn test_trace_transaction() {
         let storage = init_storage();
-        let cache = Cache::default();
+        let cache = Cache::new("https://example.com".to_string());
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -377,7 +378,7 @@ mod tests {
     #[tokio::test]
     async fn test_estimate_gas() {
         let storage = init_storage();
-        let cache = Cache::default();
+        let cache = Cache::new("https://example.com".to_string());
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();

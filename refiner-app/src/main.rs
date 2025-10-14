@@ -99,12 +99,10 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
-            let (requests_tx, requests_rx) = tokio::sync::mpsc::unbounded_channel();
             let contract_storage = runner::SeqAccessContractCache::initialize(
                 height.unwrap_or(134229098),
                 args.contract_path.map(PathBuf::from),
                 config.refiner.chain_id == 1313161554,
-                requests_tx,
             )
             .await?;
             let ctx = aurora_standalone_engine::EngineContext::new(
@@ -117,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
 
             // TODO: read link from config
             let link = "https://github.com/aurora-is-near/aurora-engine/releases/download/%version%/aurora-compat.wasm".to_owned();
-            tokio::spawn(fetch_contract::run(ctx.storage.clone(), link, requests_rx));
+            fetch_contract::all(&ctx.storage, &link).await;
 
             let socket_storage = ctx.storage.clone();
 
@@ -133,7 +131,8 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
-                            Path::new(&socket_config.path),
+                            link.clone(),
+                            &socket_config.path,
                             &mut shutdown_rx_socket,
                         )
                         .await

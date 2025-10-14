@@ -80,8 +80,9 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
             if account_id.as_str() == engine_account_id.as_ref() {
                 let height = message.block.header.height;
+                let tx_pos = 0; // TODO(vlad): what is the position of this deploy tx?
                 let time = Instant::now();
-                contract.update(&*storage, &code, None, height);
+                contract.update(&*storage, &code, None, height, tx_pos);
                 debug!(
                     "Contract code updated at block height {} (code size {}), time elapsed {:?}",
                     height,
