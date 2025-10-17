@@ -12,7 +12,7 @@ pub struct Config {
     pub output_storage: OutputStoreConfig,
     pub input_mode: InputMode,
     pub socket_server: Option<SocketServer>,
-    pub contract_source: ContractSource,
+    pub contract_source: Option<ContractSource>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -62,7 +62,7 @@ impl NearStream {
             .storage
             .as_ref()
             .write()
-            .expect("storage must not panic");
+            .expect("must not panic while holding the lock");
         near_block
             .shards
             .iter()
@@ -169,7 +169,7 @@ pub mod tests {
                 .context
                 .storage
                 .read()
-                .expect("storage must not panic")
+                .expect("must not panic while holding the lock")
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -181,7 +181,7 @@ pub mod tests {
             .context
             .storage
             .read()
-            .expect("storage must not panic")
+            .expect("must not panic while holding the lock")
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -631,7 +631,7 @@ pub mod tests {
                 .storage
                 .as_ref()
                 .write()
-                .expect("storage must not panic");
+                .expect("must not panic while holding the lock");
             initialize_engine_state(&storage, json_snapshot).unwrap();
         }
 

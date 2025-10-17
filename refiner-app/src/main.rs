@@ -113,7 +113,14 @@ async fn main() -> anyhow::Result<()> {
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
-            fetch_contract::all(&ctx.storage, &config.contract_source).await?;
+            if let Some(link) = &config.contract_source {
+                tracing::info!("Fetching contracts from source: {:?}", link);
+                if let Err(err) = fetch_contract::all(&ctx.storage, link).await {
+                    tracing::error!("Failed to fetch contracts: {:?}", err);
+                }
+            } else {
+                tracing::warn!("No contract source provided, skipping contract fetch");
+            }
 
             let socket_storage = ctx.storage.clone();
 

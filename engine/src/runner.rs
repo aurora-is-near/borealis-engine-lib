@@ -1061,21 +1061,20 @@ mod loader {
     #[derive(Clone)]
     pub struct RandomAccessContractCache {
         version_map: VersionMap,
-        inner: CacheInner,
+        inner: Arc<CacheInner>,
     }
 
     impl RandomAccessContractCache {
         pub fn new(link: Option<ContractSource>) -> Self {
             RandomAccessContractCache {
                 version_map: VersionMap::default(),
-                inner: CacheInner::new(link),
+                inner: Arc::new(CacheInner::new(link)),
             }
         }
     }
 
-    #[derive(Clone)]
     struct CacheInner {
-        pool: Arc<Mutex<Vec<ContractRunner>>>,
+        pool: Mutex<Vec<ContractRunner>>,
         link: Option<ContractSource>,
     }
 
@@ -1099,7 +1098,7 @@ mod loader {
             version: &str,
         ) -> (Vec<u8>, Option<CryptoHash>) {
             {
-                let storage_lock = storage.read().expect("storage must not panic");
+                let storage_lock = storage.read().expect("must not panic while holding the lock");
                 match storage_ext::get_contract(&storage_lock, block_height, tx_pos, version) {
                     Ok(Some(bytes)) => return (bytes, None),
                     Ok(None) => { /* fallthrough to file load */ }

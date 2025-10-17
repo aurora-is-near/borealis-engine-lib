@@ -21,7 +21,7 @@ type SharedStorage = std::sync::Arc<RwLock<Storage>>;
 
 pub async fn start_socket_server(
     storage: SharedStorage,
-    link: ContractSource,
+    link: Option<ContractSource>,
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
@@ -34,7 +34,7 @@ pub async fn start_socket_server(
     }
 
     let sock = UnixListener::bind(path).expect("Failed to open socket");
-    let cache = Cache::new(Some(link));
+    let cache = Cache::new(link);
 
     loop {
         tokio::select! {
@@ -146,7 +146,10 @@ async fn handle_estimate_gas(
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req = EthCallRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
-    let storage = storage.as_ref().read().expect("storage must not panic");
+    let storage = storage
+        .as_ref()
+        .read()
+        .expect("must not panic while holding the lock");
     let (res, _nonce) = estimate_gas(&storage, req, 0);
     match res {
         Err(_) => Err(internal_err(None)),

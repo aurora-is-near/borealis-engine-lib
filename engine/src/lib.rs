@@ -59,7 +59,7 @@ pub async fn consume_near_block<M: ModExpAlgorithm>(
         .storage
         .as_ref()
         .write()
-        .expect("storage must not panic");
+        .expect("must not panic while holding the lock");
     sync::consume_near_block::<M>(
         &mut storage,
         &mut context.contract,

@@ -37,7 +37,7 @@ pub async fn all(storage: &RwLock<Storage>, source: &ContractSource) -> Result<(
                 {
                     let code = github::fetch_asset(&asset).await?;
                     tracing::info!(version = release.tag_name, "Fetched contract");
-                    let storage = storage.read().expect("storage must not panic");
+                    let storage = storage.read().expect("must not panic while holding the lock");
                     if let Err(err) =
                         storage_ext::store_contract_by_version(&storage, &release.tag_name, &code)
                     {
@@ -74,7 +74,7 @@ pub async fn fetch_and_store_contract(
     match network_fetch(version, link).await {
         Ok(code) => {
             tracing::info!(version = version, "Fetched contract");
-            let storage = storage.read().expect("storage must not panic");
+            let storage = storage.read().expect("must not panic while holding the lock");
             if let Err(err) = storage_ext::store_contract(&storage, height, pos, &code) {
                 tracing::error!(
                     version = &version,
