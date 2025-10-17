@@ -5,7 +5,7 @@ use engine_standalone_storage::{
     sync::{self, TransactionIncludedOutcome},
 };
 use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::runner;
 
@@ -32,12 +32,15 @@ pub async fn trace_transaction(
     cache: &runner::RandomAccessContractCache,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
-    let storage_lock = storage.read().await;
-    let tx_msg = storage_lock.get_transaction_data(tx_hash)?;
-    let height = storage_lock.get_block_height_by_hash(tx_msg.block_hash)?;
-    drop(storage_lock);
+    let (tx_msg, height) = {
+        let storage_lock = storage.read().expect("storage must not panic");
+        let tx_msg = storage_lock.get_transaction_data(tx_hash)?;
+        let height = storage_lock.get_block_height_by_hash(tx_msg.block_hash)?;
+        drop(storage_lock);
+        (tx_msg, height)
+    };
     let runner = cache.take_runner(storage, height, tx_msg.position).await;
-    let storage_lock = storage.read().await;
+    let storage_lock = storage.read().expect("storage must not panic");
     let mut outcome = sync::execute_transaction_message::<AuroraModExp, runner::ContractRunner>(
         &storage_lock,
         &*runner,

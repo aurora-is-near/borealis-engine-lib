@@ -1,6 +1,8 @@
 use std::io;
 use std::path::Path;
+use std::sync::RwLock;
 
+use aurora_refiner_types::source_config::ContractSource;
 use aurora_standalone_engine::runner::RandomAccessContractCache as Cache;
 use aurora_standalone_engine::{
     gas::{EthCallRequest, estimate_gas},
@@ -15,11 +17,11 @@ use tokio::{
 };
 use tracing::{error, info, warn};
 
-type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
+type SharedStorage = std::sync::Arc<RwLock<Storage>>;
 
 pub async fn start_socket_server(
     storage: SharedStorage,
-    link: String,
+    link: ContractSource,
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
@@ -32,7 +34,7 @@ pub async fn start_socket_server(
     }
 
     let sock = UnixListener::bind(path).expect("Failed to open socket");
-    let cache = Cache::new(link);
+    let cache = Cache::new(Some(link));
 
     loop {
         tokio::select! {
@@ -144,7 +146,7 @@ async fn handle_estimate_gas(
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
     let req = EthCallRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
-    let storage = storage.as_ref().read().await;
+    let storage = storage.as_ref().read().expect("storage must not panic");
     let (res, _nonce) = estimate_gas(&storage, req, 0);
     match res {
         Err(_) => Err(internal_err(None)),
@@ -224,8 +226,7 @@ pub async fn wrapped_write<W: AsyncWrite + Unpin + Send>(
 mod tests {
     use super::*;
     use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
+    use std::sync::{Arc, RwLock};
 
     struct TestStorage {
         dir: tempfile::TempDir,
@@ -246,7 +247,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_open_and_close() {
         let storage = init_storage();
-        let cache = Cache::new("https://example.com".to_string());
+        let cache = Cache::new(None);
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -301,7 +302,7 @@ mod tests {
     #[tokio::test]
     async fn test_parse_error() {
         let storage = init_storage();
-        let cache = Cache::new("https://example.com".to_string());
+        let cache = Cache::new(None);
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -332,7 +333,7 @@ mod tests {
     #[tokio::test]
     async fn test_trace_transaction() {
         let storage = init_storage();
-        let cache = Cache::new("https://example.com".to_string());
+        let cache = Cache::new(None);
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         tokio::try_join!(
@@ -378,7 +379,7 @@ mod tests {
     #[tokio::test]
     async fn test_estimate_gas() {
         let storage = init_storage();
-        let cache = Cache::new("https://example.com".to_string());
+        let cache = Cache::new(None);
         let server_storage = storage.get();
         let (mut client, handler) = UnixStream::pair().unwrap();
         let input = std::fs::read_to_string("src/tests/res/test_estimate_gas_input.hex").unwrap();

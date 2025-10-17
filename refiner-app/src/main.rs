@@ -113,9 +113,7 @@ async fn main() -> anyhow::Result<()> {
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
 
-            // TODO: read link from config
-            let link = "https://github.com/aurora-is-near/aurora-engine/releases/download/%version%/aurora-compat.wasm".to_owned();
-            fetch_contract::all(&ctx.storage, &link).await;
+            fetch_contract::all(&ctx.storage, &config.contract_source).await?;
 
             let socket_storage = ctx.storage.clone();
 
@@ -131,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(socket_config) = config.socket_server {
                         socket::start_socket_server(
                             socket_storage,
-                            link.clone(),
+                            config.contract_source.clone(),
                             &socket_config.path,
                             &mut shutdown_rx_socket,
                         )

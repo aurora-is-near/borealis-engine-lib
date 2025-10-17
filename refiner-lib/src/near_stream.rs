@@ -57,7 +57,12 @@ impl NearStream {
             .consume_near_block(near_block)
             .expect("Transaction tracker consume_near_block error");
 
-        let storage = self.context.storage.as_ref().write().await;
+        let storage = self
+            .context
+            .storage
+            .as_ref()
+            .write()
+            .expect("storage must not panic");
         near_block
             .shards
             .iter()
@@ -164,7 +169,7 @@ pub mod tests {
                 .context
                 .storage
                 .read()
-                .await
+                .expect("storage must not panic")
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -176,7 +181,7 @@ pub mod tests {
             .context
             .storage
             .read()
-            .await
+            .expect("storage must not panic")
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -621,7 +626,12 @@ pub mod tests {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
             };
-            let storage = self.engine_context.storage.as_ref().write().await;
+            let storage = self
+                .engine_context
+                .storage
+                .as_ref()
+                .write()
+                .expect("storage must not panic");
             initialize_engine_state(&storage, json_snapshot).unwrap();
         }
 

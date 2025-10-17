@@ -687,10 +687,11 @@ mod loader {
         ops::Deref,
         path::PathBuf,
         str,
-        sync::{Arc, Mutex},
+        sync::{Arc, Mutex, RwLock},
         time::Duration,
     };
 
+    use aurora_refiner_types::source_config::ContractSource;
     use engine_standalone_storage::Storage;
     use near_jsonrpc_client::{
         JsonRpcClient, NEAR_TESTNET_RPC_URL,
@@ -699,7 +700,7 @@ mod loader {
     };
     use near_jsonrpc_primitives::types::query::QueryResponseKind;
     use near_primitives_core::hash::CryptoHash;
-    use tokio::{sync::RwLock, time::Instant};
+    use tokio::time::Instant;
 
     use crate::{fetch_contract, storage_ext};
 
@@ -1022,7 +1023,11 @@ mod loader {
             block_height: u64,
             tx_pos: u16,
         ) {
-            match storage_ext::get_contract(storage, block_height, tx_pos) {
+            self.current.push_code(code.to_vec(), hash);
+            let version = self.current.get_version().unwrap();
+            self.current.pop_code();
+
+            match storage_ext::get_contract(storage, block_height, tx_pos, &version) {
                 Ok(Some(bytes)) => {
                     self.current.update_code(bytes, None);
                     return;
@@ -1036,14 +1041,11 @@ mod loader {
                     );
                 }
             }
-            self.current.push_code(code.to_vec(), hash);
-            let version = self.current.get_version().unwrap();
             match load_from_file(&version, None) {
                 Ok((code, hash)) => {
                     self.current.update_code(code, hash);
                 }
                 Err(err) => {
-                    self.current.pop_code();
                     tracing::error!(
                         err = format!("{err:?}"),
                         height = block_height,
@@ -1063,7 +1065,7 @@ mod loader {
     }
 
     impl RandomAccessContractCache {
-        pub fn new(link: String) -> Self {
+        pub fn new(link: Option<ContractSource>) -> Self {
             RandomAccessContractCache {
                 version_map: VersionMap::default(),
                 inner: CacheInner::new(link),
@@ -1074,11 +1076,11 @@ mod loader {
     #[derive(Clone)]
     struct CacheInner {
         pool: Arc<Mutex<Vec<ContractRunner>>>,
-        link: String,
+        link: Option<ContractSource>,
     }
 
     impl CacheInner {
-        pub fn new(link: String) -> Self {
+        pub fn new(link: Option<ContractSource>) -> Self {
             CacheInner {
                 pool: Default::default(),
                 link,
@@ -1096,16 +1098,18 @@ mod loader {
             tx_pos: u16,
             version: &str,
         ) -> (Vec<u8>, Option<CryptoHash>) {
-            let storage_lock = storage.read().await;
-            match storage_ext::get_contract(&storage_lock, block_height, tx_pos) {
-                Ok(Some(bytes)) => return (bytes, None),
-                Ok(None) => { /* fallthrough to file load */ }
-                Err(err) => {
-                    tracing::error!(
-                        err = format!("{err:?}"),
-                        height = block_height,
-                        "failed to get a contract",
-                    );
+            {
+                let storage_lock = storage.read().expect("storage must not panic");
+                match storage_ext::get_contract(&storage_lock, block_height, tx_pos, version) {
+                    Ok(Some(bytes)) => return (bytes, None),
+                    Ok(None) => { /* fallthrough to file load */ }
+                    Err(err) => {
+                        tracing::error!(
+                            err = format!("{err:?}"),
+                            height = block_height,
+                            "failed to get a contract",
+                        );
+                    }
                 }
             }
 
@@ -1123,17 +1127,28 @@ mod loader {
                 }
             }
 
-            fetch_contract::fetch_and_store_contract(
-                storage,
-                &self.link,
-                version,
-                block_height,
-                tx_pos,
-            )
-            .await;
+            if let Some(link) = &self.link {
+                if let Some(code) = fetch_contract::fetch_and_store_contract(
+                    storage,
+                    link,
+                    version,
+                    block_height,
+                    tx_pos,
+                )
+                .await
+                {
+                    return (code, None);
+                }
+            }
+            tracing::error!(
+                height = block_height,
+                tx_pos = tx_pos,
+                new_version = version,
+                "Failed to fetch contract from contract source. Will use fallback."
+            );
 
+            // last resort,
             // return something bundled, if RPC fails, so be it
-            // client will retry and proper contract will be already fetched
             load_from_file("3.9.0", None).expect("cannot load fallback")
         }
 

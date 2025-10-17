@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+use std::num::NonZeroUsize;
+use std::path::Path;
+use std::sync::{Arc, RwLock};
+
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
 use engine_standalone_storage::{Storage, error, sync::TransactionIncludedOutcome};
-use std::collections::HashMap;
-use std::num::NonZeroUsize;
-use std::path::Path;
 
 use crate::runner::SeqAccessContractCache;
 
@@ -18,7 +20,7 @@ pub mod sync;
 mod tests;
 pub mod tracing;
 
-pub type SharedStorage = std::sync::Arc<tokio::sync::RwLock<Storage>>;
+pub type SharedStorage = std::sync::Arc<RwLock<Storage>>;
 
 pub struct EngineContext {
     pub storage: SharedStorage,
@@ -36,7 +38,7 @@ impl EngineContext {
         chain_id: u64,
     ) -> Result<Self, error::Error> {
         let storage = Storage::open(storage_path)?;
-        let storage = std::sync::Arc::new(tokio::sync::RwLock::new(storage));
+        let storage = Arc::new(RwLock::new(storage));
         let chain_id = aurora_engine_types::types::u256_to_arr(&(chain_id.into()));
         Ok(Self {
             storage,
@@ -53,7 +55,11 @@ pub async fn consume_near_block<M: ModExpAlgorithm>(
     context: &mut EngineContext,
     outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
 ) -> Result<(), error::Error> {
-    let mut storage = context.storage.as_ref().write().await;
+    let mut storage = context
+        .storage
+        .as_ref()
+        .write()
+        .expect("storage must not panic");
     sync::consume_near_block::<M>(
         &mut storage,
         &mut context.contract,

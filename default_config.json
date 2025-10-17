@@ -13,5 +13,10 @@
     "output_storage": {
         "path": "output/refiner",
         "batch_size": 10000
+    },
+    "contract_source": {
+        "kind": "github",
+        "base_url": "https://api.github.com",
+        "repo": "aurora-is-near/aurora-engine"
     }
 }
