@@ -31,13 +31,16 @@ use near_vm_runner::{
 };
 use thiserror::Error;
 
-struct Nop;
+#[derive(Default)]
+struct Nop {
+    method: String,
+}
 
 impl External for Nop {
     fn storage_set(
         &mut self,
         _: &mut dyn StorageAccessTracker,
-        _: &[u8],
+        _key: &[u8],
         _: &[u8],
     ) -> Result<Option<Vec<u8>>, VMLogicError> {
         Ok(None)
@@ -46,8 +49,14 @@ impl External for Nop {
     fn storage_get<'a>(
         &'a self,
         _: &mut dyn StorageAccessTracker,
-        _: &[u8],
+        key: &[u8],
     ) -> Result<Option<Box<dyn ValuePtr + 'a>>, VMLogicError> {
+        if key == b"borealis/method" {
+            let method_name_bytes =
+                borsh::to_vec(&self.method).expect("string must be representable in borsh");
+            let value = Box::new(MockedValuePtr::new(&method_name_bytes));
+            return Ok(Some(value));
+        }
         Ok(None)
     }
 
@@ -552,8 +561,36 @@ impl ContractRunner {
             prepaid_gas: NearGas::new(300_000_000_000_000),
             used_gas: NearGas::new(0),
         };
+
+        let mut ext = Nop {
+            method: "get_version".to_string(),
+        };
         let out = self
-            .call("get_version", vec![], Arc::new([]), &env, &mut Nop)
+            .call("execute", vec![], Arc::new([]), &env, &mut ext)
+            .map_err(GetVersionError::Inner)?;
+        let data = dbg!(out)
+            .return_data
+            .as_value()
+            .ok_or(GetVersionError::UnexpectedResponse)?;
+        Ok(str::from_utf8(&data)?.trim_end().to_string())
+    }
+
+    fn get_version_inner(&self) -> Result<String, GetVersionError<VMRunnerError>> {
+        let env = Fixed {
+            signer_account_id: "aurora".parse().unwrap(),
+            current_account_id: "aurora".parse().unwrap(),
+            predecessor_account_id: "aurora".parse().unwrap(),
+            block_height: 0,
+            block_timestamp: Timestamp::new(0),
+            attached_deposit: 1,
+            random_seed: H256::random(),
+            prepaid_gas: NearGas::new(300_000_000_000_000),
+            used_gas: NearGas::new(0),
+        };
+
+        let mut ext = Nop::default();
+        let out = self
+            .call("get_version", vec![], Arc::new([]), &env, &mut ext)
             .map_err(GetVersionError::Inner)?;
         let data = out
             .return_data
@@ -648,7 +685,6 @@ impl AbstractContractRunner for ContractRunner {
 
     fn call_contract<E, I>(
         &self,
-        method: &str,
         promise_data: Vec<Option<Vec<u8>>>,
         env: &E,
         io: I,
@@ -671,7 +707,7 @@ impl AbstractContractRunner for ContractRunner {
             action_log: vec![],
         };
 
-        let vm_outcome = self.call(method, input, promise_results, env, &mut ext)?;
+        let vm_outcome = self.call("execute", input, promise_results, env, &mut ext)?;
         let output = vm_outcome.return_data.as_value();
         if let Some(data) = &output {
             ext.io.return_output(data);
@@ -1024,7 +1060,7 @@ mod loader {
             tx_pos: u16,
         ) {
             self.current.push_code(code.to_vec(), hash);
-            let version = self.current.get_version().unwrap();
+            let version = self.current.get_version_inner().unwrap();
             self.current.pop_code();
 
             match storage_ext::get_contract(storage, block_height, tx_pos, &version) {
@@ -1098,7 +1134,9 @@ mod loader {
             version: &str,
         ) -> (Vec<u8>, Option<CryptoHash>) {
             {
-                let storage_lock = storage.read().expect("must not panic while holding the lock");
+                let storage_lock = storage
+                    .read()
+                    .expect("must not panic while holding the lock");
                 match storage_ext::get_contract(&storage_lock, block_height, tx_pos, version) {
                     Ok(Some(bytes)) => return (bytes, None),
                     Ok(None) => { /* fallthrough to file load */ }
