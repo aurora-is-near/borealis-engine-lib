@@ -568,7 +568,7 @@ impl ContractRunner {
         let out = self
             .call("execute", vec![], Arc::new([]), &env, &mut ext)
             .map_err(GetVersionError::Inner)?;
-        let data = dbg!(out)
+        let data = out
             .return_data
             .as_value()
             .ok_or(GetVersionError::UnexpectedResponse)?;
@@ -1124,21 +1124,16 @@ mod loader {
     }
 
     impl CacheInner {
-        // if the code is not available, return None and fail the RPC
-        // in this case add a task to fetch the code from nats
-        async fn take_code(
+        fn take_code_no_fallback(
             &self,
-            storage: &RwLock<Storage>,
+            storage: &Storage,
             block_height: u64,
             tx_pos: u16,
             version: &str,
-        ) -> (Vec<u8>, Option<CryptoHash>) {
+        ) -> Option<(Vec<u8>, Option<CryptoHash>)> {
             {
-                let storage_lock = storage
-                    .read()
-                    .expect("must not panic while holding the lock");
-                match storage_ext::get_contract(&storage_lock, block_height, tx_pos, version) {
-                    Ok(Some(bytes)) => return (bytes, None),
+                match storage_ext::get_contract(&storage, block_height, tx_pos, version) {
+                    Ok(Some(bytes)) => return Some((bytes, None)),
                     Ok(None) => { /* fallthrough to file load */ }
                     Err(err) => {
                         tracing::error!(
@@ -1152,7 +1147,7 @@ mod loader {
 
             match load_from_file(version, None) {
                 Ok(v) => {
-                    return v;
+                    return Some(v);
                 }
                 Err(err) => {
                     tracing::error!(
@@ -1161,6 +1156,33 @@ mod loader {
                         new_version = version,
                         "Failed to load contract from file for RPC. Try to download."
                     );
+                }
+            }
+
+            tracing::error!(
+                height = block_height,
+                tx_pos = tx_pos,
+                new_version = version,
+                "Failed to fetch contract from contract source. Will use fallback."
+            );
+
+            None
+        }
+
+        async fn take_code(
+            &self,
+            storage: &RwLock<Storage>,
+            block_height: u64,
+            tx_pos: u16,
+            version: &str,
+        ) -> (Vec<u8>, Option<CryptoHash>) {
+            {
+                let storage_lock = storage
+                    .read()
+                    .expect("must not panic while holding the lock");
+                match self.take_code_no_fallback(&storage_lock, block_height, tx_pos, version) {
+                    Some(v) => return v,
+                    None => { /* fallthrough */ }
                 }
             }
 
@@ -1177,16 +1199,36 @@ mod loader {
                     return (code, None);
                 }
             }
-            tracing::error!(
-                height = block_height,
-                tx_pos = tx_pos,
-                new_version = version,
-                "Failed to fetch contract from contract source. Will use fallback."
-            );
 
             // last resort,
             // return something bundled, if RPC fails, so be it
             load_from_file("3.9.0", None).expect("cannot load fallback")
+        }
+
+        fn take_runner_no_fallback(
+            &self,
+            storage: &Storage,
+            block_height: u64,
+            tx_pos: u16,
+            version: &str,
+        ) -> ContractRunner {
+            let (code, hash) =
+                match self.take_code_no_fallback(storage, block_height, tx_pos, version) {
+                    Some(v) => v,
+                    None => {
+                        // last resort,
+                        // return something bundled, if RPC fails, so be it
+                        load_from_file("3.9.0", None).expect("cannot load fallback")
+                    }
+                };
+            let mut runner = self
+                .pool
+                .lock()
+                .expect("poisoned")
+                .pop()
+                .unwrap_or_else(|| ContractRunner::new_empty());
+            runner.update_code(code, hash);
+            runner
         }
 
         async fn take_runner(
@@ -1217,6 +1259,22 @@ mod loader {
         /// Need to use RPC server with mild rate limit.
         pub async fn populate_map(&mut self) {
             self.version_map.populate().await;
+        }
+
+        pub fn take_runner_no_block<'a>(
+            &'a self,
+            storage: &Storage,
+            height: u64,
+            tx_pos: u16,
+        ) -> ReusableContractRunner<'a> {
+            let version = self.version_map.version_at_height(height);
+            let runner = self
+                .inner
+                .take_runner_no_fallback(storage, height, tx_pos, version);
+            ReusableContractRunner {
+                cache: self,
+                runner: Some(runner),
+            }
         }
 
         pub async fn take_runner<'a>(

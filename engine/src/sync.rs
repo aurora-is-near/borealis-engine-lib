@@ -1,11 +1,10 @@
 use std::time::Instant;
 use std::{collections::HashMap, sync::Mutex};
 
-use aurora_engine::parameters;
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env::{self, DEFAULT_PREPAID_GAS};
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::parameters::engine::TransactionExecutionResult;
+use aurora_engine_types::parameters::engine::{SubmitResult, TransactionExecutionResult};
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_primitives::{
     self,
@@ -303,20 +302,18 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         // Validate result (note: only the result of the last action in a batch is returned in NEAR)
         if let Some(TransactionExecutionResult::Submit(submit_result)) = computed_result {
             match result_bytes.as_ref() {
-                Some(result_bytes) => {
-                    match parameters::SubmitResult::try_from_slice(result_bytes) {
-                        Ok(expected_result) => {
-                            if submit_result != &expected_result {
-                                warn!(
-                                    "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
-                                );
-                            }
-                        }
-                        Err(_) => {
-                            warn!("Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",)
+                Some(result_bytes) => match SubmitResult::try_from_slice(result_bytes) {
+                    Ok(expected_result) => {
+                        if submit_result != &expected_result {
+                            warn!(
+                                "Incorrect result in processing receipt_id={receipt_id:?} computed differed from expected",
+                            );
                         }
                     }
-                }
+                    Err(_) => {
+                        warn!("Unable to deserialize receipt_id={receipt_id:?} as SubmitResult",)
+                    }
+                },
                 None => warn!(
                     "Expected receipt_id={receipt_id:?} to have a return result, but there was none",
                 ),
@@ -714,7 +711,7 @@ fn parse_action(
     } = action
     {
         let bytes = args.to_vec();
-        let transaction_kind = TransactionKind::new(method_name, bytes, promise_data).ok()?;
+        let transaction_kind = TransactionKind::new(method_name, bytes, promise_data);
         return Some((transaction_kind, *deposit));
     }
 

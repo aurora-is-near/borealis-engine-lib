@@ -70,3 +70,13 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 triehash-ethereum = { git = "https://github.com/openethereum/openethereum" }
 vergen-git2 = "1.0.5"
+
+# [patch."https://github.com/aurora-is-near/aurora-engine.git"]
+# aurora-engine = { path = "../aurora-engine/engine" }
+# aurora-engine-transactions = { path = "../aurora-engine/engine-transactions" }
+# aurora-engine-types = { path = "../aurora-engine/engine-types" }
+# aurora-engine-sdk = { path = "../aurora-engine/engine-sdk" }
+# aurora-engine-modexp = { path = "../aurora-engine/engine-modexp" }
+# aurora-engine-hashchain = { path = "../aurora-engine/engine-hashchain" }
+# engine-standalone-storage = { path = "../aurora-engine/engine-standalone-storage" }
+# engine-standalone-tracing = { path = "../aurora-engine/engine-standalone-tracing" }

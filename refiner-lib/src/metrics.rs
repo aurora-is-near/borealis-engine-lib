@@ -1,6 +1,7 @@
-use engine_standalone_storage::sync::types::TransactionKindTag;
 use lazy_static::lazy_static;
 use prometheus::{self, IntCounter, IntGauge, Opts, register_int_counter, register_int_gauge};
+
+use crate::kind::TxKind;
 
 lazy_static! {
     pub static ref MISSING_SHARDS: IntCounter =
@@ -243,161 +244,161 @@ lazy_static! {
         "refiner_tx_type_set_erc20_fallback_address",
         "Number of transactions of type: set_erc20_fallback_address"
     );
-    // TransactionKindTag::SetWhitelistsStatuses
+    // TxKind::SetWhitelistsStatuses
     pub static ref TRANSACTION_TYPE_SET_WHITELIST_STATUSES: IntCounter = counter(
         "refiner_tx_type_set_whitelist_statuses",
         "Number of transactions of type: set_whitelist_statuses"
     );
 }
 
-pub fn record_metric(tx_kind: &TransactionKindTag) {
+pub fn record_metric(tx_kind: &TxKind) {
     match tx_kind {
-        TransactionKindTag::Submit => {
+        TxKind::Submit => {
             TRANSACTION_TYPE_SUBMIT.inc();
         }
-        TransactionKindTag::SubmitWithArgs => {
+        TxKind::SubmitWithArgs => {
             TRANSACTION_TYPE_SUBMIT_WITH_ARGS.inc();
         }
-        TransactionKindTag::Call => {
+        TxKind::Call => {
             TRANSACTION_TYPE_CALL.inc();
         }
-        TransactionKindTag::PausePrecompiles => {
+        TxKind::PausePrecompiles => {
             TRANSACTION_TYPE_PAUSE_PRECOMPILES.inc();
         }
-        TransactionKindTag::ResumePrecompiles => {
+        TxKind::ResumePrecompiles => {
             TRANSACTION_TYPE_RESUME_PRECOMPILES.inc();
         }
-        TransactionKindTag::SetOwner => {
+        TxKind::SetOwner => {
             TRANSACTION_TYPE_SET_OWNER.inc();
         }
-        TransactionKindTag::Deploy => {
+        TxKind::Deploy => {
             TRANSACTION_TYPE_DEPLOY_CODE.inc();
         }
-        TransactionKindTag::DeployErc20 => {
+        TxKind::DeployErc20 => {
             TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
         }
-        TransactionKindTag::DeployErc20Callback => {
+        TxKind::DeployErc20Callback => {
             TRANSACTION_TYPE_DEPLOY_ERC20_CALLBACK_TOKEN.inc();
         }
-        TransactionKindTag::FtOnTransfer => {
+        TxKind::FtOnTransfer => {
             TRANSACTION_TYPE_FT_ON_TRANSFER.inc();
         }
-        TransactionKindTag::Deposit => {
+        TxKind::Deposit => {
             TRANSACTION_TYPE_DEPOSIT.inc();
         }
-        TransactionKindTag::FtTransferCall => {
+        TxKind::FtTransferCall => {
             TRANSACTION_TYPE_FT_TRANSFER_CALL.inc();
         }
-        TransactionKindTag::FinishDeposit => {
+        TxKind::FinishDeposit => {
             TRANSACTION_TYPE_FINISH_DEPOSIT.inc();
         }
-        TransactionKindTag::ResolveTransfer => {
+        TxKind::ResolveTransfer => {
             TRANSACTION_TYPE_FT_RESOLVE_TRANSFER.inc();
         }
-        TransactionKindTag::FtTransfer => {
+        TxKind::FtTransfer => {
             TRANSACTION_TYPE_FT_TRANSFER.inc();
         }
-        TransactionKindTag::Withdraw => {
+        TxKind::Withdraw => {
             TRANSACTION_TYPE_WITHDRAW.inc();
         }
-        TransactionKindTag::StorageDeposit => {
+        TxKind::StorageDeposit => {
             TRANSACTION_TYPE_STORAGE_DEPOSIT.inc();
         }
-        TransactionKindTag::StorageUnregister => {
+        TxKind::StorageUnregister => {
             TRANSACTION_TYPE_STORAGE_UNREGISTER.inc();
         }
-        TransactionKindTag::StorageWithdraw => {
+        TxKind::StorageWithdraw => {
             TRANSACTION_TYPE_STORAGE_WITHDRAW.inc();
         }
-        TransactionKindTag::SetPausedFlags => {
+        TxKind::SetPausedFlags => {
             TRANSACTION_TYPE_SET_PAUSED_FLAGS.inc();
         }
-        TransactionKindTag::RegisterRelayer => {
+        TxKind::RegisterRelayer => {
             TRANSACTION_TYPE_REGISTER_RELAYER.inc();
         }
-        TransactionKindTag::SetConnectorData => {
+        TxKind::SetConnectorData => {
             TRANSACTION_TYPE_SET_CONNECTOR_DATA.inc();
         }
-        TransactionKindTag::NewConnector => {
+        TxKind::NewConnector => {
             TRANSACTION_TYPE_NEW_CONNECTOR.inc();
         }
-        TransactionKindTag::NewEngine => {
+        TxKind::NewEngine => {
             TRANSACTION_TYPE_NEW_ENGINE.inc();
         }
-        TransactionKindTag::FactoryUpdate => {
+        TxKind::FactoryUpdate => {
             TRANSACTION_TYPE_FACTORY_UPDATE.inc();
         }
-        TransactionKindTag::FactoryUpdateAddressVersion => {
+        TxKind::FactoryUpdateAddressVersion => {
             TRANSACTION_TYPE_FACTORY_UPDATE_ADDRESS_VERSION.inc();
         }
-        TransactionKindTag::FactorySetWNearAddress => {
+        TxKind::FactorySetWNearAddress => {
             TRANSACTION_TYPE_FACTORY_SET_WNEAR_ADDRESS.inc();
         }
-        TransactionKindTag::SetUpgradeDelayBlocks => {
+        TxKind::SetUpgradeDelayBlocks => {
             TRANSACTION_TYPE_SET_UPGRADE_DELAY_BLOCKS.inc();
         }
-        TransactionKindTag::FundXccSubAccount => {
+        TxKind::FundXccSubAccount => {
             TRANSACTION_TYPE_FUND_XCC_SUB_ACCOUNT.inc();
         }
-        TransactionKindTag::PauseContract => {
+        TxKind::PauseContract => {
             TRANSACTION_TYPE_PAUSE_CONTRACT.inc();
         }
-        TransactionKindTag::ResumeContract => TRANSACTION_TYPE_RESUME_CONTRACT.inc(),
-        TransactionKindTag::SetKeyManager => {
+        TxKind::ResumeContract => TRANSACTION_TYPE_RESUME_CONTRACT.inc(),
+        TxKind::SetKeyManager => {
             TRANSACTION_TYPE_SET_KEY_MANAGER.inc();
         }
-        TransactionKindTag::AddRelayerKey => {
+        TxKind::AddRelayerKey => {
             TRANSACTION_TYPE_ADD_RELAYER_KEY.inc();
         }
-        TransactionKindTag::StoreRelayerKeyCallback => {
+        TxKind::StoreRelayerKeyCallback => {
             TRANSACTION_TYPE_STORE_RELAYER_KEY_CALLBACK.inc();
         }
-        TransactionKindTag::RemoveRelayerKey => {
+        TxKind::RemoveRelayerKey => {
             TRANSACTION_TYPE_REMOVE_RELAYER_KEY.inc();
         }
-        TransactionKindTag::StartHashchain => {
+        TxKind::StartHashchain => {
             TRANSACTION_TYPE_START_HASHCHAIN.inc();
         }
-        TransactionKindTag::Unknown => {
+        TxKind::Unknown => {
             TRANSACTION_TYPE_UNKNOWN.inc();
         }
-        TransactionKindTag::SetErc20Metadata => {
+        TxKind::SetErc20Metadata => {
             TRANSACTION_TYPE_SET_ERC20_METADATA.inc();
         }
-        TransactionKindTag::ExitToNear => {
+        TxKind::ExitToNear => {
             TRANSACTION_TYPE_EXIT_TO_NEAR.inc();
         }
-        TransactionKindTag::SetFixedGas => {
+        TxKind::SetFixedGas => {
             TRANSACTION_TYPE_SET_FIXED_GAS.inc();
         }
-        TransactionKindTag::SetSiloParams => {
+        TxKind::SetSiloParams => {
             TRANSACTION_TYPE_SET_SILO_PARAMS.inc();
         }
-        TransactionKindTag::SetEthConnectorContractAccount => {
+        TxKind::SetEthConnectorContractAccount => {
             TRANSACTION_TYPE_SET_ETH_CONNECTOR_CONTRACT_ACCOUNT.inc();
         }
-        TransactionKindTag::RemoveEntryFromWhitelist => {
+        TxKind::RemoveEntryFromWhitelist => {
             TRANSACTION_TYPE_REMOVE_ENTRY_FROM_WHITE_LIST.inc();
         }
-        TransactionKindTag::AddEntryToWhitelistBatch => {
+        TxKind::AddEntryToWhitelistBatch => {
             TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST_BATCH.inc();
         }
-        TransactionKindTag::AddEntryToWhitelist => {
+        TxKind::AddEntryToWhitelist => {
             TRANSACTION_TYPE_ADD_ENTRY_TO_WHITELIST.inc();
         }
-        TransactionKindTag::SetWhitelistStatus => {
+        TxKind::SetWhitelistStatus => {
             TRANSACTION_TYPE_SET_WHITELIST_STATUS.inc();
         }
-        TransactionKindTag::MirrorErc20TokenCallback => {
+        TxKind::MirrorErc20TokenCallback => {
             TRANSACTION_TYPE_MIRROR_ERC20_TOKEN_CALLBACK.inc();
         }
-        TransactionKindTag::WithdrawWnearToRouter => {
+        TxKind::WithdrawWnearToRouter => {
             TRANSACTION_TYPE_WITHDRAW_WNEAR_TO_ROUTER.inc();
         }
-        TransactionKindTag::SetErc20FallbackAddress => {
+        TxKind::SetErc20FallbackAddress => {
             TRANSACTION_TYPE_SET_ERC20_FALLBACK_ADDRESS.inc();
         }
-        TransactionKindTag::SetWhitelistsStatuses => {
+        TxKind::SetWhitelistsStatuses => {
             TRANSACTION_TYPE_SET_WHITELIST_STATUSES.inc();
         }
     }

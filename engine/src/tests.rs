@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::num::NonZeroUsize;
 
-use aurora_engine::parameters::TransactionStatus;
 use aurora_engine_modexp::AuroraModExp;
-use aurora_engine_types::parameters::engine::TransactionExecutionResult;
+use aurora_engine_types::parameters::engine::{TransactionExecutionResult, TransactionStatus};
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
