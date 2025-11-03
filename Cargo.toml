@@ -36,6 +36,7 @@ byteorder = "1"
 clap = { version = "4", features = ["derive"] }
 derive_builder = "0.20"
 fixed-hash = "0.8"
+futures = "0.3"
 hex = "0.4"
 impl-serde = "0.5"
 lazy_static = "1"

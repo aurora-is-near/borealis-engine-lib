@@ -702,6 +702,7 @@ dependencies = [
  "bytes",
  "engine-standalone-storage",
  "engine-standalone-tracing",
+ "futures",
  "hex",
  "lru 0.12.5",
  "near-crypto 2.8.0-rc.1",
@@ -2665,7 +2666,6 @@ dependencies = [
  "rocksdb",
  "serde",
  "serde_json",
- "strum 0.27.2",
  "thiserror 2.0.16",
 ]
 
@@ -4456,7 +4456,7 @@ dependencies = [
  "rayon",
  "reed-solomon-erasure",
  "serde",
- "strum 0.24.1",
+ "strum",
  "tempfile",
  "thiserror 2.0.16",
  "time",
@@ -4550,7 +4550,7 @@ dependencies = [
  "parking_lot 0.12.4",
  "rand 0.8.5",
  "reed-solomon-erasure",
- "strum 0.24.1",
+ "strum",
  "time",
  "tracing",
 ]
@@ -4609,7 +4609,7 @@ dependencies = [
  "rust-s3",
  "serde",
  "serde_json",
- "strum 0.24.1",
+ "strum",
  "sysinfo",
  "tempfile",
  "time",
@@ -4633,7 +4633,7 @@ dependencies = [
  "near-primitives 2.8.0-rc.1",
  "near-time 2.8.0-rc.1",
  "serde",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
  "tracing",
 ]
@@ -4981,7 +4981,7 @@ dependencies = [
  "reed-solomon-erasure",
  "serde",
  "sha2 0.10.9",
- "strum 0.24.1",
+ "strum",
  "stun",
  "thiserror 2.0.16",
  "time",
@@ -5029,7 +5029,7 @@ dependencies = [
  "serde",
  "serde_repr",
  "serde_yaml",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
 ]
 
@@ -5047,7 +5047,7 @@ dependencies = [
  "serde",
  "serde_repr",
  "serde_yaml",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
 ]
 
@@ -5119,7 +5119,7 @@ dependencies = [
  "serde_with",
  "sha3",
  "smart-default",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
  "tracing",
  "zstd",
@@ -5160,7 +5160,7 @@ dependencies = [
  "serde_with",
  "sha3",
  "smart-default",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
  "tracing",
  "zstd",
@@ -5232,7 +5232,7 @@ dependencies = [
  "paperclip",
  "serde",
  "serde_json",
- "strum 0.24.1",
+ "strum",
  "thiserror 2.0.16",
  "tokio",
 ]
@@ -5329,7 +5329,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "static_assertions",
- "strum 0.24.1",
+ "strum",
  "tempfile",
  "thiserror 2.0.16",
  "tokio",
@@ -5406,7 +5406,7 @@ dependencies = [
  "near-vm-vm",
  "rayon",
  "smallvec",
- "strum 0.24.1",
+ "strum",
  "tracing",
 ]
 
@@ -5465,7 +5465,7 @@ dependencies = [
  "serde",
  "sha2 0.10.9",
  "sha3",
- "strum 0.24.1",
+ "strum",
  "tempfile",
  "thiserror 2.0.16",
  "tracing",
@@ -6080,8 +6080,8 @@ dependencies = [
  "proc-macro-error2",
  "proc-macro2",
  "quote",
- "strum 0.24.1",
- "strum_macros 0.24.3",
+ "strum",
+ "strum_macros",
  "syn 1.0.109",
 ]
 
@@ -8019,16 +8019,7 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 dependencies = [
- "strum_macros 0.24.3",
-]
-
-[[package]]
-name = "strum"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
-dependencies = [
- "strum_macros 0.27.2",
+ "strum_macros",
 ]
 
 [[package]]
@@ -8042,18 +8033,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
-dependencies = [
- "heck 0.5.0",
- "proc-macro2",
- "quote",
- "syn 2.0.106",
 ]
 
 [[package]]

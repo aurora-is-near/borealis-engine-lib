@@ -24,6 +24,7 @@ borsh.workspace = true
 bytes.workspace = true
 engine-standalone-storage = { workspace = true, features = ["snappy", "zstd", "zlib", "bzip2"] }
 engine-standalone-tracing.workspace = true
+futures.workspace = true
 hex.workspace = true
 lru.workspace = true
 reqwest.workspace = true

@@ -716,6 +716,31 @@ impl AbstractContractRunner for ContractRunner {
     }
 }
 
+pub mod update {
+    use std::sync::{Arc, RwLock};
+
+    use engine_standalone_storage::Storage;
+    use futures::{Stream, StreamExt};
+
+    use crate::storage_ext;
+
+    pub async fn run<S>(mut contract_update: S, shared_storage: Arc<RwLock<Storage>>)
+    where
+        S: Stream<Item = (String, Vec<u8>)> + Unpin,
+    {
+        while let Some((version, code)) = contract_update.next().await {
+            let storage = shared_storage.write().expect("must not crash on lock");
+            if let Err(err) = storage_ext::store_contract_by_version(&storage, &version, &code) {
+                tracing::error!(
+                    err = format!("{err:?}"),
+                    new_version = &version,
+                    "Failed to store updated contract",
+                );
+            }
+        }
+    }
+}
+
 mod loader {
     use std::{
         collections::BTreeMap,
