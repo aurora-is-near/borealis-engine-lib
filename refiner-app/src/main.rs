@@ -64,11 +64,14 @@ async fn main() -> anyhow::Result<()> {
                     config,
                     shutdown_rx_input_stream,
                 ),
-                config::InputMode::Nearcore(config) => input::nearcore::get_nearcore_stream(
-                    next_block,
-                    config,
-                    shutdown_rx_input_stream,
-                ),
+                config::InputMode::Nearcore(config) => {
+                    input::nearcore::get_nearcore_stream(
+                        next_block,
+                        config,
+                        shutdown_rx_input_stream,
+                    )
+                    .await
+                }
             };
 
             // Build output stream
