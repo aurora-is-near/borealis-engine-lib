@@ -382,7 +382,7 @@ impl fmt::Display for AlchemyCallKind {
             Self::CallCode => ALCHEMY_CALL_KIND_CALL_CODE_TAG,
             Self::StaticCall => ALCHEMY_CALL_KIND_STATIC_CALL_TAG,
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -402,7 +402,7 @@ impl FromStr for AlchemyCallKind {
 
 impl fmt::Display for AlchemyCreateType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", ALCHEMY_CREATE_TYPE_TAG)
+        write!(f, "{ALCHEMY_CREATE_TYPE_TAG}")
     }
 }
 
@@ -414,8 +414,7 @@ impl FromStr for AlchemyCreateType {
             Ok(Self)
         } else {
             Err(anyhow::Error::msg(format!(
-                "Expected string `{}`",
-                ALCHEMY_CREATE_TYPE_TAG
+                "Expected string `{ALCHEMY_CREATE_TYPE_TAG}`"
             )))
         }
     }
@@ -423,7 +422,7 @@ impl FromStr for AlchemyCreateType {
 
 impl fmt::Display for AlchemyCallType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", ALCHEMY_CALL_TYPE_TAG)
+        write!(f, "{ALCHEMY_CALL_TYPE_TAG}")
     }
 }
 
@@ -435,8 +434,7 @@ impl FromStr for AlchemyCallType {
             Ok(Self)
         } else {
             Err(anyhow::Error::msg(format!(
-                "Expected string `{}`",
-                ALCHEMY_CALL_TYPE_TAG
+                "Expected string `{ALCHEMY_CALL_TYPE_TAG}`"
             )))
         }
     }
@@ -444,7 +442,7 @@ impl FromStr for AlchemyCallType {
 
 impl fmt::Display for AlchemySuicideType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", ALCHEMY_SUICIDE_TYPE_TAG)
+        write!(f, "{ALCHEMY_SUICIDE_TYPE_TAG}")
     }
 }
 
@@ -456,8 +454,7 @@ impl FromStr for AlchemySuicideType {
             Ok(Self)
         } else {
             Err(anyhow::Error::msg(format!(
-                "Expected string `{}`",
-                ALCHEMY_SUICIDE_TYPE_TAG
+                "Expected string `{ALCHEMY_SUICIDE_TYPE_TAG}`"
             )))
         }
     }
@@ -510,5 +507,5 @@ fn encode_hex(bytes: &[u8]) -> String {
 }
 
 fn encode_hex_int<T: std::fmt::LowerHex>(n: T) -> String {
-    format!("{:#x}", n)
+    format!("{n:#x}")
 }

@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn test_version_in_semver_format() {
         let version_str = version();
-        println!("Parsed version string: {}", version_str);
+        println!("Parsed version string: {version_str}");
 
         let version_req = VersionReq::parse(&version_str).unwrap();
 

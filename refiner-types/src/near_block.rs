@@ -351,7 +351,7 @@ impl Clone for Shard {
                             account_id: account_id.clone(),
                             public_key: public_key.clone(),
                             index: *index,
-                            nonce: nonce.clone(),
+                            nonce: *nonce,
                         },
                         views::StateChangeValueView::GasKeyDeletion {
                             account_id,
@@ -582,21 +582,21 @@ mod tests {
         ];
 
         for (network_name, base_url) in networks {
-            println!("Testing {} network...", network_name);
+            println!("Testing {network_name} network...");
 
             // Get latest block height
             let response = reqwest::blocking::Client::new()
-                .get(format!("{}/last_block/final", base_url))
+                .get(format!("{base_url}/last_block/final"))
                 .send()
                 .unwrap_or_else(|_| panic!("Failed to fetch latest block from {network_name}"));
             let response_text = response.text().expect("Failed to get response text");
             let latest_height = extract_block_height(&response_text);
 
             for height in (100_000_000..=latest_height).step_by(10_000_000) {
-                println!("Test NEARBlock at height: {} on {}", height, network_name);
+                println!("Test NEARBlock at height: {height} on {network_name}");
 
                 let response = reqwest::blocking::Client::new()
-                    .get(format!("{}/block/{}", base_url, height))
+                    .get(format!("{base_url}/block/{height}"))
                     .send()
                     .unwrap_or_else(|_| panic!("Failed to fetch block from {network_name}"));
 
@@ -606,8 +606,7 @@ mod tests {
                     .inspect_err(|e| {
                         let height = extract_block_height(&response_text);
                         println!(
-                            "NEARBlock parse error: {}, height: {}, network: {}",
-                            e, height, network_name
+                            "NEARBlock parse error: {e}, height: {height}, network: {network_name}"
                         );
                     })
                     .unwrap_or_else(|_| panic!("Failed to parse block on {network_name}"));

@@ -106,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
-            .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
+            .map_err(|err| anyhow!("Failed to create engine context: {err:?}"))?;
 
             let socket_storage = ctx.storage.clone();
 

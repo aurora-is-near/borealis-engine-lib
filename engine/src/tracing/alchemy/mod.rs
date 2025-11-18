@@ -37,8 +37,7 @@ impl AlchemyTrace {
                 Ok(Self::Call(trace))
             }
             other => Err(anyhow::Error::msg(format!(
-                "Unknown `type` value: {}",
-                other
+                "Unknown `type` value: {other}"
             ))),
         }
     }

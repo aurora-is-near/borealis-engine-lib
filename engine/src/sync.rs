@@ -83,7 +83,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             aurora_refiner_types::near_block::StateChangeCauseView::ReceiptProcessing {
                 receipt_hash,
             } => receipt_hash.0.into(),
-            other => panic!("Unexpected state change cause {:?}", other),
+            other => panic!("Unexpected state change cause {other:?}"),
         };
 
         let diff = expected_diffs.entry(receipt_id).or_default();

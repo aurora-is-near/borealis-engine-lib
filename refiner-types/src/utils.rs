@@ -110,11 +110,11 @@ mod tests {
 
         let err: Result<HexU64, _> = serde_json::from_str(missing_0x);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("Missing 0x Prefix"));
+        assert!(format!("{err:?}").contains("Missing 0x Prefix"));
 
         let err: Result<HexU64, _> = serde_json::from_str(invalid_char);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("Invalid character 'q'"));
+        assert!(format!("{err:?}").contains("Invalid character 'q'"));
     }
 
     #[test]
@@ -138,10 +138,10 @@ mod tests {
 
         let err: Result<DecU128, _> = serde_json::from_str(negative_number);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("invalid digit found in string"));
+        assert!(format!("{err:?}").contains("invalid digit found in string"));
 
         let err: Result<DecU128, _> = serde_json::from_str(invalid_number);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("invalid digit found in string"));
+        assert!(format!("{err:?}").contains("invalid digit found in string"));
     }
 }
