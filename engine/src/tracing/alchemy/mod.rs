@@ -36,9 +36,7 @@ impl AlchemyTrace {
                 let trace = AlchemyCallTrace::try_from(serializable)?;
                 Ok(Self::Call(trace))
             }
-            other => Err(anyhow::Error::msg(format!(
-                "Unknown `type` value: {other}"
-            ))),
+            other => Err(anyhow::Error::msg(format!("Unknown `type` value: {other}"))),
         }
     }
 }

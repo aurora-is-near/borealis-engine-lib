@@ -435,9 +435,7 @@ fn normalize_output(
                     let (result, output_kind) = decode_submit_result(&bytes).unwrap_or_else(|_| {
                         // This is now considered a fatal error because we must know how
                         // to reproduce the Near output for all transactions
-                        panic!(
-                            "Submit Result format unknown for receipt {receipt_id:?}. (FIX)"
-                        );
+                        panic!("Submit Result format unknown for receipt {receipt_id:?}. (FIX)");
                     });
                     Some((result, output_kind, bytes))
                 }

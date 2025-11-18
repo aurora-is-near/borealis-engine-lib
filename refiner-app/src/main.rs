@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
                         config,
                         shutdown_rx_input_stream,
                     )
-                    .await
+                    .await?
                 }
             };
 

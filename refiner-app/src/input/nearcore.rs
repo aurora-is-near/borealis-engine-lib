@@ -7,10 +7,10 @@ pub async fn get_nearcore_stream(
     block_height: u64,
     config: &NearcoreConfig,
     mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) -> (
+) -> anyhow::Result<(
     tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
     tokio::task::JoinHandle<()>,
-) {
+)> {
     tracing::info!(
         "get_nearcore_stream: starting nearcore stream, block_height: {block_height:?}..."
     );
@@ -24,12 +24,9 @@ pub async fn get_nearcore_stream(
         finality: near_indexer::near_primitives::types::Finality::Final,
         validate_genesis: true,
     };
-    let near_config = indexer_config
-        .load_near_config()
-        .expect("failed to load near config");
-    let near_node = near_indexer::Indexer::start_near_node(&indexer_config, near_config.clone())
-        .await
-        .expect("failed to start near node");
+    let near_config = indexer_config.load_near_config()?;
+    let near_node =
+        near_indexer::Indexer::start_near_node(&indexer_config, near_config.clone()).await?;
     let indexer = near_indexer::Indexer::from_near_node(indexer_config, near_config, &near_node);
 
     let task_handle = tokio::task::spawn_local(async move {
@@ -56,5 +53,5 @@ pub async fn get_nearcore_stream(
         }
     });
 
-    (receiver, task_handle)
+    Ok((receiver, task_handle))
 }
