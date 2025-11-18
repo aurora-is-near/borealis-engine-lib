@@ -1301,8 +1301,13 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
 
     shards
         .iter()
-        .filter_map(|shard| shard.chunk.as_ref().map(|chunk| &chunk.receipts))
-        .flatten()
+        .filter_map(|shard| shard.chunk.as_ref())
+        .flat_map(|chunk| {
+            // Iterate in Nearcore runtime execution order: local_receipts (current chunk) first, then receipts (previous chunk)
+            // See: nearcore/runtime/runtime/src/lib.rs:Runtime::process_receipts()
+            // https://github.com/near/nearcore/blob/c555199aca449c1c12b6ab7b672deda097f6a541/runtime/runtime/src/lib.rs#L2038
+            chunk.local_receipts.iter().chain(chunk.receipts.iter())
+        })
         .filter_map(|outcome| match &outcome.receipt {
             ReceiptEnumView::Data { data_id, data, .. } => ids
                 .iter()

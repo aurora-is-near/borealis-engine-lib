@@ -38,11 +38,13 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
     // order of the `receipts` and `receipt_execution_outcomes` is different (probably BUG) and we
     // need to handle the behavior.
+    // Note: Iterate local_receipts first, then receipts, to match Nearcore runtime execution order
+    // (see nearcore/runtime/runtime/src/lib.rs:Runtime::process_receipts())
     let receipt_mapping = message
         .shards
         .iter()
         .filter_map(|shard| shard.chunk.as_ref())
-        .flat_map(|chunk| chunk.receipts.as_slice())
+        .flat_map(|chunk| chunk.local_receipts.iter().chain(chunk.receipts.iter()))
         .enumerate()
         .filter_map(|(i, r)| {
             if r.receiver_id.as_str() == engine_account_id.as_ref() {

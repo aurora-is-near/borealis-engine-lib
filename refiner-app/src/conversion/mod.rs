@@ -38,6 +38,7 @@ pub fn convert(block: StreamerMessage) -> NEARBlock {
                     },
                     transactions: ch_json(chunk.transactions),
                     receipts: ch_json(chunk.receipts),
+                    local_receipts: ch_json(chunk.local_receipts),
                 }),
                 receipt_execution_outcomes: ch_json(shard.receipt_execution_outcomes),
                 state_changes: ch_json(shard.state_changes),

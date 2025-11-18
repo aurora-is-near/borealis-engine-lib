@@ -399,6 +399,8 @@ pub struct ChunkView {
     pub header: ChunkHeaderView,
     pub transactions: Vec<TransactionWithOutcome>,
     pub receipts: Vec<ReceiptView>,
+    #[serde(default)]
+    pub local_receipts: Vec<ReceiptView>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
