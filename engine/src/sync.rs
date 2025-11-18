@@ -678,6 +678,11 @@ fn parse_actions(
 }
 
 /// Attempt to parse an Aurora transaction from the given NEAR action.
+///
+/// NOTE:
+/// `ActionView::FunctionCall.deposit` comes in as a `NearToken` wrapper instead of a bare `u128`.
+/// Everything inside engine/src/sync.rs still expects to work with raw yoctoNEAR amounts.
+/// deposit.as_yoctonear() converts the new NearToken wrapper back into the u128 yoctoNEAR value.
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
@@ -692,7 +697,7 @@ fn parse_action(
         let bytes = args.to_vec();
         let transaction_kind =
             sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, *deposit));
+        return Some((transaction_kind, bytes, deposit.as_yoctonear()));
     }
 
     None

@@ -95,10 +95,8 @@ pub struct IndexerBlockHeaderView {
     pub random_value: CryptoHash,
     pub validator_proposals: Vec<ValidatorStakeView>,
     pub chunk_mask: Vec<bool>,
-    #[serde(with = "dec_format")]
     pub gas_price: Balance,
     pub block_ordinal: Option<NumBlocks>,
-    #[serde(with = "dec_format")]
     pub total_supply: Balance,
     pub challenges_result: Vec<SlashedValidator>,
     pub last_final_block: CryptoHash,
@@ -194,9 +192,8 @@ pub struct ChunkHeaderView {
     pub shard_id: ShardId,
     pub gas_used: Gas,
     pub gas_limit: Gas,
-    #[serde(with = "dec_format")]
+    #[serde(default)]
     pub validator_reward: Balance,
-    #[serde(with = "dec_format")]
     pub balance_burnt: Balance,
     pub outgoing_receipts_root: CryptoHash,
     pub tx_root: CryptoHash,
@@ -333,6 +330,33 @@ impl Clone for Shard {
                             account_id,
                             public_key,
                         } => views::StateChangeValueView::AccessKeyDeletion {
+                            account_id: account_id.clone(),
+                            public_key: public_key.clone(),
+                        },
+                        views::StateChangeValueView::GasKeyUpdate {
+                            account_id,
+                            public_key,
+                            gas_key,
+                        } => views::StateChangeValueView::GasKeyUpdate {
+                            account_id: account_id.clone(),
+                            public_key: public_key.clone(),
+                            gas_key: gas_key.clone(),
+                        },
+                        views::StateChangeValueView::GasKeyNonceUpdate {
+                            account_id,
+                            public_key,
+                            index,
+                            nonce,
+                        } => views::StateChangeValueView::GasKeyNonceUpdate {
+                            account_id: account_id.clone(),
+                            public_key: public_key.clone(),
+                            index: *index,
+                            nonce: nonce.clone(),
+                        },
+                        views::StateChangeValueView::GasKeyDeletion {
+                            account_id,
+                            public_key,
+                        } => views::StateChangeValueView::GasKeyDeletion {
                             account_id: account_id.clone(),
                             public_key: public_key.clone(),
                         },
