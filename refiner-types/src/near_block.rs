@@ -192,7 +192,6 @@ pub struct ChunkHeaderView {
     pub shard_id: ShardId,
     pub gas_used: Gas,
     pub gas_limit: Gas,
-    #[serde(default)]
     pub validator_reward: Balance,
     pub balance_burnt: Balance,
     pub outgoing_receipts_root: CryptoHash,

@@ -39,13 +39,13 @@ hex = "0.4"
 impl-serde = "0.5"
 lazy_static = "1"
 lru = "0.12"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.1" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.1" }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.1" }
-near-crypto-crates-io = { version = "0.34.0-rc.1", package = "near-crypto" }
-near-primitives-crates-io = { version = "0.34.0-rc.1", package = "near-primitives" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.2" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.2" }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.2" }
+near-crypto-crates-io = { version = "0.34.0-rc.2", package = "near-crypto" }
+near-primitives-crates-io = { version = "0.34.0-rc.2", package = "near-primitives" }
 # Temporary pin to pick up near-primitives 0.31 compatibility. Revert to crates.io once upstream releases.
-near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "b17a38ed0d5a3de4c6693c13a9e08fa19bff48fc" }
+near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "2e182ab8bddf60bc4e913505e4993e059a98297c" }
 prometheus = "0.13"
 rlp = "0.6"
 rocksdb = { version = "0.21", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
