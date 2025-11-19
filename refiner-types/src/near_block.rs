@@ -1,3 +1,4 @@
+use crate::utils::balance_u128_or_string_serde;
 use borsh::BorshSerialize;
 use near_crypto::{PublicKey, Signature};
 use near_primitives::challenge::SlashedValidator;
@@ -192,6 +193,7 @@ pub struct ChunkHeaderView {
     pub shard_id: ShardId,
     pub gas_used: Gas,
     pub gas_limit: Gas,
+    #[serde(default, with = "balance_u128_or_string_serde")]
     pub validator_reward: Balance,
     pub balance_burnt: Balance,
     pub outgoing_receipts_root: CryptoHash,

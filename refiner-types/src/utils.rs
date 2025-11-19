@@ -69,6 +69,79 @@ pub mod u128_dec_serde {
     }
 }
 
+pub mod balance_u128_or_string_serde {
+    //! This module provides serde serialization for Balance (represented as NearToken) that can deserialize from
+    //! either u128 or String, and always serializes to String.
+    use near_primitives::types::Balance;
+    use serde::de::{Error, Visitor};
+    use std::fmt;
+
+    pub fn serialize<S>(balance: &Balance, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let balance_str = balance.as_yoctonear().to_string();
+        serializer.serialize_str(&balance_str)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Balance, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct BalanceVisitor;
+
+        impl<'de> Visitor<'de> for BalanceVisitor {
+            type Value = Balance;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a string or integer amount of yoctoNEAR")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_u128(value as u128)
+            }
+
+            fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(Balance::from_yoctonear(value))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                parse_string_balance(value).map_err(E::custom)
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_str(&value)
+            }
+
+            fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_str(value)
+            }
+        }
+
+        fn parse_string_balance(input: &str) -> Result<Balance, std::num::ParseIntError> {
+            let value = input.parse::<u128>()?;
+            Ok(Balance::from_yoctonear(value))
+        }
+
+        deserializer.deserialize_any(BalanceVisitor)
+    }
+}
+
 /// Cast a U256 value down to u64; if the value is too large then return u64::MAX.
 pub fn saturating_cast(x: U256) -> u64 {
     if x < U64_MAX { x.as_u64() } else { u64::MAX }
@@ -83,6 +156,8 @@ pub fn keccak256(input: &[u8]) -> H256 {
 #[cfg(test)]
 mod tests {
     use super::{u64_hex_serde, u128_dec_serde};
+    use crate::utils::balance_u128_or_string_serde;
+    use near_primitives::types::Balance;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -143,5 +218,23 @@ mod tests {
         let err: Result<DecU128, _> = serde_json::from_str(invalid_number);
         assert!(err.is_err());
         assert!(format!("{err:?}").contains("invalid digit found in string"));
+    }
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+    struct BalanceWrapper {
+        #[serde(with = "balance_u128_or_string_serde")]
+        inner: Balance,
+    }
+
+    #[test]
+    fn test_balance_u128_or_string_serde() {
+        let from_string: BalanceWrapper = serde_json::from_str(r#"{"inner":"12345"}"#).unwrap();
+        assert_eq!(from_string.inner, Balance::from_yoctonear(12345));
+
+        let from_number: BalanceWrapper = serde_json::from_str(r#"{"inner":12345}"#).unwrap();
+        assert_eq!(from_number.inner, Balance::from_yoctonear(12345));
+
+        let serialized = serde_json::to_string(&from_number).unwrap();
+        assert_eq!(serialized, r#"{"inner":"12345"}"#);
     }
 }
