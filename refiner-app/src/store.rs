@@ -98,6 +98,8 @@ pub fn get_output_stream(
         }
     });
 
+    tracing::info!("get_output_stream: output stream finished");
+
     (aurora_blocks_tx, task_handle)
 }
 

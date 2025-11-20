@@ -41,11 +41,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     match args.command {
-        cli::Command::Run { height, total } => {
-            tokio::task::LocalSet::new()
-                .run_until(async move { run_refiner_app(height, total, &config).await })
-                .await?
-        }
+        cli::Command::Run { height, total } => run_refiner_app(height, total, &config).await?,
     }
 
     tracing::info!("refiner-app finished");

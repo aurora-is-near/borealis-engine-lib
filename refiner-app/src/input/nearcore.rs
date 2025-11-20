@@ -28,10 +28,12 @@ pub async fn get_nearcore_stream(
     let near_node =
         near_indexer::Indexer::start_near_node(&indexer_config, near_config.clone()).await?;
     let indexer = near_indexer::Indexer::from_near_node(indexer_config, near_config, &near_node);
+    tracing::info!("get_nearcore_stream: nearcore indexer started");
 
-    let task_handle = tokio::task::spawn_local(async move {
+    let task_handle = tokio::spawn(async move {
         // Regular NEAR indexer process starts here
         let mut stream = indexer.streamer();
+        tracing::info!("get_nearcore_stream: nearcore stream started");
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
@@ -52,6 +54,8 @@ pub async fn get_nearcore_stream(
             }
         }
     });
+
+    tracing::info!("get_nearcore_stream: nearcore stream finished");
 
     Ok((receiver, task_handle))
 }
