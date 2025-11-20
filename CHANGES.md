@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.9-2.10.0-rc.2] 2025-11-20
+
+### Changes
+* chore: Bump nearcore to 2.10.0-rc.2;
+* Update near-lake-framework to use near-crypto v0.34.0-rc.2;
+* Modify engine and refiner to handle the new `chunk.local_receipts` field;
+* Add new Nearcore primitive types to the `StreamerMessage` to `NEARBlock` converter;
+* Implement `balance_u128_or_string_serde` for `Balance` to support both `u128` and `String` formats;
+* Bump Rust toolchain to 1.88;
+
 ## [0.30.9-2.9.1] 2025-11-12
 
 ### Changes
@@ -419,7 +429,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.9.1...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.0-rc.2...main
+[0.30.9-2.10.0-rc.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.9.1...0.30.9-2.10.0-rc.2
 [0.30.9-2.9.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.9.0...0.30.9-2.9.1
 [0.30.9-2.9.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.8.0...0.30.9-2.9.0
 [0.30.9-2.8.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.8.0-rc.2...0.30.9-2.8.0
