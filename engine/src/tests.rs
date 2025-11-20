@@ -46,11 +46,11 @@ fn test_random_value() {
     let outcome = outcomes_map.remove(&expected_tx_hash).unwrap();
     let submit_result = match outcome.maybe_result.unwrap().unwrap() {
         TransactionExecutionResult::Submit(x) => x.unwrap(),
-        other => panic!("Unexpected result {:?}", other),
+        other => panic!("Unexpected result {other:?}"),
     };
     let output = match submit_result.status {
         TransactionStatus::Succeed(x) => x,
-        other => panic!("Unexpected status {:?}", other),
+        other => panic!("Unexpected status {other:?}"),
     };
     assert_eq!(output, expected_output, "Failed to reproduce random value");
 
@@ -164,7 +164,7 @@ fn test_batched_transactions() {
         let outcome = outcomes_map.remove(&tx_hash).unwrap();
         let submit_result = match outcome.maybe_result.unwrap().unwrap() {
             TransactionExecutionResult::Submit(x) => x.unwrap(),
-            other => panic!("Unexpected result {:?}", other),
+            other => panic!("Unexpected result {other:?}"),
         };
         assert!(matches!(
             submit_result.status,

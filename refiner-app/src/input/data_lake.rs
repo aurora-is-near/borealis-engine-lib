@@ -34,6 +34,7 @@ pub fn get_near_data_lake_stream(
     let task_handle = tokio::spawn(async move {
         // Instantiate the NEAR Lake Framework Stream
         let (_, mut stream) = near_lake_framework::streamer(opts);
+        tracing::info!("get_near_data_lake_stream: data lake stream started");
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
@@ -54,6 +55,8 @@ pub fn get_near_data_lake_stream(
             }
         }
     });
+
+    tracing::info!("get_near_data_lake_stream: data lake stream finished");
 
     (receiver, task_handle)
 }

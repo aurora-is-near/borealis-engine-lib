@@ -38,11 +38,13 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     // Capture data receipts (for using in promises). Also, we create a mapping here because the
     // order of the `receipts` and `receipt_execution_outcomes` is different (probably BUG) and we
     // need to handle the behavior.
+    // Note: Iterate local_receipts first, then receipts, to match Nearcore runtime execution order
+    // (see nearcore/runtime/runtime/src/lib.rs:Runtime::process_receipts())
     let receipt_mapping = message
         .shards
         .iter()
         .filter_map(|shard| shard.chunk.as_ref())
-        .flat_map(|chunk| chunk.receipts.as_slice())
+        .flat_map(|chunk| chunk.local_receipts.iter().chain(chunk.receipts.iter()))
         .enumerate()
         .filter_map(|(i, r)| {
             if r.receiver_id.as_str() == engine_account_id.as_ref() {
@@ -83,7 +85,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
             aurora_refiner_types::near_block::StateChangeCauseView::ReceiptProcessing {
                 receipt_hash,
             } => receipt_hash.0.into(),
-            other => panic!("Unexpected state change cause {:?}", other),
+            other => panic!("Unexpected state change cause {other:?}"),
         };
 
         let diff = expected_diffs.entry(receipt_id).or_default();
@@ -678,6 +680,11 @@ fn parse_actions(
 }
 
 /// Attempt to parse an Aurora transaction from the given NEAR action.
+///
+/// NOTE:
+/// `ActionView::FunctionCall.deposit` comes in as a `NearToken` wrapper instead of a bare `u128`.
+/// Everything inside engine/src/sync.rs still expects to work with raw yoctoNEAR amounts.
+/// deposit.as_yoctonear() converts the new NearToken wrapper back into the u128 yoctoNEAR value.
 fn parse_action(
     action: &ActionView,
     promise_data: &[Option<Vec<u8>>],
@@ -692,7 +699,7 @@ fn parse_action(
         let bytes = args.to_vec();
         let transaction_kind =
             sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, *deposit));
+        return Some((transaction_kind, bytes, deposit.as_yoctonear()));
     }
 
     None

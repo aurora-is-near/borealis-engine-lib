@@ -23,6 +23,7 @@ pub fn convert(message: StreamerMessage) -> NEARBlock {
                         })
                         .collect(),
                     receipts: chunk.receipts.into_iter().map(Into::into).collect(),
+                    local_receipts: chunk.local_receipts.into_iter().map(Into::into).collect(),
                 });
                 near_block::Shard {
                     shard_id: indexer_shard.shard_id.convert(),

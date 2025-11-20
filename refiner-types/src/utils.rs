@@ -69,6 +69,79 @@ pub mod u128_dec_serde {
     }
 }
 
+pub mod balance_u128_or_string_serde {
+    //! This module provides serde serialization for Balance (represented as NearToken) that can deserialize from
+    //! either u128 or String, and always serializes to String.
+    use near_primitives::types::Balance;
+    use serde::de::{Error, Visitor};
+    use std::fmt;
+
+    pub fn serialize<S>(balance: &Balance, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let balance_str = balance.as_yoctonear().to_string();
+        serializer.serialize_str(&balance_str)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Balance, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct BalanceVisitor;
+
+        impl<'de> Visitor<'de> for BalanceVisitor {
+            type Value = Balance;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a string or integer amount of yoctoNEAR")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_u128(value as u128)
+            }
+
+            fn visit_u128<E>(self, value: u128) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(Balance::from_yoctonear(value))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                parse_string_balance(value).map_err(E::custom)
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_str(&value)
+            }
+
+            fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_str(value)
+            }
+        }
+
+        fn parse_string_balance(input: &str) -> Result<Balance, std::num::ParseIntError> {
+            let value = input.parse::<u128>()?;
+            Ok(Balance::from_yoctonear(value))
+        }
+
+        deserializer.deserialize_any(BalanceVisitor)
+    }
+}
+
 /// Cast a U256 value down to u64; if the value is too large then return u64::MAX.
 pub fn saturating_cast(x: U256) -> u64 {
     if x < U64_MAX { x.as_u64() } else { u64::MAX }
@@ -83,6 +156,8 @@ pub fn keccak256(input: &[u8]) -> H256 {
 #[cfg(test)]
 mod tests {
     use super::{u64_hex_serde, u128_dec_serde};
+    use crate::utils::balance_u128_or_string_serde;
+    use near_primitives::types::Balance;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -110,11 +185,11 @@ mod tests {
 
         let err: Result<HexU64, _> = serde_json::from_str(missing_0x);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("Missing 0x Prefix"));
+        assert!(format!("{err:?}").contains("Missing 0x Prefix"));
 
         let err: Result<HexU64, _> = serde_json::from_str(invalid_char);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("Invalid character 'q'"));
+        assert!(format!("{err:?}").contains("Invalid character 'q'"));
     }
 
     #[test]
@@ -138,10 +213,110 @@ mod tests {
 
         let err: Result<DecU128, _> = serde_json::from_str(negative_number);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("invalid digit found in string"));
+        assert!(format!("{err:?}").contains("invalid digit found in string"));
 
         let err: Result<DecU128, _> = serde_json::from_str(invalid_number);
         assert!(err.is_err());
-        assert!(format!("{:?}", err).contains("invalid digit found in string"));
+        assert!(format!("{err:?}").contains("invalid digit found in string"));
+    }
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+    struct BalanceWrapper {
+        #[serde(with = "balance_u128_or_string_serde")]
+        inner: Balance,
+    }
+
+    #[test]
+    fn test_balance_u128_or_string_serde() {
+        let from_string: BalanceWrapper = serde_json::from_str(r#"{"inner":"12345"}"#).unwrap();
+        assert_eq!(from_string.inner, Balance::from_yoctonear(12345));
+
+        let from_number: BalanceWrapper = serde_json::from_str(r#"{"inner":12345}"#).unwrap();
+        assert_eq!(from_number.inner, Balance::from_yoctonear(12345));
+
+        let serialized = serde_json::to_string(&from_number).unwrap();
+        assert_eq!(serialized, r#"{"inner":"12345"}"#);
+    }
+
+    #[test]
+    fn test_balance_invalid_string() {
+        // Test with non-numeric characters - using unwrap_err() is more idiomatic
+        let invalid_chars = r#"{"inner":"12abc45"}"#;
+        serde_json::from_str::<BalanceWrapper>(invalid_chars).unwrap_err();
+
+        // Test with empty string
+        let empty_string = r#"{"inner":""}"#;
+        serde_json::from_str::<BalanceWrapper>(empty_string).unwrap_err();
+
+        // Test with alphabetic string
+        let alphabetic = r#"{"inner":"notanumber"}"#;
+        serde_json::from_str::<BalanceWrapper>(alphabetic).unwrap_err();
+
+        // Test with special characters
+        let special_chars = r#"{"inner":"123!@#"}"#;
+        serde_json::from_str::<BalanceWrapper>(special_chars).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_overflow() {
+        // Test with a value exceeding u128::MAX
+        // u128::MAX is 340282366920938463463374607431768211455
+        let overflow_value = r#"{"inner":"340282366920938463463374607431768211456"}"#;
+        serde_json::from_str::<BalanceWrapper>(overflow_value).unwrap_err();
+
+        // Test with an extremely large number
+        let very_large = r#"{"inner":"999999999999999999999999999999999999999"}"#;
+        serde_json::from_str::<BalanceWrapper>(very_large).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_boundary_values() {
+        // Test with zero
+        let zero_string: BalanceWrapper = serde_json::from_str(r#"{"inner":"0"}"#).unwrap();
+        assert_eq!(zero_string.inner, Balance::from_yoctonear(0));
+
+        let zero_number: BalanceWrapper = serde_json::from_str(r#"{"inner":0}"#).unwrap();
+        assert_eq!(zero_number.inner, Balance::from_yoctonear(0));
+
+        // Test with u128::MAX (maximum allowed yoctonear)
+        let max_value = u128::MAX;
+        let max_string = format!(r#"{{"inner":"{max_value}"}}"#);
+        let max_balance: BalanceWrapper = serde_json::from_str(&max_string).unwrap();
+        assert_eq!(max_balance.inner, Balance::from_yoctonear(max_value));
+
+        // Test with u64::MAX
+        let u64_max_value = u64::MAX as u128;
+        let u64_max_string = format!(r#"{{"inner":"{u64_max_value}"}}"#);
+        let u64_max_balance: BalanceWrapper = serde_json::from_str(&u64_max_string).unwrap();
+        assert_eq!(
+            u64_max_balance.inner,
+            Balance::from_yoctonear(u64_max_value)
+        );
+    }
+
+    #[test]
+    fn test_balance_negative_numbers() {
+        // Test with negative number as string
+        let negative_string = r#"{"inner":"-12345"}"#;
+        serde_json::from_str::<BalanceWrapper>(negative_string).unwrap_err();
+
+        // Test with negative zero
+        let negative_zero = r#"{"inner":"-0"}"#;
+        serde_json::from_str::<BalanceWrapper>(negative_zero).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_whitespace() {
+        // Test with leading whitespace
+        let leading_space = r#"{"inner":" 12345"}"#;
+        serde_json::from_str::<BalanceWrapper>(leading_space).unwrap_err();
+
+        // Test with trailing whitespace
+        let trailing_space = r#"{"inner":"12345 "}"#;
+        serde_json::from_str::<BalanceWrapper>(trailing_space).unwrap_err();
+
+        // Test with internal whitespace
+        let internal_space = r#"{"inner":"123 45"}"#;
+        serde_json::from_str::<BalanceWrapper>(internal_space).unwrap_err();
     }
 }

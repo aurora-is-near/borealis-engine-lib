@@ -15,8 +15,7 @@ pub fn init_storage<P: AsRef<Path>>(storage_path: P, account_id: &AccountId, cha
         Ok(stored_id) => {
             if &stored_id != account_id {
                 panic!(
-                    "Provided engine_account_id={} is not equal to account_id_stored={}",
-                    account_id, stored_id
+                    "Provided engine_account_id={account_id} is not equal to account_id_stored={stored_id}"
                 );
             }
         }
@@ -31,7 +30,7 @@ pub fn init_storage<P: AsRef<Path>>(storage_path: P, account_id: &AccountId, cha
             panic!("Fatal error, cannot read engine_account_id from DB. The DB may be corrupted.");
         }
         Err(other) => {
-            panic!("Error reading engine_account_id from DB: {:?}", other);
+            panic!("Error reading engine_account_id from DB: {other:?}");
         }
     };
 }

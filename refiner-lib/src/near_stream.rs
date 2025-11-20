@@ -582,7 +582,7 @@ pub mod tests {
     pub fn read_block(path: &str) -> NEARBlock {
         let data = std::fs::read_to_string(path).unwrap();
         serde_json::from_str(&data).unwrap_or_else(|e| {
-            panic!("Failed to parse block from {}: {}", path, e);
+            panic!("Failed to parse block from {path}: {e}");
         })
     }
 

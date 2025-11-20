@@ -406,7 +406,7 @@ fn normalize_output(
             ),
             TransactionExecutionResult::Promise(p) => SubmitResult::new(
                 aurora_engine::parameters::TransactionStatus::Succeed(
-                    format!("{:?}", p).into_bytes(),
+                    format!("{p:?}").into_bytes(),
                 ),
                 MIN_EVM_GAS,
                 Vec::new(),
@@ -435,10 +435,7 @@ fn normalize_output(
                     let (result, output_kind) = decode_submit_result(&bytes).unwrap_or_else(|_| {
                         // This is now considered a fatal error because we must know how
                         // to reproduce the Near output for all transactions
-                        panic!(
-                            "Submit Result format unknown for receipt {:?}. (FIX)",
-                            receipt_id
-                        );
+                        panic!("Submit Result format unknown for receipt {receipt_id:?}. (FIX)");
                     });
                     Some((result, output_kind, bytes))
                 }
@@ -1278,9 +1275,9 @@ enum RefinerError {
 impl fmt::Debug for RefinerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::BuilderError(err) => write!(f, "BuilderError: {:?}", err),
-            Self::ParseTransaction(err) => write!(f, "ParseTransaction: {:?}", err),
-            Self::ParseMetadata(err) => write!(f, "ParseMetadata: {:?}", err),
+            Self::BuilderError(err) => write!(f, "BuilderError: {err:?}"),
+            Self::ParseTransaction(err) => write!(f, "ParseTransaction: {err:?}"),
+            Self::ParseMetadata(err) => write!(f, "ParseMetadata: {err:?}"),
             Self::FailNearTx => write!(f, "FailNearTx"),
             Self::PromiseResultError => write!(f, "PromiseResultError"),
             Self::BuildAuroraTransactionError(msg) => {
@@ -1304,8 +1301,13 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
 
     shards
         .iter()
-        .filter_map(|shard| shard.chunk.as_ref().map(|chunk| &chunk.receipts))
-        .flatten()
+        .filter_map(|shard| shard.chunk.as_ref())
+        .flat_map(|chunk| {
+            // Iterate in Nearcore runtime execution order: local_receipts (current chunk) first, then receipts (previous chunk)
+            // See: nearcore/runtime/runtime/src/lib.rs:Runtime::process_receipts()
+            // https://github.com/near/nearcore/blob/c555199aca449c1c12b6ab7b672deda097f6a541/runtime/runtime/src/lib.rs#L2038
+            chunk.local_receipts.iter().chain(chunk.receipts.iter())
+        })
         .filter_map(|outcome| match &outcome.receipt {
             ReceiptEnumView::Data { data_id, data, .. } => ids
                 .iter()

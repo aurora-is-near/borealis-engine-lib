@@ -3,14 +3,14 @@ use aurora_refiner_types::near_block::NEARBlock;
 
 use crate::config::NearcoreConfig;
 
-pub fn get_nearcore_stream(
+pub async fn get_nearcore_stream(
     block_height: u64,
     config: &NearcoreConfig,
     mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) -> (
+) -> anyhow::Result<(
     tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
     tokio::task::JoinHandle<()>,
-) {
+)> {
     tracing::info!(
         "get_nearcore_stream: starting nearcore stream, block_height: {block_height:?}..."
     );
@@ -24,12 +24,16 @@ pub fn get_nearcore_stream(
         finality: near_indexer::near_primitives::types::Finality::Final,
         validate_genesis: true,
     };
+    let near_config = indexer_config.load_near_config()?;
+    let near_node =
+        near_indexer::Indexer::start_near_node(&indexer_config, near_config.clone()).await?;
+    let indexer = near_indexer::Indexer::from_near_node(indexer_config, near_config, &near_node);
+    tracing::info!("get_nearcore_stream: nearcore indexer started");
 
-    let indexer = near_indexer::Indexer::new(indexer_config).expect("Failed to initiate Indexer");
-
-    let task_handle = tokio::task::spawn_local(async move {
+    let task_handle = tokio::spawn(async move {
         // Regular NEAR indexer process starts here
         let mut stream = indexer.streamer();
+        tracing::info!("get_nearcore_stream: nearcore stream started");
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
@@ -51,5 +55,7 @@ pub fn get_nearcore_stream(
         }
     });
 
-    (receiver, task_handle)
+    tracing::info!("get_nearcore_stream: nearcore stream finished");
+
+    Ok((receiver, task_handle))
 }
