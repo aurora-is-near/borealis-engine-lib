@@ -237,4 +237,86 @@ mod tests {
         let serialized = serde_json::to_string(&from_number).unwrap();
         assert_eq!(serialized, r#"{"inner":"12345"}"#);
     }
+
+    #[test]
+    fn test_balance_invalid_string() {
+        // Test with non-numeric characters - using unwrap_err() is more idiomatic
+        let invalid_chars = r#"{"inner":"12abc45"}"#;
+        serde_json::from_str::<BalanceWrapper>(invalid_chars).unwrap_err();
+
+        // Test with empty string
+        let empty_string = r#"{"inner":""}"#;
+        serde_json::from_str::<BalanceWrapper>(empty_string).unwrap_err();
+
+        // Test with alphabetic string
+        let alphabetic = r#"{"inner":"notanumber"}"#;
+        serde_json::from_str::<BalanceWrapper>(alphabetic).unwrap_err();
+
+        // Test with special characters
+        let special_chars = r#"{"inner":"123!@#"}"#;
+        serde_json::from_str::<BalanceWrapper>(special_chars).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_overflow() {
+        // Test with a value exceeding u128::MAX
+        // u128::MAX is 340282366920938463463374607431768211455
+        let overflow_value = r#"{"inner":"340282366920938463463374607431768211456"}"#;
+        serde_json::from_str::<BalanceWrapper>(overflow_value).unwrap_err();
+
+        // Test with an extremely large number
+        let very_large = r#"{"inner":"999999999999999999999999999999999999999"}"#;
+        serde_json::from_str::<BalanceWrapper>(very_large).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_boundary_values() {
+        // Test with zero
+        let zero_string: BalanceWrapper = serde_json::from_str(r#"{"inner":"0"}"#).unwrap();
+        assert_eq!(zero_string.inner, Balance::from_yoctonear(0));
+
+        let zero_number: BalanceWrapper = serde_json::from_str(r#"{"inner":0}"#).unwrap();
+        assert_eq!(zero_number.inner, Balance::from_yoctonear(0));
+
+        // Test with u128::MAX (maximum allowed yoctonear)
+        let max_value = u128::MAX;
+        let max_string = format!(r#"{{"inner":"{max_value}"}}"#);
+        let max_balance: BalanceWrapper = serde_json::from_str(&max_string).unwrap();
+        assert_eq!(max_balance.inner, Balance::from_yoctonear(max_value));
+
+        // Test with u64::MAX
+        let u64_max_value = u64::MAX as u128;
+        let u64_max_string = format!(r#"{{"inner":"{u64_max_value}"}}"#);
+        let u64_max_balance: BalanceWrapper = serde_json::from_str(&u64_max_string).unwrap();
+        assert_eq!(
+            u64_max_balance.inner,
+            Balance::from_yoctonear(u64_max_value)
+        );
+    }
+
+    #[test]
+    fn test_balance_negative_numbers() {
+        // Test with negative number as string
+        let negative_string = r#"{"inner":"-12345"}"#;
+        serde_json::from_str::<BalanceWrapper>(negative_string).unwrap_err();
+
+        // Test with negative zero
+        let negative_zero = r#"{"inner":"-0"}"#;
+        serde_json::from_str::<BalanceWrapper>(negative_zero).unwrap_err();
+    }
+
+    #[test]
+    fn test_balance_whitespace() {
+        // Test with leading whitespace
+        let leading_space = r#"{"inner":" 12345"}"#;
+        serde_json::from_str::<BalanceWrapper>(leading_space).unwrap_err();
+
+        // Test with trailing whitespace
+        let trailing_space = r#"{"inner":"12345 "}"#;
+        serde_json::from_str::<BalanceWrapper>(trailing_space).unwrap_err();
+
+        // Test with internal whitespace
+        let internal_space = r#"{"inner":"123 45"}"#;
+        serde_json::from_str::<BalanceWrapper>(internal_space).unwrap_err();
+    }
 }
