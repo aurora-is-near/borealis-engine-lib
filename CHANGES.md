@@ -441,7 +441,7 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 ## [v0.10.0] 
 
 [Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.0-rc.3...main
-[0.30.9-2.10.0-rc.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.0-rc.2...0.30.9-2.10.0-rc.3
+[0.30.9-2.10.0-rc.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.0-rc.2...0.30.9-2.10.0-rc.3
 [0.30.9-2.10.0-rc.2]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.9.1...0.30.9-2.10.0-rc.2
 [0.30.9-2.9.1]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.9.0...0.30.9-2.9.1
 [0.30.9-2.9.0]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.8.0...0.30.9-2.9.0
