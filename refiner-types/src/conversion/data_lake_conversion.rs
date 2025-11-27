@@ -561,6 +561,7 @@ impl Converter<ReceiptEnumView>
                 input_data_ids,
                 actions,
                 is_promise_yield,
+                refund_to,
             } => ReceiptEnumView::Action {
                 signer_id,
                 signer_public_key: signer_public_key.convert(),
@@ -572,6 +573,7 @@ impl Converter<ReceiptEnumView>
                 input_data_ids: input_data_ids.into_iter().map(Converter::convert).collect(),
                 actions: actions.into_iter().map(Converter::convert).collect(),
                 is_promise_yield,
+                refund_to,
             },
             Self::Data {
                 data_id,

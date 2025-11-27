@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
-version = "0.30.9-2.10.0-rc.4"
+version = "0.30.9-2.10.0-rc.5"
 edition = "2024"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
@@ -39,13 +39,13 @@ hex = "0.4"
 impl-serde = "0.5"
 lazy_static = "1"
 lru = "0.12"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.4" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.4" }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.4" }
-near-crypto-crates-io = { version = "0.34.0-rc.4", package = "near-crypto" }
-near-primitives-crates-io = { version = "0.34.0-rc.4", package = "near-primitives" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.5" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.5" }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "2.10.0-rc.5" }
+near-crypto-crates-io = { version = "0.34.0-rc.5", package = "near-crypto" }
+near-primitives-crates-io = { version = "0.34.0-rc.5", package = "near-primitives" }
 # Temporary pin to pick up near-primitives 0.31 compatibility. Revert to crates.io once upstream releases.
-near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "aa8889a078a0db88606318ce3ffa8ae00c3bfcdc" }
+near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "d2b203058147aab4be917e7fd04544c5a131c178" }
 prometheus = "0.13"
 rlp = "0.6"
 rocksdb = { version = "0.21", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
