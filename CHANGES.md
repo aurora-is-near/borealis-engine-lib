@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * chore: Bump nearcore to 2.10.0-rc.5 on Testnet in [#261]
 
+[#261]: https://github.com/aurora-is-near/borealis-engine-lib/pull/261
+
 ## [0.30.9-2.10.0-rc.4] 2025-11-26
 
 ### Changes
