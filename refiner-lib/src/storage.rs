@@ -9,31 +9,7 @@ const VERSION: u8 = 0;
 const BATCH_SIZE: usize = 100_000;
 
 pub fn init_storage<P: AsRef<Path>>(storage_path: P, account_id: &AccountId, chain_id: u64) {
-    let mut storage = migrate_block_hash(storage_path, account_id, chain_id);
-
-    match storage.get_engine_account_id() {
-        Ok(stored_id) => {
-            if &stored_id != account_id {
-                panic!(
-                    "Provided engine_account_id={} is not equal to account_id_stored={}",
-                    account_id, stored_id
-                );
-            }
-        }
-        Err(engine_standalone_storage::Error::EngineAccountIdNotSet) => {
-            tracing::info!(
-                "No engine_account_id set in DB. Setting to configured engine_account_id={}",
-                account_id
-            );
-            storage.set_engine_account_id(account_id).unwrap();
-        }
-        Err(engine_standalone_storage::Error::EngineAccountIdCorrupted) => {
-            panic!("Fatal error, cannot read engine_account_id from DB. The DB may be corrupted.");
-        }
-        Err(other) => {
-            panic!("Error reading engine_account_id from DB: {:?}", other);
-        }
-    };
+    migrate_block_hash(storage_path, account_id, chain_id);
 }
 
 fn migrate_block_hash<P: AsRef<Path>>(
@@ -42,7 +18,7 @@ fn migrate_block_hash<P: AsRef<Path>>(
     chain_id: u64,
 ) -> Storage {
     let chain_id = aurora_engine_types::types::u256_to_arr(&U256::from(chain_id));
-    let mut storage = Storage::open(&storage_path).unwrap();
+    let mut storage = Storage::open_ensure_account_id(&storage_path, account_id).unwrap();
     let (block_hash, block_height) = match storage.get_latest_block() {
         Ok(x) => x,
         // If there are no blocks then there is nothing to migrate
@@ -69,7 +45,7 @@ fn migrate_block_hash<P: AsRef<Path>>(
         // Close low-level access, and open new Storage instance
         drop(db);
         tracing::info!("Migration complete.");
-        storage = Storage::open(storage_path).unwrap();
+        storage = Storage::open_ensure_account_id(storage_path, account_id).unwrap();
     }
     storage
 }

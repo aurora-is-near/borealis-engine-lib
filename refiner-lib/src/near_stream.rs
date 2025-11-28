@@ -57,12 +57,6 @@ impl NearStream {
             .consume_near_block(near_block)
             .expect("Transaction tracker consume_near_block error");
 
-        let storage = self
-            .context
-            .storage
-            .as_ref()
-            .write()
-            .expect("must not panic while holding the lock");
         near_block
             .shards
             .iter()
@@ -82,7 +76,7 @@ impl NearStream {
                     near_tx_hash,
                     outcome,
                     &txs,
-                    &storage,
+                    &mut self.context.storage,
                 );
             });
 
@@ -128,7 +122,7 @@ pub mod tests {
         types::{Address, Balance, Wei},
     };
     use aurora_refiner_types::aurora_block::NearBlock;
-    use aurora_standalone_engine::runner::SeqAccessContractCache;
+    use aurora_standalone_engine::runner;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches, str::FromStr};
 
@@ -168,8 +162,6 @@ pub mod tests {
             let result = stream
                 .context
                 .storage
-                .read()
-                .expect("must not panic while holding the lock")
                 .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
                 .result;
             assert!(matches!(result, Err(EngineStateError::NotFound)));
@@ -180,8 +172,6 @@ pub mod tests {
         let chain_id_from_state = stream
             .context
             .storage
-            .read()
-            .expect("must not panic while holding the lock")
             .with_engine_access(131407300, 1, &[], |io| aurora_engine::state::get_state(&io))
             .result
             .map(|state| U256::from_big_endian(&state.chain_id).as_u64())
@@ -609,9 +599,10 @@ pub mod tests {
             let engine_path = db_dir.path().join("engine");
             let tracker_path = db_dir.path().join("tracker");
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
-            let contract = SeqAccessContractCache::new_version("3.7.0").unwrap();
-            let engine_context =
-                EngineContext::new(&engine_path, contract, account_id, chain_id).unwrap();
+            let mut engine_context =
+                EngineContext::new(&engine_path, account_id, chain_id).unwrap();
+            let (code, _) = runner::load_from_file("3.7.0", None).unwrap();
+            engine_context.storage.runner_mut().set_code(code).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 
             Self {
@@ -626,13 +617,7 @@ pub mod tests {
                 let json_snapshot_data = std::fs::read_to_string(snapshot_path).unwrap();
                 serde_json::from_str(&json_snapshot_data).unwrap()
             };
-            let storage = self
-                .engine_context
-                .storage
-                .as_ref()
-                .write()
-                .expect("must not panic while holding the lock");
-            initialize_engine_state(&storage, json_snapshot).unwrap();
+            initialize_engine_state(&self.engine_context.storage, json_snapshot).unwrap();
         }
 
         pub fn create_stream(self) -> NearStream {

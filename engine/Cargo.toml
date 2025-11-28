@@ -45,5 +45,6 @@ near-vm-runner.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
+tracing-subscriber.workspace = true
 
 [features]

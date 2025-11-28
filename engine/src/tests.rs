@@ -9,10 +9,12 @@ use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 
-use crate::runner::SeqAccessContractCache;
+use crate::storage_ext;
 
 #[test]
 fn test_switch_contract() {
+    tracing_subscriber::fmt::try_init().unwrap_or_default();
+
     let dir = fs::read_dir("src/res/deploy").unwrap();
 
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
@@ -32,7 +34,6 @@ fn test_switch_contract() {
     for (block, expected_version) in blocks.zip(versions) {
         crate::sync::consume_near_block::<AuroraModExp>(
             &mut test_context.storage,
-            &mut test_context.contract,
             &block,
             &mut data_id_mapping,
             &test_context.engine_account_id,
@@ -42,10 +43,14 @@ fn test_switch_contract() {
         .unwrap();
 
         // the contract version is updated
-        assert_eq!(
-            test_context.contract.runner().get_version().unwrap(),
-            expected_version
-        );
+        let actual_version = test_context
+            .storage
+            .runner_mut()
+            .get_version_at_wrapper()
+            .unwrap();
+        let actual_version = actual_version.as_str().trim_end();
+
+        assert_eq!(actual_version, expected_version);
     }
 }
 
@@ -68,7 +73,6 @@ fn test_random_value() {
 
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -115,7 +119,6 @@ fn test_empty_submit_input() {
 
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -145,7 +148,6 @@ fn test_batched_transactions() {
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
     crate::sync::consume_near_block::<AuroraModExp>(
         &mut test_context.storage,
-        &mut test_context.contract,
         &block,
         &mut data_id_mapping,
         &test_context.engine_account_id,
@@ -224,22 +226,22 @@ struct TestContext {
     storage: Storage,
     storage_path: tempfile::TempDir,
     engine_account_id: AccountId,
-    contract: SeqAccessContractCache,
 }
 
 impl TestContext {
     fn load_snapshot(snapshot_path: &str) -> Self {
         let engine_account_id = "aurora".parse().unwrap();
         let storage_path = tempfile::tempdir().unwrap();
-        let mut storage = Storage::open(storage_path.path()).unwrap();
-        storage.set_engine_account_id(&engine_account_id).unwrap();
+        let mut storage =
+            Storage::open_ensure_account_id(storage_path.path(), &engine_account_id).unwrap();
         let snapshot = JsonSnapshot::load_from_file(snapshot_path).unwrap();
         json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
+        let (code, _) = storage_ext::load_from_file("3.7.0", None).unwrap();
+        storage.runner_mut().set_code(code).unwrap();
         Self {
             storage,
             storage_path,
             engine_account_id,
-            contract: SeqAccessContractCache::new_version("3.7.0").unwrap(),
         }
     }
 

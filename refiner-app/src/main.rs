@@ -5,7 +5,7 @@ mod input;
 mod socket;
 mod store;
 use anyhow::anyhow;
-use aurora_standalone_engine::{fetch_contract, runner};
+use aurora_standalone_engine::{fetch_contract, runner, storage_ext};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -99,30 +99,32 @@ async fn main() -> anyhow::Result<()> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| engine_path.join("tx_tracker"));
 
-            let contract_storage = runner::SeqAccessContractCache::initialize(
-                height.unwrap_or(134229098),
-                args.contract_path.map(PathBuf::from),
-                config.refiner.chain_id == 1313161554,
-            )
-            .await?;
-            let ctx = aurora_standalone_engine::EngineContext::new(
+            let mut ctx = aurora_standalone_engine::EngineContext::new(
                 engine_path,
-                contract_storage,
                 config.refiner.engine_account_id,
                 config.refiner.chain_id,
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
+            // TODO(vlad): get correct height
+            let version = runner::version::get(height.unwrap_or(134229098), true).await?;
+            storage_ext::apply_contract(
+                &mut ctx.storage,
+                height.unwrap_or(134229098),
+                0,
+                Some(version.as_str().trim_end()),
+                args.contract_path.map(PathBuf::from),
+            )?;
 
             if let Some(link) = &config.contract_source {
                 tracing::info!("Fetching contracts from source: {:?}", link);
-                if let Err(err) = fetch_contract::all(&ctx.storage, link).await {
+                if let Err(err) = fetch_contract::all(&mut ctx.storage, link).await {
                     tracing::error!("Failed to fetch contracts: {:?}", err);
                 }
             } else {
                 tracing::warn!("No contract source provided, skipping contract fetch");
             }
 
-            let socket_storage = ctx.storage.clone();
+            let socket_storage = ctx.storage.share();
 
             let (signals_result, input_result, output_result, ..) = tokio::join!(
                 // Handle all signals

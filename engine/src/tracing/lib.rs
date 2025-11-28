@@ -1,13 +1,11 @@
-use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::H256;
 use engine_standalone_storage::{
     Storage,
     sync::{self, TransactionIncludedOutcome},
 };
 use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
-use std::sync::RwLock;
 
-use crate::runner;
+use crate::storage_ext;
 
 pub struct DebugTraceTransactionRequest {
     pub tx_hash: H256,
@@ -27,27 +25,26 @@ impl DebugTraceTransactionRequest {
     }
 }
 
-pub async fn trace_transaction(
-    storage: &RwLock<Storage>,
-    cache: &runner::RandomAccessContractCache,
+pub fn trace_transaction(
+    storage: &mut Storage,
     tx_hash: H256,
 ) -> Result<(CallTracer, TransactionIncludedOutcome), engine_standalone_storage::Error> {
     let (tx_msg, height) = {
-        let storage_lock = storage.read().expect("must not panic while holding the lock");
-        let tx_msg = storage_lock.get_transaction_data(tx_hash)?;
-        let height = storage_lock.get_block_height_by_hash(tx_msg.block_hash)?;
-        drop(storage_lock);
+        let mut tx_msg = storage.get_transaction_data(tx_hash)?;
+        tx_msg.trace_kind = Some(TraceKind::CallFrame);
+        let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
         (tx_msg, height)
     };
-    let runner = cache.take_runner(storage, height, tx_msg.position).await;
-    let storage_lock = storage.read().expect("must not panic while holding the lock");
-    let mut outcome = sync::execute_transaction_message::<AuroraModExp, runner::ContractRunner>(
-        &storage_lock,
-        &*runner,
-        tx_msg,
-        Some(TraceKind::CallFrame),
-    )?;
-    drop(storage_lock);
+    if let Err(err) = storage_ext::apply_contract(storage, height, tx_msg.position, None, None) {
+        tracing::error!(
+            tx_hash = format!("{tx_hash:#x}"),
+            height,
+            pos = tx_msg.position,
+            err = format!("{err:?}"),
+            "Failed to apply contract for tracing",
+        );
+    }
+    let mut outcome = sync::execute_transaction_message::<false>(storage, tx_msg)?;
 
     let tracer = outcome.call_tracer.take().unwrap();
     Ok((tracer, outcome))
