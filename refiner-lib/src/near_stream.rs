@@ -122,7 +122,7 @@ pub mod tests {
         types::{Address, Balance, Wei},
     };
     use aurora_refiner_types::aurora_block::NearBlock;
-    use aurora_standalone_engine::storage_ext;
+    use aurora_standalone_engine::contract;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches, str::FromStr};
 
@@ -601,7 +601,7 @@ pub mod tests {
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
             let mut engine_context =
                 EngineContext::new(&engine_path, account_id, chain_id).unwrap();
-            let (code, _) = storage_ext::load_from_file("3.7.0", None).unwrap();
+            let (code, _) = contract::load_from_file("3.7.0", None).unwrap();
             engine_context.storage.runner_mut().set_code(code).unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 

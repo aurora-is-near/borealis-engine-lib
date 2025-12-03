@@ -5,7 +5,7 @@ use engine_standalone_storage::{
 };
 use engine_standalone_tracing::{TraceKind, types::call_tracer::CallTracer};
 
-use crate::storage_ext;
+use crate::contract;
 
 pub struct DebugTraceTransactionRequest {
     pub tx_hash: H256,
@@ -35,7 +35,7 @@ pub fn trace_transaction(
         let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
         (tx_msg, height)
     };
-    if let Err(err) = storage_ext::apply_contract(storage, height, tx_msg.position, None, None) {
+    if let Err(err) = contract::apply(storage, height, tx_msg.position, None, None) {
         tracing::error!(
             tx_hash = format!("{tx_hash:#x}"),
             height,

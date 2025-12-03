@@ -6,6 +6,7 @@ use aurora_engine_sdk::env;
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::parameters::engine::{SubmitResult, TransactionExecutionResult};
 use aurora_engine_types::{H256, account_id::AccountId};
+use aurora_refiner_types::near_block::StateChangeCauseView;
 use aurora_refiner_types::near_primitives::{
     self,
     hash::CryptoHash,
@@ -21,7 +22,7 @@ use engine_standalone_storage::{
 use lru::LruCache;
 use tracing::{debug, warn};
 
-use crate::storage_ext;
+use crate::contract;
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
@@ -61,42 +62,49 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .collect::<HashMap<_, _>>();
 
     // trigger contract dynamic library reload if needed
-    for change in message.shards.iter().flat_map(|s| s.state_changes.iter()) {
-        // Use the `match` to hint to the compiler that the pattern is unlikely
-        // match &change.value {
-        //     StateChangeValueView::ContractCodeUpdate { account_id, code }
-        //         if std::hint::unlikely(true) => {}
-        //     _ => {}
-        // }
-        if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
-            if account_id.as_str() == engine_account_id.as_ref() {
-                let height = message.block.header.height;
-                let tx_pos = 0; // TODO(vlad): what is the position of this deploy tx?
-                let time = Instant::now();
-                if let Err(err) = storage.runner_mut().set_code(code.clone()) {
-                    tracing::error!(
-                        err = format!("{err:?}"),
-                        height = height,
-                        "the onchain code is not valid WASM",
-                    );
-                } else if let Ok(version) = storage.runner_mut().get_version() {
-                    let version = version.as_str().trim_end();
-                    if let Err(err) =
-                        storage_ext::apply_contract(storage, height, tx_pos, Some(version), None)
-                    {
+    for shard in &message.shards {
+        for change in &shard.state_changes {
+            // Use the `std::hint::unlikely` to hint to the compiler that the pattern is unlikely
+            if let StateChangeValueView::ContractCodeUpdate { account_id, code } = &change.value {
+                if account_id.as_str() == engine_account_id.as_ref() {
+                    let height = message.block.header.height;
+                    let tx_pos = match &change.cause {
+                        StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
+                            // Find the index of this receipt in the execution outcomes
+                            shard
+                                .receipt_execution_outcomes
+                                .iter()
+                                .position(|outcome| outcome.execution_outcome.id == *receipt_hash)
+                                .unwrap_or_default()
+                        }
+                        _ => 0,
+                    };
+                    let time = Instant::now();
+                    if let Err(err) = storage.runner_mut().set_code(code.clone()) {
                         tracing::error!(
                             err = format!("{err:?}"),
                             height = height,
-                            "failed to apply updated contract code",
+                            "the onchain code is not valid WASM",
+                        );
+                    } else if let Ok(version) = storage.runner_mut().get_version() {
+                        let version = version.as_str().trim_end();
+                        if let Err(err) =
+                            contract::apply(storage, height, tx_pos as u16, Some(version), None)
+                        {
+                            tracing::error!(
+                                err = format!("{err:?}"),
+                                height = height,
+                                "failed to apply updated contract code",
+                            );
+                        }
+                    } else {
+                        debug!(
+                            "Contract code updated at block height {} (code size {}), time elapsed {:?}",
+                            height,
+                            code.len(),
+                            time.elapsed()
                         );
                     }
-                } else {
-                    debug!(
-                        "Contract code updated at block height {} (code size {}), time elapsed {:?}",
-                        height,
-                        code.len(),
-                        time.elapsed()
-                    );
                 }
             }
         }

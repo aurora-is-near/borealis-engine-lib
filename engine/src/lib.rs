@@ -7,10 +7,9 @@ use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
 use engine_standalone_storage::{Storage, error, sync::TransactionIncludedOutcome};
 
-pub mod fetch_contract;
+pub mod contract;
+
 pub mod gas;
-pub mod runner;
-pub mod storage_ext;
 pub mod sync;
 #[cfg(test)]
 mod tests;

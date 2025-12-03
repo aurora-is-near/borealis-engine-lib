@@ -4,8 +4,9 @@ mod conversion;
 mod input;
 mod socket;
 mod store;
+
 use anyhow::anyhow;
-use aurora_standalone_engine::{fetch_contract, runner, storage_ext};
+use aurora_standalone_engine::contract;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -105,19 +106,26 @@ async fn main() -> anyhow::Result<()> {
                 config.refiner.chain_id,
             )
             .map_err(|err| anyhow!("Failed to create engine context: {:?}", err))?;
-            // TODO(vlad): get correct height
-            let version = runner::version::get(height.unwrap_or(134229098), true).await?;
-            storage_ext::apply_contract(
+            let version = contract::version::get(next_block, true)
+                .await
+                .or_else(|err| {
+                    if next_block == 0 || err.out_of_range() {
+                        Ok("3.7.0".to_owned())
+                    } else {
+                        Err(err)
+                    }
+                })?;
+            contract::apply(
                 &mut ctx.storage,
-                height.unwrap_or(134229098),
+                next_block,
                 0,
-                Some(version.as_str().trim_end()),
+                Some(version.as_str()),
                 args.contract_path.map(PathBuf::from),
             )?;
 
             if let Some(link) = &config.contract_source {
                 tracing::info!("Fetching contracts from source: {:?}", link);
-                if let Err(err) = fetch_contract::all(&mut ctx.storage, link).await {
+                if let Err(err) = contract::fetch_all(&mut ctx.storage, link).await {
                     tracing::error!("Failed to fetch contracts: {:?}", err);
                 }
             } else {

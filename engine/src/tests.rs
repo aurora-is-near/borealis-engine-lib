@@ -9,7 +9,7 @@ use aurora_refiner_types::near_block::NEARBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 
-use crate::storage_ext;
+use crate::contract;
 
 #[test]
 fn test_switch_contract() {
@@ -236,7 +236,7 @@ impl TestContext {
             Storage::open_ensure_account_id(storage_path.path(), &engine_account_id).unwrap();
         let snapshot = JsonSnapshot::load_from_file(snapshot_path).unwrap();
         json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
-        let (code, _) = storage_ext::load_from_file("3.7.0", None).unwrap();
+        let (code, _) = contract::load_from_file("3.7.0", None).unwrap();
         storage.runner_mut().set_code(code).unwrap();
         Self {
             storage,
