@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixes
+
+* fix: Update daily network tests workflow to increase runner disk size in [#264]
+
+[#264]: https://github.com/aurora-is-near/borealis-engine-lib/pull/264
+
 ## [0.30.9-2.10.1] 2025-12-03
 
 ### Changes
