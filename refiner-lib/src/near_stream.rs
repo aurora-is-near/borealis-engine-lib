@@ -4,7 +4,7 @@ use crate::tx_hash_tracker::TxHashTracker;
 use aurora_engine_modexp::AuroraModExp;
 use aurora_refiner_types::aurora_block::AuroraBlock;
 use aurora_refiner_types::near_block::NEARBlock;
-use aurora_standalone_engine::EngineContext;
+use aurora_standalone_engine::{EngineContext, contract};
 
 pub struct NearStream {
     /// Keep track of last block seen, to report empty blocks
@@ -39,6 +39,19 @@ impl NearStream {
 
     async fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
         self.handler.on_block_start(near_block);
+
+        if !self.context.storage.runner_mut().initialized() {
+            let block_height = near_block.block.header.height;
+            if let Err(err) =
+                contract::apply(&mut self.context.storage, block_height, 0, None, None)
+            {
+                tracing::error!(
+                    "Failed to apply contracts at block {}: {:?}",
+                    block_height,
+                    err
+                );
+            }
+        }
 
         let mut txs = Default::default();
 

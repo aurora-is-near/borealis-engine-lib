@@ -106,26 +106,28 @@ impl VersionRequest {
 }
 
 #[derive(Clone)]
-pub struct VersionMap(BTreeMap<u64, String>);
+pub struct VersionMap {
+    inaccurate: u64,
+    inner: BTreeMap<u64, String>,
+}
 
 impl Default for VersionMap {
     fn default() -> Self {
-        Self(
-            [
+        Self {
+            inaccurate: 160_000_000,
+            inner: BTreeMap::from([
                 (134229098, "3.7.0".to_owned()),
                 (143772514, "3.9.0".to_owned()),
                 (154664694, "3.9.1".to_owned()),
                 (159429079, "3.9.2".to_owned()),
-            ]
-            .into_iter()
-            .collect(),
-        )
+            ]),
+        }
     }
 }
 
 impl fmt::Display for VersionMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (height, version) in &self.0 {
+        for (height, version) in &self.inner {
             writeln!(f, "{height} -> {version}")?;
         }
 
@@ -134,24 +136,30 @@ impl fmt::Display for VersionMap {
 }
 
 impl VersionMap {
-    pub fn version_at_height(&self, height: u64) -> &str {
-        self.0
+    pub fn version_at_height(&self, height: u64) -> Option<&str> {
+        if height >= self.inaccurate {
+            return None;
+        }
+        if height < *self.inner.iter().next()?.0 {
+            return Some("3.6.4");
+        }
+        self.inner
             .iter()
             .take_while(|(x, _)| **x <= height)
             .last()
             .map(|(_, x)| x.as_ref())
-            .unwrap_or_else(|| "3.6.4")
     }
 
     pub async fn populate(&mut self) {
+        self.inaccurate = u64::MAX;
         let mut req = VersionRequest::default();
         let (mut initial_height, mut current_version) =
-            self.0.last_key_value().map(|(h, v)| (*h, v)).unwrap();
+            self.inner.last_key_value().map(|(h, v)| (*h, v)).unwrap();
         while let (next_height, Some(next_version)) =
             Self::populate_next(&mut req, initial_height, current_version).await
         {
             initial_height = next_height;
-            current_version = &*self.0.entry(next_height).or_insert(next_version);
+            current_version = &*self.inner.entry(next_height).or_insert(next_version);
         }
     }
 
@@ -231,21 +239,21 @@ mod tests_version_map {
     fn version_map() {
         let map = VersionMap::default();
 
-        assert_eq!(map.version_at_height(134229097), "3.6.4");
-        assert_eq!(map.version_at_height(134229098), "3.7.0");
-        assert_eq!(map.version_at_height(134229099), "3.7.0");
+        assert_eq!(map.version_at_height(134229097), Some("3.6.4"));
+        assert_eq!(map.version_at_height(134229098), Some("3.7.0"));
+        assert_eq!(map.version_at_height(134229099), Some("3.7.0"));
 
-        assert_eq!(map.version_at_height(143772513), "3.7.0");
-        assert_eq!(map.version_at_height(143772514), "3.9.0");
-        assert_eq!(map.version_at_height(143772515), "3.9.0");
+        assert_eq!(map.version_at_height(143772513), Some("3.7.0"));
+        assert_eq!(map.version_at_height(143772514), Some("3.9.0"));
+        assert_eq!(map.version_at_height(143772515), Some("3.9.0"));
 
-        assert_eq!(map.version_at_height(154664693), "3.9.0");
-        assert_eq!(map.version_at_height(154664694), "3.9.1");
-        assert_eq!(map.version_at_height(154664695), "3.9.1");
+        assert_eq!(map.version_at_height(154664693), Some("3.9.0"));
+        assert_eq!(map.version_at_height(154664694), Some("3.9.1"));
+        assert_eq!(map.version_at_height(154664695), Some("3.9.1"));
 
-        assert_eq!(map.version_at_height(159429078), "3.9.1");
-        assert_eq!(map.version_at_height(159429079), "3.9.2");
-        assert_eq!(map.version_at_height(159429080), "3.9.2");
+        assert_eq!(map.version_at_height(159429078), Some("3.9.1"));
+        assert_eq!(map.version_at_height(159429079), Some("3.9.2"));
+        assert_eq!(map.version_at_height(159429080), Some("3.9.2"));
     }
 
     #[tokio::test]
@@ -274,7 +282,7 @@ mod tests_version_map {
         .flatten()
         {
             let actual = req.run(height).await.unwrap();
-            let expected = map.version_at_height(height);
+            let expected = map.version_at_height(height).unwrap();
             assert_eq!(actual, expected, "{height}");
         }
     }

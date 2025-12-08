@@ -113,8 +113,8 @@ pub enum ContractApplyError {
     LoadError(#[from] io::Error),
     /// Must either provide a version string or the contract must be already deployed and
     /// height/pos is known.
-    #[error("Contract not found by height/pos and no version provided")]
-    NotFound,
+    #[error("Contract not found at {height}.{pos} and no version provided")]
+    NotFound { height: u64, pos: u16 },
 }
 
 /// Apply the contract so the standalone storage will execute this version when call
@@ -134,6 +134,9 @@ pub fn apply(
         storage.runner_mut().set_code(data)?;
         return Ok(());
     }
+
+    let map = version::VersionMap::default();
+    let version = version.or_else(|| map.version_at_height(height));
 
     if let Some(version) = version {
         let key = [&CONTRACT_KEY[..], version.as_bytes()].concat();
@@ -155,7 +158,8 @@ pub fn apply(
         storage.runner_mut().set_code(bytes)?;
         Ok(())
     } else {
-        Err(ContractApplyError::NotFound)
+        // TODO(vlad): initialize latest available wasm code
+        Err(ContractApplyError::NotFound { height, pos })
     }
 }
 
