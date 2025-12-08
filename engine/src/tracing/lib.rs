@@ -35,7 +35,7 @@ pub fn trace_transaction(
         let height = storage.get_block_height_by_hash(tx_msg.block_hash)?;
         (tx_msg, height)
     };
-    if let Err(err) = contract::apply(storage, height, tx_msg.position, None, None) {
+    if let Err(err) = contract::apply(storage, height, tx_msg.position, None) {
         tracing::error!(
             tx_hash = format!("{tx_hash:#x}"),
             height,

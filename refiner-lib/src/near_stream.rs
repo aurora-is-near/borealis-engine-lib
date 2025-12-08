@@ -42,9 +42,7 @@ impl NearStream {
 
         if !self.context.storage.runner_mut().initialized() {
             let block_height = near_block.block.header.height;
-            if let Err(err) =
-                contract::apply(&mut self.context.storage, block_height, 0, None, None)
-            {
+            if let Err(err) = contract::apply(&mut self.context.storage, block_height, 0, None) {
                 tracing::error!(
                     "Failed to apply contracts at block {}: {:?}",
                     block_height,
@@ -614,8 +612,12 @@ pub mod tests {
             crate::storage::init_storage(&engine_path, &account_id, chain_id);
             let mut engine_context =
                 EngineContext::new(&engine_path, account_id, chain_id).unwrap();
-            let (code, _) = contract::load_from_file("3.7.0", None).unwrap();
-            engine_context.storage.runner_mut().set_code(code).unwrap();
+            let code = contract::bundled::get("3.7.0").unwrap();
+            engine_context
+                .storage
+                .runner_mut()
+                .set_code(code.to_vec())
+                .unwrap();
             let tx_tracker = TxHashTracker::new(tracker_path, 0).unwrap();
 
             Self {

@@ -115,13 +115,7 @@ async fn main() -> anyhow::Result<()> {
                         Err(err)
                     }
                 })?;
-            contract::apply(
-                &mut ctx.storage,
-                next_block,
-                0,
-                Some(version.as_str()),
-                args.contract_path.map(PathBuf::from),
-            )?;
+            contract::apply(&mut ctx.storage, next_block, 0, Some(version.as_str()))?;
 
             if let Some(link) = &config.contract_source {
                 tracing::info!("Fetching contracts from source: {:?}", link);

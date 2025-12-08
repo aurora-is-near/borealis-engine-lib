@@ -494,7 +494,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.9.2"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -516,7 +516,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "hex",
  "num",
@@ -536,7 +536,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -552,7 +552,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-sdk"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-types",
  "base64 0.22.1",
@@ -566,7 +566,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -578,7 +578,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "2.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "borsh",
  "bs58 0.5.1",
@@ -2778,7 +2778,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine",
  "aurora-engine-modexp",
@@ -2803,7 +2803,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?branch=feat%2Fwasm-tracing#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
 dependencies = [
  "aurora-engine-types",
  "aurora-evm",

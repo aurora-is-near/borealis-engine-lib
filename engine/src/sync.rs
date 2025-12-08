@@ -89,7 +89,7 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                     } else if let Ok(version) = storage.runner_mut().get_version() {
                         let version = version.as_str().trim_end();
                         if let Err(err) =
-                            contract::apply(storage, height, tx_pos as u16, Some(version), None)
+                            contract::apply(storage, height, tx_pos as u16, Some(version))
                         {
                             tracing::error!(
                                 err = format!("{err:?}"),

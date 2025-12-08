@@ -236,8 +236,8 @@ impl TestContext {
             Storage::open_ensure_account_id(storage_path.path(), &engine_account_id).unwrap();
         let snapshot = JsonSnapshot::load_from_file(snapshot_path).unwrap();
         json_snapshot::initialize_engine_state(&storage, snapshot).unwrap();
-        let (code, _) = contract::load_from_file("3.7.0", None).unwrap();
-        storage.runner_mut().set_code(code).unwrap();
+        let code = contract::bundled::get("3.7.0").unwrap();
+        storage.runner_mut().set_code(code.to_vec()).unwrap();
         Self {
             storage,
             storage_path,

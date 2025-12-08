@@ -2,13 +2,12 @@ mod fetch;
 mod github;
 pub mod version;
 
-use std::{fs, io, path::PathBuf};
+use std::io;
 
 use futures::{Stream, StreamExt};
 
 use aurora_refiner_types::source_config::ContractSource;
 use engine_standalone_storage::{Error, Storage, WasmInitError};
-use near_primitives_core::hash::CryptoHash;
 
 /// Fetch all versions of the contract from the given source and store in the storage.
 /// The source must be TLS protected.
@@ -124,7 +123,6 @@ pub fn apply(
     height: u64,
     pos: u16,
     version: Option<&str>,
-    override_prefix: Option<PathBuf>,
 ) -> Result<(), ContractApplyError> {
     if let Some(data) = storage
         .get_custom_data_at(CONTRACT_KEY, height, pos)
@@ -154,36 +152,14 @@ pub fn apply(
     }
 
     if let Some(version) = version {
-        let (bytes, _) = load_from_file(&version, override_prefix)?;
-        storage.runner_mut().set_code(bytes)?;
+        let bytes =
+            bundled::get(&version).ok_or_else(|| ContractApplyError::NotFound { height, pos })?;
+        storage.runner_mut().set_code(bytes.to_vec())?;
         Ok(())
     } else {
         // TODO(vlad): initialize latest available wasm code
         Err(ContractApplyError::NotFound { height, pos })
     }
-}
-
-/// Load versions of the contract that are provided in the filsystem.
-pub fn load_from_file(
-    version: &str,
-    override_prefix: Option<PathBuf>,
-) -> io::Result<(Vec<u8>, Option<CryptoHash>)> {
-    let prefix = override_prefix.clone().unwrap_or_else(|| "etc/res".into());
-    let path = prefix.join(format!("aurora-engine-{}.wasm", version));
-    fs::read(&path)
-        .map(|code| (code, None))
-        .map_err(|e| {
-            let err = format!("Failed to read `{}`: {e}", path.display());
-            io::Error::new(e.kind(), err)
-        })
-        .or_else(|err| {
-            if override_prefix.is_none() {
-                // tests are run from the crate root, not from workspace root
-                load_from_file(version, Some(PathBuf::from("../etc/res")))
-            } else {
-                Err(err)
-            }
-        })
 }
 
 const CONTRACT_KEY: &[u8] = b"\0";
@@ -198,4 +174,23 @@ fn store_contract_by_version(storage: &Storage, version: &str, value: &[u8]) -> 
     storage
         .set_custom_data(&[&CONTRACT_KEY[..], version.as_bytes()].concat(), &value)
         .map_err(Error::Rocksdb)
+}
+
+pub mod bundled {
+    pub static CONTRACT_3_6_4: &[u8] = include_bytes!("../../../etc/res/aurora-engine-3.6.4.wasm");
+    pub static CONTRACT_3_7_0: &[u8] = include_bytes!("../../../etc/res/aurora-engine-3.7.0.wasm");
+    pub static CONTRACT_3_9_0: &[u8] = include_bytes!("../../../etc/res/aurora-engine-3.9.0.wasm");
+    pub static CONTRACT_3_9_1: &[u8] = include_bytes!("../../../etc/res/aurora-engine-3.9.1.wasm");
+    pub static CONTRACT_3_9_2: &[u8] = include_bytes!("../../../etc/res/aurora-engine-3.9.2.wasm");
+
+    pub fn get(version: &str) -> Option<&'static [u8]> {
+        match version {
+            "3.6.4" => Some(CONTRACT_3_6_4),
+            "3.7.0" => Some(CONTRACT_3_7_0),
+            "3.9.0" => Some(CONTRACT_3_9_0),
+            "3.9.1" => Some(CONTRACT_3_9_1),
+            "3.9.2" => Some(CONTRACT_3_9_2),
+            _ => None,
+        }
+    }
 }
