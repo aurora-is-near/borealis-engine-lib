@@ -161,6 +161,14 @@ pub fn apply(
     }
 
     if let Some(version) = version {
+        if version::ver_cmp(version, "3.6.4").is_lt() {
+            tracing::debug!(
+                height = height,
+                version = version,
+                "skip update because the version is bellow 3.6.4"
+            );
+            return Ok(());
+        }
         tracing::debug!(
             height = height,
             version = version,

@@ -295,3 +295,31 @@ mod tests_version_map {
         println!("{map}");
     }
 }
+
+pub fn ver_cmp(lhs: &str, rhs: &str) -> std::cmp::Ordering {
+    let lhs = lhs
+        .split('.')
+        .map(|s| s.parse::<usize>().unwrap_or_default());
+    let rhs = rhs
+        .split('.')
+        .map(|s| s.parse::<usize>().unwrap_or_default());
+    lhs.cmp(rhs)
+}
+
+#[cfg(test)]
+mod test_cmp {
+    use super::ver_cmp;
+
+    #[test]
+    fn edge_case() {
+        assert!(!ver_cmp("3.7.0", "3.7.0").is_lt());
+    }
+
+    #[test]
+    fn basic() {
+        assert!(ver_cmp("3.7.0", "3.6.0").is_gt());
+        assert!(ver_cmp("3.7.0", "2.0.0").is_gt());
+        assert!(ver_cmp("3.7.0", ".0.0").is_gt());
+        assert!(ver_cmp("3.7.0", "5.6.7").is_lt());
+    }
+}
