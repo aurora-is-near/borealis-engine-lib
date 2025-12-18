@@ -82,46 +82,46 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                         _ => 0,
                     };
                     let time = Instant::now();
-                    // TODO: store current contract properly
-                    let current_version = storage
-                        .runner_mut()
-                        .get_version_at_wrapper()
-                        .unwrap_or_else(|_| "3.7.0".to_owned());
-                    if let Err(err) = storage.runner_mut().set_code(code.clone()) {
+                    // hold locally fresh runtime so not mess the main one
+                    // use it to get the version of onchain contract
+                    let mut storage_local = storage.share();
+                    if let Err(err) = storage_local.runner_mut().set_code(code.clone()) {
                         tracing::error!(
                             err = format!("{err:?}"),
                             height = height,
                             "the onchain code is not valid WASM, continue with the old code",
                         );
+                        drop(storage_local);
                     } else {
-                        let version = match storage.runner_mut().get_version() {
-                            Ok(v) => v,
+                        match storage_local.runner_mut().get_version() {
+                            Ok(version) => {
+                                drop(storage_local);
+                                // have a version, don't need the local runtime anymore
+                                let version = version.as_str().trim_end();
+                                if let Err(err) =
+                                    contract::apply(storage, height, tx_pos as u16, Some(version))
+                                {
+                                    tracing::error!(
+                                        err = format!("{err:?}"),
+                                        height = height,
+                                        "failed to apply updated contract code",
+                                    );
+                                } else {
+                                    tracing::info!(
+                                        height = height,
+                                        version = version,
+                                        "the contract code updated, time elapsed {:?}",
+                                        time.elapsed()
+                                    );
+                                }
+                            }
                             Err(err) => {
                                 tracing::error!(
                                     err = format!("{err:?}"),
                                     height = height,
-                                    previous_version = current_version,
                                     "the onchain code is not valid WASM, cannot get version, restore previous version",
                                 );
-                                current_version
                             }
-                        };
-                        let version = version.as_str().trim_end();
-                        if let Err(err) =
-                            contract::apply(storage, height, tx_pos as u16, Some(version))
-                        {
-                            tracing::error!(
-                                err = format!("{err:?}"),
-                                height = height,
-                                "failed to apply updated contract code",
-                            );
-                        } else {
-                            tracing::info!(
-                                height = height,
-                                version = version,
-                                "the contract code updated, time elapsed {:?}",
-                                time.elapsed()
-                            );
                         }
                     }
                 }
