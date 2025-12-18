@@ -82,13 +82,30 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                         _ => 0,
                     };
                     let time = Instant::now();
+                    // TODO: store current contract properly
+                    let current_version = storage
+                        .runner_mut()
+                        .get_version_at_wrapper()
+                        .unwrap_or_else(|_| "3.7.0".to_owned());
                     if let Err(err) = storage.runner_mut().set_code(code.clone()) {
                         tracing::error!(
                             err = format!("{err:?}"),
                             height = height,
-                            "the onchain code is not valid WASM",
+                            "the onchain code is not valid WASM, continue with the old code",
                         );
-                    } else if let Ok(version) = storage.runner_mut().get_version() {
+                    } else {
+                        let version = match storage.runner_mut().get_version() {
+                            Ok(v) => v,
+                            Err(err) => {
+                                tracing::error!(
+                                    err = format!("{err:?}"),
+                                    height = height,
+                                    previous_version = current_version,
+                                    "the onchain code is not valid WASM, cannot get version, restore previous version",
+                                );
+                                current_version
+                            }
+                        };
                         let version = version.as_str().trim_end();
                         if let Err(err) =
                             contract::apply(storage, height, tx_pos as u16, Some(version))
@@ -98,14 +115,14 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
                                 height = height,
                                 "failed to apply updated contract code",
                             );
+                        } else {
+                            tracing::info!(
+                                height = height,
+                                version = version,
+                                "the contract code updated, time elapsed {:?}",
+                                time.elapsed()
+                            );
                         }
-                    } else {
-                        debug!(
-                            "Contract code updated at block height {} (code size {}), time elapsed {:?}",
-                            height,
-                            code.len(),
-                            time.elapsed()
-                        );
                     }
                 }
             }

@@ -129,6 +129,10 @@ pub fn apply(
         .map_err(Error::Rocksdb)
         .map_err(ContractApplyError::Db)?
     {
+        tracing::debug!(
+            height = height,
+            "apply contract code stored by block height"
+        );
         storage.runner_mut().set_code(data)?;
         return Ok(());
     }
@@ -143,6 +147,11 @@ pub fn apply(
             .map_err(Error::Rocksdb)
             .map_err(ContractApplyError::Db)?
         {
+            tracing::debug!(
+                height = height,
+                version = version,
+                "apply contract code stored by version"
+            );
             store_contract(storage, height, pos, &data).map_err(ContractApplyError::Db)?;
             // TODO(vlad): consider removing versioned data after storing it in height/pos
             // storage.remove_custom_data(&key)?;
@@ -152,6 +161,12 @@ pub fn apply(
     }
 
     if let Some(version) = version {
+        tracing::debug!(
+            height = height,
+            version = version,
+            "apply contract code bundled in the library"
+        );
+
         let bytes =
             bundled::get(&version).ok_or_else(|| ContractApplyError::NotFound { height, pos })?;
         storage.runner_mut().set_code(bytes.to_vec())?;
