@@ -2,6 +2,9 @@ mod fetch;
 mod github;
 pub mod version;
 
+#[cfg(test)]
+mod tests;
+
 use std::io;
 
 use futures::{Stream, StreamExt};
@@ -38,6 +41,25 @@ pub async fn fetch_all(storage: &Storage, source: &ContractSource) -> Result<(),
                         "No aurora-compat.wasm asset found"
                     );
                     continue;
+                }
+            }
+        }
+        ContractSource::Mock => {
+            let list = [
+                ("3.6.4", bundled::CONTRACT_3_6_4),
+                ("3.7.0", bundled::CONTRACT_3_7_0),
+                ("3.9.0", bundled::CONTRACT_3_9_0),
+                ("3.9.1", bundled::CONTRACT_3_9_1),
+            ];
+            for (version, code) in list {
+                if let Err(err) = store_contract_by_version(storage, version, code) {
+                    tracing::error!(
+                        version = version,
+                        err = format!("{err:?}"),
+                        "Failed to store contract in storage"
+                    );
+                } else {
+                    tracing::info!(version = version, "Stored contract in storage");
                 }
             }
         }
@@ -124,25 +146,9 @@ pub fn apply(
     pos: u16,
     version: Option<&str>,
 ) -> Result<(), ContractApplyError> {
-    if let Some(data) = storage
-        .get_custom_data_at(CONTRACT_KEY, height, pos)
-        .map_err(Error::Rocksdb)
-        .map_err(ContractApplyError::Db)?
-    {
-        tracing::debug!(
-            height = height,
-            "apply contract code stored by block height"
-        );
-        storage.runner_mut().set_code(data)?;
-        return Ok(());
-    }
-
-    let map = version::VersionMap::default();
-    let version = version.or_else(|| map.version_at_height(height));
-
     if let Some(version) = version {
         let key = [&CONTRACT_KEY[..], version.as_bytes()].concat();
-        if let Some(data) = storage
+        return if let Some(data) = storage
             .get_custom_data(&key)
             .map_err(Error::Rocksdb)
             .map_err(ContractApplyError::Db)?
@@ -156,29 +162,39 @@ pub fn apply(
             // TODO(vlad): consider removing versioned data after storing it in height/pos
             // storage.remove_custom_data(&key)?;
             storage.runner_mut().set_code(data)?;
-            return Ok(());
-        }
-    }
+            Ok(())
+        } else {
+            if version::ver_cmp(version, "3.6.4").is_lt() {
+                tracing::debug!(
+                    height = height,
+                    version = version,
+                    "skip update because the version is bellow 3.6.4"
+                );
+                Ok(())
+            } else {
+                tracing::debug!(
+                    height = height,
+                    version = version,
+                    "apply contract code bundled in the library"
+                );
 
-    if let Some(version) = version {
-        if version::ver_cmp(version, "3.6.4").is_lt() {
-            tracing::debug!(
-                height = height,
-                version = version,
-                "skip update because the version is bellow 3.6.4"
-            );
-            return Ok(());
-        }
+                let bytes = bundled::get(&version)
+                    .ok_or_else(|| ContractApplyError::NotFound { height, pos })?;
+                storage.runner_mut().set_code(bytes.to_vec())?;
+                Ok(())
+            }
+        };
+    } else if let Some(data) = storage
+        .get_custom_data_at(CONTRACT_KEY, height, pos)
+        .map_err(Error::Rocksdb)
+        .map_err(ContractApplyError::Db)?
+    {
         tracing::debug!(
             height = height,
-            version = version,
-            "apply contract code bundled in the library"
+            "apply contract code stored by block height"
         );
-
-        let bytes =
-            bundled::get(&version).ok_or_else(|| ContractApplyError::NotFound { height, pos })?;
-        storage.runner_mut().set_code(bytes.to_vec())?;
-        Ok(())
+        storage.runner_mut().set_code(data)?;
+        return Ok(());
     } else {
         // TODO(vlad): initialize latest available wasm code
         Err(ContractApplyError::NotFound { height, pos })

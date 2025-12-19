@@ -31,5 +31,6 @@ pub async fn run(version: &str, link: &ContractSource) -> Result<Vec<u8>, Error>
                 Err(Error::Status(reqwest::StatusCode::NOT_FOUND))
             }
         }
+        ContractSource::Mock => Err(Error::Status(reqwest::StatusCode::NOT_FOUND)),
     }
 }
