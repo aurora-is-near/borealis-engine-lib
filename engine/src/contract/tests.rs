@@ -12,7 +12,7 @@ async fn scenario() {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .try_init()
-        .unwrap();
+        .unwrap_or_default();
 
     let engine_account_id = "aurora".parse().unwrap();
     let storage_path = tempfile::tempdir().unwrap();
