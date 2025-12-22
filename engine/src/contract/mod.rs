@@ -180,6 +180,7 @@ pub fn apply(
 
                 let bytes = bundled::get(&version)
                     .ok_or_else(|| ContractApplyError::NotFound { height, pos })?;
+                store_contract(storage, height, pos, bytes).map_err(ContractApplyError::Db)?;
                 storage.runner_mut().set_code(bytes.to_vec())?;
                 Ok(())
             }
