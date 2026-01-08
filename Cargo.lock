@@ -198,6 +198,130 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
+name = "ark-bn254"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d69eab57e8d2663efa5c63135b2af4f396d66424f88954c21104125ab6b3e6bc"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+]
+
+[[package]]
+name = "ark-ec"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43d68f2d516162846c1238e755a7c4d131b892b70cc70c471a8e3ca3ed818fce"
+dependencies = [
+ "ahash 0.8.12",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "educe",
+ "fnv",
+ "hashbrown 0.15.5",
+ "itertools 0.13.0",
+ "num-bigint 0.4.6",
+ "num-integer",
+ "num-traits",
+ "zeroize",
+]
+
+[[package]]
+name = "ark-ff"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a177aba0ed1e0fbb62aa9f6d0502e9b46dad8c2eab04c14258a1212d2557ea70"
+dependencies = [
+ "ark-ff-asm",
+ "ark-ff-macros",
+ "ark-serialize",
+ "ark-std",
+ "arrayvec 0.7.6",
+ "digest 0.10.7",
+ "educe",
+ "itertools 0.13.0",
+ "num-bigint 0.4.6",
+ "num-traits",
+ "paste",
+ "zeroize",
+]
+
+[[package]]
+name = "ark-ff-asm"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62945a2f7e6de02a31fe400aa489f0e0f5b2502e69f95f853adb82a96c7a6b60"
+dependencies = [
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "ark-ff-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09be120733ee33f7693ceaa202ca41accd5653b779563608f1234f78ae07c4b3"
+dependencies = [
+ "num-bigint 0.4.6",
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "ark-poly"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "579305839da207f02b89cd1679e50e67b4331e2f9294a57693e5051b7703fe27"
+dependencies = [
+ "ahash 0.8.12",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
+ "educe",
+ "fnv",
+ "hashbrown 0.15.5",
+]
+
+[[package]]
+name = "ark-serialize"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f4d068aaf107ebcd7dfb52bc748f8030e0fc930ac8e360146ca54c1203088f7"
+dependencies = [
+ "ark-serialize-derive",
+ "ark-std",
+ "arrayvec 0.7.6",
+ "digest 0.10.7",
+ "num-bigint 0.4.6",
+]
+
+[[package]]
+name = "ark-serialize-derive"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213888f660fddcca0d257e88e54ac05bca01885f258ccdf695bafd77031bb69d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "ark-std"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "246a225cc6131e9ee4f24619af0f19d67761fff15d7ccc22e42b80846e69449a"
+dependencies = [
+ "num-traits",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,7 +397,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine"
 version = "3.9.2"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine-hashchain",
  "aurora-engine-modexp",
@@ -295,7 +419,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-hashchain"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -306,7 +430,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-modexp"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "hex",
  "num",
@@ -315,7 +439,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-precompiles"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine-modexp",
  "aurora-engine-sdk",
@@ -330,22 +454,25 @@ dependencies = [
 
 [[package]]
 name = "aurora-engine-sdk"
-version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+version = "1.3.0"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-serialize",
  "aurora-engine-types",
  "base64 0.22.1",
  "libsecp256k1",
  "ripemd",
  "sha2 0.10.9",
  "sha3",
- "zeropool-bn",
 ]
 
 [[package]]
 name = "aurora-engine-transactions"
 version = "1.2.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine-sdk",
  "aurora-engine-types",
@@ -357,7 +484,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "2.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "borsh",
  "bs58 0.5.1",
@@ -1130,7 +1257,7 @@ dependencies = [
  "bitflags 2.10.0",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.10.5",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -1632,9 +1759,9 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "corosensei"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d46a43097861058cb45affe888e40ba19b57a8210650144cdc7b50c9d87840a"
+checksum = "2b2b4c7e3e97730e6b0b8c5ff5ca82c663d1a645e4f630f4fa4c24e80626787e"
 dependencies = [
  "autocfg",
  "cfg-if 1.0.4",
@@ -2447,6 +2574,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "educe"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7bc049e1bd8cdeb31b68bbd586a9464ecf9f3944af3958a7a9d0f8b9799417"
+dependencies = [
+ "enum-ordinalize",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2502,14 +2641,12 @@ dependencies = [
 [[package]]
 name = "engine-standalone-storage"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine",
- "aurora-engine-modexp",
  "aurora-engine-sdk",
  "aurora-engine-transactions",
  "aurora-engine-types",
- "aurora-evm",
  "engine-standalone-tracing",
  "hex",
  "libsecp256k1",
@@ -2527,7 +2664,7 @@ dependencies = [
 [[package]]
 name = "engine-standalone-tracing"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=5b77d66c3c635027be675929420f73d4eedfa3f9#5b77d66c3c635027be675929420f73d4eedfa3f9"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=935afefaed42c1b16581288f6e4c290a0a679736#935afefaed42c1b16581288f6e4c290a0a679736"
 dependencies = [
  "aurora-engine-types",
  "aurora-evm",
@@ -2570,6 +2707,26 @@ name = "enum-map-derive"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "enum-ordinalize"
+version = "4.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a1091a7bb1f8f2c4b28f1fe2cef4980ca2d410a3d727d67ecc3178c9b0800f0"
+dependencies = [
+ "enum-ordinalize-derive",
+]
+
+[[package]]
+name = "enum-ordinalize-derive"
+version = "4.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ca9601fb2d62598ee17836250842873a413586e5d7ed88b356e38ddbb0ec631"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7692,9 +7849,9 @@ dependencies = [
 
 [[package]]
 name = "self_cell"
-version = "1.2.1"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c2f82143577edb4921b71ede051dac62ca3c16084e918bf7b40c96ae10eb33"
+checksum = "b12e76d157a900eb52e81bc6e9f3069344290341720e9178cde2407113ac8d89"
 
 [[package]]
 name = "semver"
@@ -8866,7 +9023,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.4",
+ "cfg-if 0.1.10",
  "static_assertions",
 ]
 
@@ -9278,12 +9435,12 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.242.0"
+version = "0.243.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67f90e55bc9c6ee6954a757cc6eb3424d96b442e5252ed10fea627e518878d36"
+checksum = "c55db9c896d70bd9fa535ce83cd4e1f2ec3726b0edd2142079f594fc3be1cb35"
 dependencies = [
  "leb128fmt",
- "wasmparser 0.242.0",
+ "wasmparser 0.243.0",
 ]
 
 [[package]]
@@ -9507,9 +9664,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.242.0"
+version = "0.243.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed3c6e611f4cd748d85c767815823b777dc56afca793fcda27beae4e85028849"
+checksum = "f6d8db401b0528ec316dfbe579e6ab4152d61739cfe076706d2009127970159d"
 dependencies = [
  "bitflags 2.10.0",
  "indexmap 2.12.1",
@@ -9717,22 +9874,22 @@ dependencies = [
 
 [[package]]
 name = "wast"
-version = "242.0.0"
+version = "243.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50a61ae2997784a4ae2a47b3a99f7cf0ad2a54db09624a28a0c2e9d7a24408ce"
+checksum = "df21d01c2d91e46cb7a221d79e58a2d210ea02020d57c092e79255cc2999ca7f"
 dependencies = [
  "bumpalo",
  "leb128fmt",
  "memchr",
  "unicode-width",
- "wasm-encoder 0.242.0",
+ "wasm-encoder 0.243.0",
 ]
 
 [[package]]
 name = "wat"
-version = "1.242.0"
+version = "1.243.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ae8cf6adfb79b5d89cb3fe68bd56aaab9409d9cf23b588097eae7d75585dae2"
+checksum = "226a9a91cd80a50449312fef0c75c23478fcecfcc4092bdebe1dc8e760ef521b"
 dependencies = [
  "wast",
 ]

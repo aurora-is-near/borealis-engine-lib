@@ -20,14 +20,14 @@ license = "CC0-1.0"
 actix = "0.13"
 anyhow = "1"
 bytes = "1.10"
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std"] }
-aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std"] }
-aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["std"] }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false }
-engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "5b77d66c3c635027be675929420f73d4eedfa3f9", default-features = false, features = ["impl-serde"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std"] }
+aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std"] }
+aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["std"] }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false }
+engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", rev = "935afefaed42c1b16581288f6e4c290a0a679736", default-features = false, features = ["impl-serde"] }
 aurora-refiner-lib = { path = "refiner-lib" }
 aurora-refiner-types = { path = "refiner-types" }
 aurora-standalone-engine = { path = "engine" }
