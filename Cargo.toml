@@ -19,14 +19,14 @@ license = "CC0-1.0"
 [workspace.dependencies]
 actix = "0.13"
 anyhow = "1"
-aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["ext-connector", "std", "tracing", "log", "impl-serde"] }
-aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std", "impl-serde"] }
-aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std"] }
-aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std"] }
-aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["std"] }
-engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["ext-connector"] }
-engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.9.0", default-features = false, features = ["impl-serde"] }
+aurora-engine = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std", "tracing", "log", "impl-serde"] }
+aurora-engine-transactions = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std", "impl-serde"] }
+aurora-engine-sdk = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std"] }
+aurora-engine-modexp = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std"] }
+aurora-engine-hashchain = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["std"] }
+engine-standalone-storage = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false }
+engine-standalone-tracing = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.10.0", default-features = false, features = ["impl-serde"] }
 aurora-refiner-lib = { path = "refiner-lib" }
 aurora-refiner-types = { path = "refiner-types" }
 aurora-standalone-engine = { path = "engine" }
@@ -45,8 +45,8 @@ near-primitives = { git = "https://github.com/near/nearcore", tag = "2.10.4" }
 near-crypto-crates-io = { version = "0.34.0", package = "near-crypto" }
 near-primitives-crates-io = { version = "0.34.0", package = "near-primitives" }
 # Temporary pin to pick up near-primitives 0.31 compatibility. Revert to crates.io once upstream releases.
-near-lake-framework =  { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "4ae528a7faa8d17792ec1ac4e7f3d4eba0587bc5" }
-prometheus = "0.13"
+near-lake-framework = { git = "https://github.com/aleksuss/near-lake-framework-rs.git", rev = "4ae528a7faa8d17792ec1ac4e7f3d4eba0587bc5" }
+prometheus = "0.14"
 rlp = "0.6"
 rocksdb = { version = "0.21", default-features = false, features = ["snappy", "zstd", "zlib", "bzip2"] }
 serde = { version = "1", features = ["derive"] }

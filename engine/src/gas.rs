@@ -5,6 +5,7 @@ use aurora_engine::{
 use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_sdk::io::IO;
 use aurora_engine_transactions::NormalizedEthTransaction;
+use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::{
     H160, H256, U256, storage,
     types::{Address, NearGas, Wei},
@@ -194,6 +195,7 @@ pub struct EthCallRequest {
     pub block_id: BlockId,
     pub nonce: Option<u64>,
     pub state_override: Vec<(Address, StateOverride)>,
+    pub access_list: Vec<AccessTuple>,
 }
 
 impl EthCallRequest {
@@ -215,6 +217,7 @@ impl EthCallRequest {
         let nonce = parse_hex_int(params_obj, "nonce", None).map(|x| x.low_u64());
         let block_id = BlockId::from_json_value(params.get(1))?;
         let state_override = StateOverride::from_json_value(params.get(2))?;
+        let access_list = Self::parse_access_list(params_obj, "accessList").unwrap_or_default();
 
         Some(Self {
             from,
@@ -226,6 +229,7 @@ impl EthCallRequest {
             block_id,
             nonce,
             state_override,
+            access_list,
         })
     }
 
@@ -243,23 +247,27 @@ impl EthCallRequest {
         }
         Address::decode(hex_str).ok()
     }
+
+    fn parse_access_list(
+        body_obj: &serde_json::Map<String, serde_json::Value>,
+        field: &str,
+    ) -> Option<Vec<AccessTuple>> {
+        let access_list_obj = body_obj.get(field).cloned()?;
+
+        serde_json::from_value::<Vec<AccessListItem>>(access_list_obj)
+            .ok()
+            .map(|access_list| access_list.into_iter().map(Into::into).collect())
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn eth_call(
-    from: Address,
-    to: Option<Address>,
-    gas_limit: u64,
-    gas_price: U256,
-    value: Wei,
-    data: Vec<u8>,
     storage: &Storage,
-    block_id: BlockId,
-    nonce: Option<u64>,
+    request: EthCallRequest,
+    gas_limit: u64,
     earliest_block_height: u64,
-    state_override: Vec<(Address, StateOverride)>,
 ) -> (Result<SubmitResult, StateOrEngineError>, NonceStatus) {
-    let (block_hash, block_height) = match block_id {
+    let (block_hash, block_height) = match request.block_id {
         BlockId::Number(b) => (storage.get_block_hash_by_height(b).unwrap_or_default(), b),
         BlockId::Hash(h) => (
             h,
@@ -302,56 +310,44 @@ fn eth_call(
     };
     storage
         .with_engine_access(block_height + 1, 0, &[], |io| {
-            let current_nonce = aurora_engine::engine::get_nonce(&io, &from).low_u64();
+            let current_nonce = aurora_engine::engine::get_nonce(&io, &request.from).low_u64();
             let mut local_io = io;
             let mut full_override = HashMap::new();
-            for (address, state_override) in state_override {
+            for (address, state_override) in &request.state_override {
                 if let Some(balance) = state_override.balance {
-                    aurora_engine::engine::set_balance(&mut local_io, &address, &Wei::new(balance));
+                    aurora_engine::engine::set_balance(&mut local_io, address, &Wei::new(balance));
                 }
                 if let Some(nonce) = state_override.nonce {
-                    aurora_engine::engine::set_nonce(&mut local_io, &address, &nonce);
+                    aurora_engine::engine::set_nonce(&mut local_io, address, &nonce);
                 }
-                if let Some(code) = state_override.code {
-                    aurora_engine::engine::set_code(&mut local_io, &address, &code);
+                if let Some(code) = &state_override.code {
+                    aurora_engine::engine::set_code(&mut local_io, address, code);
                 }
-                if let Some(state) = state_override.state {
-                    full_override.insert(address.raw(), state);
+                if let Some(state) = &state_override.state {
+                    full_override.insert(address.raw(), state.clone());
                 }
-                if let Some(state_diff) = state_override.state_diff {
-                    let generation = aurora_engine::engine::get_generation(&local_io, &address);
+                if let Some(state_diff) = &state_override.state_diff {
+                    let generation = aurora_engine::engine::get_generation(&local_io, address);
                     for (k, v) in state_diff {
                         aurora_engine::engine::set_storage(
                             &mut local_io,
-                            &address,
-                            &k,
-                            &v,
+                            address,
+                            k,
+                            v,
                             generation,
                         );
                     }
                 }
             }
-
+            let nonce = request.nonce;
             let submit_result = if full_override.is_empty() {
-                compute_call_result(
-                    local_io, from, to, gas_limit, gas_price, value, data, nonce, env,
-                )
+                compute_call_result(local_io, env, request, gas_limit)
             } else {
                 let override_io = EngineStateOverride {
                     inner: local_io,
                     state_override: &full_override,
                 };
-                compute_call_result(
-                    override_io,
-                    from,
-                    to,
-                    gas_limit,
-                    gas_price,
-                    value,
-                    data,
-                    nonce,
-                    env,
-                )
+                compute_call_result(override_io, env, request, gas_limit)
             };
             let nonce_status = nonce.map_or(NonceStatus::NotProvided { current_nonce }, |nonce| {
                 if nonce < current_nonce {
@@ -461,14 +457,9 @@ pub enum StateOrEngineError {
 #[allow(clippy::too_many_arguments)]
 fn compute_call_result<I: IO + Copy>(
     io: I,
-    from: Address,
-    to: Option<Address>,
-    gas_limit: u64,
-    gas_price: U256,
-    value: Wei,
-    data: Vec<u8>,
-    nonce: Option<u64>,
     env: aurora_engine_sdk::env::Fixed,
+    request: EthCallRequest,
+    gas_limit: u64,
 ) -> Result<SubmitResult, StateOrEngineError> {
     let mut handler = aurora_engine_sdk::promise::Noop;
     aurora_engine::state::get_state(&io)
@@ -476,38 +467,61 @@ fn compute_call_result<I: IO + Copy>(
         .and_then(|engine_state| {
             let mut engine: Engine<_, _, AuroraModExp> = Engine::new_with_state(
                 engine_state,
-                from,
+                request.from,
                 env.current_account_id.clone(),
                 io,
                 &env,
             );
-            let result = match to {
+            let access_list = request
+                .access_list
+                .iter()
+                .map(|a| (a.address, a.storage_keys.clone()))
+                .collect();
+            let result = match request.to {
                 Some(to) => engine
-                    .call(&from, &to, value, data, gas_limit, Vec::new(), &mut handler)
+                    .call(
+                        &request.from,
+                        &to,
+                        request.value,
+                        request.data,
+                        gas_limit,
+                        access_list,
+                        Vec::new(),
+                        &mut handler,
+                    )
                     .map_err(StateOrEngineError::Engine),
                 None => engine
-                    .deploy_code(from, value, data, None, gas_limit, Vec::new(), &mut handler)
+                    .deploy_code(
+                        request.from,
+                        request.value,
+                        request.data,
+                        None,
+                        gas_limit,
+                        access_list,
+                        &mut handler,
+                    )
                     .map_err(StateOrEngineError::Engine),
             };
-            if !gas_price.is_zero() && result.is_ok() {
+            if !request.gas_price.is_zero() && result.is_ok() {
                 let gas_used = result.as_ref().unwrap().gas_used;
                 let gas_estimate = gas_used.saturating_add(gas_used / 3);
                 let transaction = NormalizedEthTransaction {
-                    address: from,
+                    address: request.from,
                     chain_id: None,
-                    nonce: nonce.map(U256::from).unwrap_or_default(),
+                    nonce: request.nonce.map(U256::from).unwrap_or_default(),
                     gas_limit: U256::from(gas_estimate),
-                    max_priority_fee_per_gas: gas_price,
-                    max_fee_per_gas: gas_price,
-                    to,
-                    value,
+                    max_priority_fee_per_gas: request.gas_price,
+                    max_fee_per_gas: request.gas_price,
+                    to: request.to,
+                    value: request.value,
                     // We do not use the real `data` here to avoid moving it before passing to `call`.
                     // It is ok to not have the `data` here because it is not used by the `charge_gas` function.
                     data: Vec::new(),
-                    access_list: Vec::new(),
+                    access_list: request.access_list,
+                    authorization_list: Vec::new(),
                 };
                 engine
-                    .charge_gas(&from, &transaction, None, None)
+                    .charge_gas(&request.from, &transaction, None, None)
                     .map_err(|e| {
                         StateOrEngineError::Engine(EngineErrorKind::GasPayment(e).into())
                     })?;
@@ -521,19 +535,7 @@ pub fn estimate_gas(
     request: EthCallRequest,
     earliest_block_height: u64,
 ) -> (Result<SubmitResult, StateOrEngineError>, NonceStatus) {
-    let (result, nonce) = eth_call(
-        request.from,
-        request.to,
-        u64::MAX,
-        U256::zero(),
-        request.value,
-        request.data.clone(),
-        storage,
-        request.block_id,
-        request.nonce,
-        earliest_block_height,
-        request.state_override.clone(),
-    );
+    let (result, nonce) = eth_call(storage, request.clone(), u64::MAX, earliest_block_height);
 
     // If the request gas price was 0 then there is no reason to try again.
     // The only reason to retry is to see if the user has enough ETH balance to cover
@@ -547,21 +549,25 @@ pub fn estimate_gas(
             let computed_gas_limit = submit_result
                 .gas_used
                 .saturating_add(submit_result.gas_used / 3);
-            eth_call(
-                request.from,
-                request.to,
-                computed_gas_limit,
-                request.gas_price,
-                request.value,
-                request.data,
-                storage,
-                request.block_id,
-                request.nonce,
-                earliest_block_height,
-                request.state_override,
-            )
+            eth_call(storage, request, computed_gas_limit, earliest_block_height)
         }
 
         Err(_) => (result, nonce),
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AccessListItem {
+    address: H160,
+    storage_keys: Vec<H256>,
+}
+
+impl From<AccessListItem> for AccessTuple {
+    fn from(value: AccessListItem) -> Self {
+        Self {
+            address: value.address,
+            storage_keys: value.storage_keys,
+        }
     }
 }

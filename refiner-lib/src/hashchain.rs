@@ -5,7 +5,7 @@ use aurora_engine::parameters::{
     CallArgs, FunctionCallArgsV1, FunctionCallArgsV2, SubmitArgs, SubmitResult, TransactionStatus,
 };
 use aurora_engine_hashchain::merkle::StreamCompactMerkleTree;
-use aurora_engine_transactions::{EthTransactionKind, eip_1559, eip_2930, legacy};
+use aurora_engine_transactions::{EthTransactionKind, eip_1559, eip_2930, eip_7702, legacy};
 use aurora_engine_types::{H256, types::u256_to_arr};
 use aurora_refiner_types::aurora_block::{
     AuroraBlock, AuroraTransaction, CallArgsVersion, HashchainInputKind, HashchainOutputKind,
@@ -243,6 +243,29 @@ fn rlp_encode(transaction: &AuroraTransaction) -> Result<Vec<u8>, ValidationErro
             let bytes = (&EthTransactionKind::Eip2930(tx)).into();
             Ok(bytes)
         }
+        eip_7702::TYPE_BYTE => {
+            let tx = eip_7702::SignedTransaction7702 {
+                transaction: eip_7702::Transaction7702 {
+                    chain_id: transaction.chain_id,
+                    nonce: transaction.nonce.into(),
+                    max_priority_fee_per_gas: transaction.max_priority_fee_per_gas,
+                    max_fee_per_gas: transaction.max_fee_per_gas,
+                    gas_limit: transaction.gas_limit.into(),
+                    to: transaction
+                        .to
+                        .ok_or(ValidationError::WrongTransaction7702)?,
+                    value: transaction.value,
+                    data: transaction.input.clone(),
+                    access_list: transaction.access_list.clone(),
+                    authorization_list: transaction.authorization_list.clone(),
+                },
+                parity: transaction.v as u8,
+                r: transaction.r,
+                s: transaction.s,
+            };
+            let bytes = (&EthTransactionKind::Eip7702(tx)).into();
+            Ok(bytes)
+        }
         _ => Err(ValidationError::UnknownEthTxType),
     }
 }
@@ -252,6 +275,7 @@ pub enum ValidationError {
     IncorrectTxHash,
     UnknownEthTxType,
     MissingToInCallTx,
+    WrongTransaction7702,
 }
 
 #[cfg(test)]
