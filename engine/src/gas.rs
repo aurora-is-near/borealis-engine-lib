@@ -261,7 +261,6 @@ impl EthCallRequest {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn eth_call(
     storage: &Storage,
     request: EthCallRequest,
@@ -455,7 +454,6 @@ pub enum StateOrEngineError {
     Engine(EngineError),
 }
 
-#[allow(clippy::too_many_arguments)]
 fn compute_call_result<I: IO + Copy>(
     io: I,
     env: aurora_engine_sdk::env::Fixed,
