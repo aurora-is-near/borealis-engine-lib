@@ -532,27 +532,26 @@ fn compute_call_result<I: IO + Copy>(
 
 pub fn estimate_gas(
     storage: &Storage,
-    request: EthCallRequest,
+    mut request: EthCallRequest,
     earliest_block_height: u64,
 ) -> (Result<SubmitResult, StateOrEngineError>, NonceStatus) {
+    let actual_gas_price = request.gas_price;
+    request.gas_price = U256::zero();
+
     let (result, nonce) = eth_call(storage, request.clone(), u64::MAX, earliest_block_height);
 
-    // If the request gas price was 0 then there is no reason to try again.
-    // The only reason to retry is to see if the user has enough ETH balance to cover
+    // If the request gas_price is 0, then there is no reason to try again.
+    // The only reason to retry is to see if the user has enough ETH to cover
     // the gas cost with the estimated limit.
-    if request.gas_price.is_zero() {
-        return (result, nonce);
-    }
-
     match result {
-        Ok(submit_result) => {
-            let computed_gas_limit = submit_result
-                .gas_used
-                .saturating_add(submit_result.gas_used / 3);
+        Ok(res) if !actual_gas_price.is_zero() => {
+            let gas_used = res.gas_used;
+            let computed_gas_limit = gas_used.saturating_add(gas_used / 3);
+            request.gas_price = actual_gas_price;
+
             eth_call(storage, request, computed_gas_limit, earliest_block_height)
         }
-
-        Err(_) => (result, nonce),
+        _ => (result, nonce),
     }
 }
 
