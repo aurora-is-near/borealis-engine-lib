@@ -15,7 +15,7 @@ lazy_static! {
     );
     pub static ref LATEST_BLOCK_PROCESSED: IntGauge = gauge(
         "refiner_number_of_latest_block_processed",
-        "Height of the last block processed. Can be slightly out of sync with the actual height given a multiple process"
+        "Height of the last block processed. Can be slightly out of sync with the actual height given multiple processes"
     );
     pub static ref FAILING_NEAR_TRANSACTION: IntCounter =
         counter("refiner_near_transaction_failed", "NEAR Transaction failed");

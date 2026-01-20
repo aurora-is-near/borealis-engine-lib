@@ -217,7 +217,7 @@ impl EthCallRequest {
         let nonce = parse_hex_int(params_obj, "nonce", None).map(|x| x.low_u64());
         let block_id = BlockId::from_json_value(params.get(1))?;
         let state_override = StateOverride::from_json_value(params.get(2))?;
-        let access_list = Self::parse_access_list(params_obj, "accessList").unwrap_or_default();
+        let access_list = Self::parse_access_list(params_obj, "accessList")?;
 
         Some(Self {
             from,
@@ -252,11 +252,12 @@ impl EthCallRequest {
         body_obj: &serde_json::Map<String, serde_json::Value>,
         field: &str,
     ) -> Option<Vec<AccessTuple>> {
-        let access_list_obj = body_obj.get(field).cloned()?;
-
-        serde_json::from_value::<Vec<AccessListItem>>(access_list_obj)
-            .ok()
-            .map(|access_list| access_list.into_iter().map(Into::into).collect())
+        match body_obj.get(field) {
+            None | Some(serde_json::Value::Null) => Some(Vec::new()),
+            Some(value) => serde_json::from_value::<Vec<AccessListItem>>(value.clone())
+                .ok()
+                .map(|access_list| access_list.into_iter().map(Into::into).collect()),
+        }
     }
 }
 

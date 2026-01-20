@@ -581,9 +581,9 @@ fn build_transaction(
     let mut hash = virtual_receipt_id.0.into();
     let predecessor_id = &execution_outcome.receipt.predecessor_id;
     let receipt_id = near_metadata.receipt_hash;
-    let engine_account_id = storage.get_engine_account_id().unwrap_or_else(|_| {
-        aurora_engine_types::account_id::AccountId::from_str("aurora").unwrap()
-    });
+    let engine_account_id = storage.get_engine_account_id().map_err(|e| {
+        RefinerError::BuildAuroraTransactionError(format!("engine_account_id not found: {e:?}"))
+    })?;
 
     let mut tx = AuroraTransactionBuilder::default()
         .block_hash(compute_block_hash(
@@ -1330,7 +1330,7 @@ fn get_erc20_metadata_from_promises(
     index: usize,
 ) -> Result<Erc20Metadata, RefinerError> {
     promises_result
-        .get(index) // The second promise result is the serialized ERC-20 metadata
+        .get(index) // Promise result at `index` should be the serialized ERC-20 metadata
         .and_then(|maybe_data| maybe_data.as_ref())
         .map(|data| serde_json::from_slice(data))
         .ok_or(RefinerError::PromiseResultError)?
