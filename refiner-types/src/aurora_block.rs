@@ -1,6 +1,7 @@
 use crate::utils::{u64_hex_serde, u128_dec_serde};
 use aurora_engine::parameters::{ResultLog, TransactionStatus};
 use aurora_engine_transactions::eip_2930::AccessTuple;
+use aurora_engine_transactions::eip_7702::AuthorizationTuple;
 use aurora_engine_types::types::{Address, Wei};
 use aurora_engine_types::{H256, U256};
 use derive_builder::Builder;
@@ -13,7 +14,7 @@ use crate::bloom::Bloom;
 /// Similar to Ethereum blocks, but only contains information relevant for Aurora. In addition,
 /// it contains extra metadata to map it into a NEAR block.
 ///
-/// ## Fields from Ethereum blocks not included:
+/// ## Fields from the Ethereum block are not included:
 ///
 /// baseFeePerGas, difficulty, miner, mixHash, nonce, totalDifficulty, uncles,
 ///
@@ -107,12 +108,12 @@ pub struct AuroraTransaction {
     /// Target chain id of the transaction.
     pub chain_id: u64,
     /// Index of the transaction on the block. This index is computed after filtering out all
-    /// transactions that are not relevant to current aurora chain id.
+    /// transactions that are not relevant to the current aurora chain id.
     pub transaction_index: u32,
     /// Sender of the transaction. If the transaction is not sent via submit, the sender will be
     /// derived using `near_account_to_evm_address`.
     pub from: Address,
-    /// Target address of the transaction. It will be None in case it is a deploy transaction.
+    /// Target address of the transaction. It will be None in case it is a deployment transaction.
     pub to: Option<Address>,
     /// Nonce of the transaction to keep the order.
     #[serde(with = "u64_hex_serde")]
@@ -124,7 +125,16 @@ pub struct AuroraTransaction {
     pub gas_limit: u64,
     /// Gas used by the transaction
     pub gas_used: u64,
+    /// Represents the maximum priority fee per gas (in wei) that a transaction sender
+    /// is willing to pay for their transaction to be prioritized by miners/validators
+    /// over others in the transaction pool. This value is typically used in dynamic fee
+    /// transactions (EIP-1559) to incentivize miners to include the transaction in a
+    /// block sooner by offering a tip that is higher than the base fee.
     pub max_priority_fee_per_gas: U256,
+    /// Represents the maximum fee per unit of gas that a user is willing to pay for a transaction.
+    /// This value is used in Ethereum transactions to set the upper limit of what the user
+    /// is prepared to pay for computation and storage costs. It works in conjunction with
+    /// the base fee and the priority fee (tip) to determine the overall gas fee.
     pub max_fee_per_gas: U256,
     /// Amount of eth attached to the transaction.
     pub value: Wei,
@@ -132,19 +142,23 @@ pub struct AuroraTransaction {
     pub input: Vec<u8>,
     /// Output of the transaction. The result from the execution.
     pub output: Vec<u8>,
-    /// List of addresses that will be used during execution of the transaction.
+    /// List of addresses that will be used during the execution of the transaction.
     pub access_list: Vec<AccessTuple>,
+    /// List of tuples that indicate what code the signer of each tuple desires to execute in the
+    /// context of their EOA.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub authorization_list: Vec<AuthorizationTuple>,
     /// Type format of the transaction.
     pub tx_type: u8,
     /// Status of the transaction execution.
     pub status: bool,
-    /// Logs recorded during transaction execution. For now they will be empty, since it can't be
+    /// Logs recorded during transaction execution. For now, they will be empty, since it can't be
     /// computed without access to the storage.
     pub logs: Vec<ResultLog>,
     /// Logs bloom of the transaction. Aggregation of bloom filters from logs
     pub logs_bloom: Bloom,
-    /// Address of the deployed contract. If will be different from `None` in case it is a deploy
-    /// transaction.
+    /// Address of the deployed contract. It will be different from `None` in case it is a
+    /// deployment transaction.
     pub contract_address: Option<Address>,
     /// Signature data. Used to recover target address.
     pub v: u64,
@@ -193,9 +207,9 @@ pub struct HashchainMetadata {
 pub enum HashchainInputKind {
     /// Standard RLP-encoded Ethereum transaction.
     Rlp,
-    /// Legacy version of Borsh-encoded args for `call` function.
+    /// Legacy version of Borsh-encoded args for the `call` function.
     CallArgsLegacy,
-    /// Current version of Borsh-encoded args for `call` function.
+    /// The current version of Borsh-encoded args for the `call` function.
     CallArgs(CallArgsVersion),
     /// The `submit_with_args` function uses a Borsh-encoded struct that has an embedded
     /// RLP-encoded Ethereum transaction along with additional parameters.
@@ -296,7 +310,7 @@ mod tests {
         let block: AuroraBlock = serde_json::from_str(serialized_block).unwrap();
         let computed_block_json = {
             let mut tmp = serde_json::to_value(block).unwrap();
-            // The gas limit field used to be equal to `U256::MAX`, however we now represent that
+            // The gas limit field used to be equal to `U256::MAX`, however, we now represent that
             // field as `u64`, so it is automatically coerced down to `u64::MAX` when deserializing.
             // Therefore, we expect the value now to be `0xffffffffffffffff`, but it used to be
             // `0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`, so we change it back

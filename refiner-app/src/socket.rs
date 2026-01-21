@@ -21,12 +21,12 @@ pub async fn start_socket_server(
     path: &Path,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
-    info!("Socket server started, path: {:?}", path);
+    info!("Socket server started, path: {path:?}");
 
     // Remove the old socket file if it exists
     if path.exists() {
-        warn!("Removing old socket file: {:?}", path);
-        std::fs::remove_file(path).expect("Failed to remove socket file");
+        warn!("Removing the old socket file: {path:?}");
+        std::fs::remove_file(path).expect("Failed to remove a socket file");
     }
 
     let sock = UnixListener::bind(path).expect("Failed to open socket");
@@ -45,7 +45,7 @@ pub async fn start_socket_server(
         }
     }
 
-    info!("Socket server stopped, path: {:?}", path);
+    info!("Socket server stopped, path: {path:?}");
 
     std::fs::remove_file(path).expect("Failed to remove socket file on shutdown");
 }
@@ -89,7 +89,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
 
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
                         if let Err(e) = wrapped_write(stream, &res_body).await {
-                            error!("error writing to stream: {:?}", e);
+                            error!("error writing to stream: {e:?}");
                         }
                     }
                     Err(e) => {
@@ -104,7 +104,7 @@ async fn handle_conn(storage: SharedStorage, stream: &mut UnixStream) {
                         });
                         let res_body = serde_json::to_vec(&res).unwrap_or_default();
                         if let Err(e) = wrapped_write(stream, &res_body).await {
-                            error!("error writing to stream: {:?}", e);
+                            error!("error writing to stream: {e:?}");
                         }
                     }
                 };

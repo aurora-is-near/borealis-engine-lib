@@ -50,13 +50,12 @@ impl NearStream {
             Some(&mut txs),
         )
         .await
-        .unwrap(); // Panic if engine can't consume this block
+        .unwrap(); // Panic if the engine can't consume this block
 
-        // Panic if transaction hash tracker cannot consume the block
+        // Panic if the transaction hash tracker cannot consume the block
         self.tx_tracker
             .consume_near_block(near_block)
             .expect("Transaction tracker consume_near_block error");
-
         let storage = self.context.storage.as_ref().write().await;
         near_block
             .shards
@@ -113,20 +112,17 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
-    use aurora_engine::{
-        engine::setup_receive_erc20_tokens_input, parameters::NEP141FtOnTransferArgs,
-        state::EngineStateError,
-    };
+    use aurora_engine::{engine::setup_receive_erc20_tokens_input, state::EngineStateError};
     use aurora_engine_sdk::types::near_account_to_evm_address;
     use aurora_engine_types::parameters::connector::Erc20Metadata;
     use aurora_engine_types::{
         U256,
         account_id::AccountId,
-        types::{Address, Balance, Wei},
+        types::{Address, Wei},
     };
     use aurora_refiner_types::aurora_block::NearBlock;
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
-    use std::{collections::HashSet, matches, str::FromStr};
+    use std::{collections::HashSet, matches};
 
     use super::*;
 
@@ -298,7 +294,7 @@ pub mod tests {
 
     // Tests processing the transaction https://explorer.mainnet.near.org/transactions/964KbgjnkCfyUS1kaHVJNGuXAMsahdNHiP1jWkMnx1Bk
     // which is a bridge transfer of some tokens into Aurora. The ERC-20 logs should be present
-    // based on the tokens that were minted from th bridging.
+    // based on the tokens minted from the bridging.
     #[tokio::test]
     async fn test_block_75306841_bridge_tx() {
         // load state snapshot and main objects
@@ -463,8 +459,8 @@ pub mod tests {
             NearBlock::ExistingBlock(..)
         ));
 
-        // `sender_id` is near_account_to_evm_address("aurora")
-        let expected_sender = Address::decode("4444588443c3a91288c5002483449aba1054192b").unwrap();
+        // `sender_id` is near_account_to_evm_address("wrap.near")
+        let expected_sender = Address::decode("13896015e525a44360de29d4b1b55b47c28ce746").unwrap();
 
         // "wrap.near" -> nep141_account_id -> aurora_engine::engine::get_erc20_from_nep141
         let expected_recipient =
@@ -475,15 +471,8 @@ pub mod tests {
             // Expected arguments are extracted from the base64-encoded string of the NEAR receipt id "D4PhVsM2PFNgyc73mjR5oLYpz6rNAwBSy4rRo1Aariea"
             // echo eyJzZW5kZXJfaWQiOiI2NmZiMWQzZDBjOGIzODkzYjFiNTNhNGE5NjRhOGIwMzU4NmNjMGRiNWM5NjIxMDE0ZjU0ZWZiMTEwNjhiNzJlIiwiYW1vdW50IjoiMTE2MzM3NDg3MDg3NTg2NzY2ODk5NTAiLCJtc2ciOiIwZmU5NTdlNmFjYmI0ZmQ5MzVjZWU1YmEwMzNlMDAwODhkZjg2YWRiIn0=|base64 -D
             // {"sender_id":"66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e","amount":"11633748708758676689950","msg":"0fe957e6acbb4fd935cee5ba033e00088df86adb"}%
-            let args = NEP141FtOnTransferArgs {
-                sender_id: AccountId::from_str(
-                    "66fb1d3d0c8b3893b1b53a4a964a8b03586cc0db5c9621014f54efb11068b72e",
-                )
-                .unwrap(),
-                amount: Balance::new(11633748708758676689950),
-                msg: "0fe957e6acbb4fd935cee5ba033e00088df86adb".to_string(),
-            };
-            setup_receive_erc20_tokens_input(&args, &expected_recipient)
+            let amount = 11633748708758676689950;
+            setup_receive_erc20_tokens_input(&expected_recipient, amount)
         };
 
         let aurora_block = aurora_blocks.first().unwrap();
@@ -533,6 +522,49 @@ pub mod tests {
         assert!(
             deploy_erc20_token.is_some(),
             "Expected deploy_erc20_token transaction not found in block 182018895"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_block_232952651_contains_deploy_erc20_token_with_meta() {
+        // Here used engine.crocus.testnet contract.
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContextBuilder::new()
+            .with_chain_id(1313161571)
+            .with_account_id("engine.crocus.testnet")
+            .build(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let block = read_block("tests/res/testnet-block-232952651.json");
+        let aurora_blocks = stream.next_block(&block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 232952651);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        let expected_sender = near_account_to_evm_address(b"engine.crocus.testnet");
+        let expected_amount = Wei::zero();
+        let expected_input = aurora_engine::engine::setup_deploy_erc20_input(
+            &"engine.crocus.testnet".parse().unwrap(),
+            Some(Erc20Metadata {
+                name: "AURORA".to_string(),
+                symbol: "AURORA".to_string(),
+                decimals: 18,
+            }),
+        );
+        let aurora_block = aurora_blocks.first().unwrap();
+        let deploy_erc20_token = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to.is_none()
+                && tx.value == expected_amount
+                && tx.input == expected_input
+        });
+
+        assert!(
+            deploy_erc20_token.is_some(),
+            "Expected deploy_erc20_token with meta transaction not found in block 232952651"
         );
     }
 

@@ -25,7 +25,7 @@ const fn log2(x: usize) -> u32 {
     }
 
     let n = x.leading_zeros();
-    std::mem::size_of::<usize>() as u32 * 8 - n
+    size_of::<usize>() as u32 * 8 - n
 }
 
 impl Bloom {

@@ -1,19 +1,18 @@
-use crate::legacy::decode_submit_result;
-use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
-use crate::utils::{TxMetadata, as_h256, keccak256};
-use aurora_engine::contract_methods::connector::deposit_event::FtTransferMessageData;
-use aurora_engine::engine::{GetErc20FromNep141Error, create_legacy_address};
+use aurora_engine::engine::create_legacy_address;
 use aurora_engine::parameters::{
-    CallArgs, FunctionCallArgsV1, NEP141FtOnTransferArgs, ResultLog, SubmitArgs, SubmitResult,
+    CallArgs, FunctionCallArgsV1, ResultLog, SubmitArgs, SubmitResult,
 };
 use aurora_engine_sdk::sha256;
 use aurora_engine_sdk::types::near_account_to_evm_address;
+use aurora_engine_transactions::eip_7702::AuthorizationTuple;
 use aurora_engine_transactions::{
     Error as ParseTransactionError, EthTransactionKind, NormalizedEthTransaction,
 };
-use aurora_engine_types::account_id::ParseAccountError;
 use aurora_engine_types::borsh::BorshDeserialize;
-use aurora_engine_types::parameters::connector::Erc20Metadata;
+use aurora_engine_types::parameters::connector::{
+    Erc20Metadata, FtOnTransferArgs, FtTransferMessageData,
+};
+use aurora_engine_types::parameters::engine::DeployErc20TokenArgs;
 use aurora_engine_types::types::{Address, Wei, WeiU256};
 use aurora_engine_types::{H256, U256};
 use aurora_refiner_types::aurora_block::{
@@ -39,6 +38,10 @@ use std::fmt;
 use std::io::Write;
 use std::str::FromStr;
 use triehash_ethereum::ordered_trie_root;
+
+use crate::legacy::decode_submit_result;
+use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
+use crate::utils::{TxMetadata, as_h256, keccak256};
 
 /// The least amount of gas any EVM transaction could spend is 21_000.
 /// This corresponds to `G_transaction` from the Yellow Paper. This is
@@ -176,7 +179,7 @@ impl Refiner {
             .seen_receipts
             .insert(execution_outcome.receipt.receipt_id)
         {
-            // Using recent version of borsh to serialize the receipt.
+            // Using a recent version of borsh to serialize the receipt.
             // Include in the size of the block the size of this transaction.
             self.partial_state.size +=
                 borsh::to_vec(&execution_outcome.receipt).unwrap().len() as u64;
@@ -566,36 +569,36 @@ fn build_transaction(
     near_metadata: NearTransaction,
     execution_status: Option<&ExecutionStatusView>,
     chain_id: u64,
-    transaction_index: u32,
+    tx_index: u32,
     virtual_receipt_id: CryptoHash,
     txs: &HashMap<H256, TransactionIncludedOutcome>,
     promises_result: Vec<Option<Vec<u8>>>,
     storage: &Storage,
 ) -> Result<BuiltTransaction, RefinerError> {
     let mut bloom = Bloom::default();
-
-    let hash;
+    let block_height = near_block.header.height;
+    // For all transactions, except `submit` and `submit_with_args`, use the hash from the receipt.
+    let mut hash = virtual_receipt_id.0.into();
     let predecessor_id = &execution_outcome.receipt.predecessor_id;
     let receipt_id = near_metadata.receipt_hash;
-    let account_id = storage.get_engine_account_id();
-    let engine_account_id = account_id
-        .as_ref()
-        .map(|id| id.as_ref())
-        .unwrap_or("aurora");
+    let engine_account_id = storage.get_engine_account_id().map_err(|e| {
+        RefinerError::BuildAuroraTransactionError(format!("engine_account_id not found: {e:?}"))
+    })?;
 
     let mut tx = AuroraTransactionBuilder::default()
         .block_hash(compute_block_hash(
             near_block.header.height,
-            engine_account_id,
+            engine_account_id.as_ref(),
             chain_id,
         ))
         .block_height(near_block.header.height)
         .chain_id(chain_id)
-        .transaction_index(transaction_index)
+        .transaction_index(tx_index)
         .gas_price(U256::zero());
 
-    // Hash used to build transactions merkle tree
+    // Hash used to build a transactions merkle tree
     let mut transaction_hash = H256::zero();
+    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
     match action {
         ActionView::FunctionCall {
@@ -620,14 +623,9 @@ fn build_transaction(
                     let input_kind = match SubmitArgs::try_from_slice(&raw_input) {
                         Ok(args) => {
                             let bytes = args.tx_data;
-
                             let tx_metadata = TxMetadata::try_from(bytes.as_slice())
                                 .map_err(RefinerError::ParseMetadata)?;
-
-                            let mut eth_tx: NormalizedEthTransaction =
-                                EthTransactionKind::try_from(bytes.as_slice())
-                                    .and_then(TryFrom::try_from)
-                                    .map_err(RefinerError::ParseTransaction)?;
+                            let (authorization_list, mut eth_tx) = normalize_transaction(&bytes)?;
 
                             if let Some(gas_price) = args.max_gas_price {
                                 let gas_price: U256 = gas_price.into();
@@ -636,7 +634,7 @@ fn build_transaction(
                                     eth_tx.max_priority_fee_per_gas.min(gas_price);
                             }
 
-                            hash = keccak256(bytes.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
+                            hash = keccak256(&bytes); // https://ethereum.stackexchange.com/a/46579/45323
 
                             tx = tx
                                 .hash(hash)
@@ -651,6 +649,7 @@ fn build_transaction(
                                 .value(eth_tx.value)
                                 .input(eth_tx.data)
                                 .access_list(eth_tx.access_list)
+                                .authorization_list(authorization_list)
                                 .tx_type(tx_metadata.tx_type)
                                 .v(tx_metadata.v)
                                 .r(tx_metadata.r)
@@ -669,9 +668,6 @@ fn build_transaction(
                             })
                         }
                         Err(_) => {
-                            hash = virtual_receipt_id.0.into();
-                            let from_address =
-                                near_account_to_evm_address(predecessor_id.as_bytes());
                             tx = tx.hash(hash).from(from_address);
                             tx = fill_tx(tx, raw_input.clone());
                             HashchainInputKind::Explicit
@@ -698,13 +694,9 @@ fn build_transaction(
                 TransactionKindTag::Submit => {
                     let tx_metadata = TxMetadata::try_from(raw_input.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
+                    let (authorization_list, eth_tx) = normalize_transaction(&raw_input)?;
 
-                    let eth_tx: NormalizedEthTransaction =
-                        EthTransactionKind::try_from(raw_input.as_slice())
-                            .and_then(TryFrom::try_from)
-                            .map_err(RefinerError::ParseTransaction)?;
-
-                    hash = keccak256(raw_input.as_slice()); // https://ethereum.stackexchange.com/a/46579/45323
+                    hash = keccak256(&raw_input); // https://ethereum.stackexchange.com/a/46579/45323
 
                     tx = tx
                         .hash(hash)
@@ -719,6 +711,7 @@ fn build_transaction(
                         .value(eth_tx.value)
                         .input(eth_tx.data)
                         .access_list(eth_tx.access_list)
+                        .authorization_list(authorization_list)
                         .tx_type(tx_metadata.tx_type)
                         .v(tx_metadata.v)
                         .r(tx_metadata.r)
@@ -750,11 +743,6 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Call => {
-                    hash = virtual_receipt_id.0.into();
-                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
-
-                    tx = tx.hash(hash).from(from_address);
-
                     let input_kind = if let Some(call_args) = CallArgs::deserialize(&raw_input) {
                         let (to_address, value, input, input_kind) = match call_args {
                             CallArgs::V2(args) => (
@@ -773,17 +761,11 @@ fn build_transaction(
                                 (args.contract, WeiU256::default(), args.input, input_kind)
                             }
                         };
-
-                        let nonce = storage
-                            .with_engine_access(
-                                near_block.header.height,
-                                transaction_index.try_into().unwrap_or(u16::MAX),
-                                &[],
-                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
-                            )
-                            .result;
+                        let nonce = get_nonce(storage, block_height, tx_index, &from_address);
 
                         tx = tx
+                            .hash(hash)
+                            .from(from_address)
                             .to(Some(to_address))
                             .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                             .gas_limit(u64::MAX)
@@ -792,6 +774,7 @@ fn build_transaction(
                             .value(value.into())
                             .input(input)
                             .access_list(vec![])
+                            .authorization_list(vec![])
                             .tx_type(0xff)
                             .contract_address(None)
                             .v(0)
@@ -822,21 +805,13 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::Deploy => {
-                    hash = virtual_receipt_id.0.into();
-                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
-                    let nonce = storage
-                        .with_engine_access(
-                            near_block.header.height,
-                            transaction_index.try_into().unwrap_or(u16::MAX),
-                            &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
-                        )
-                        .result;
+                    let nonce =
+                        get_nonce(storage, near_block.header.height, tx_index, &from_address);
                     let contract_address = create_legacy_address(&from_address, &nonce);
 
-                    tx = tx.hash(hash).from(from_address);
-
                     tx = tx
+                        .hash(hash)
+                        .from(from_address)
                         .to(None)
                         .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                         .gas_limit(u64::MAX)
@@ -845,6 +820,7 @@ fn build_transaction(
                         .value(Wei::zero())
                         .input(raw_input.clone())
                         .access_list(vec![])
+                        .authorization_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
                         .v(0)
@@ -869,29 +845,88 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::DeployErc20 => {
-                    hash = virtual_receipt_id.0.into();
+                    match DeployErc20TokenArgs::deserialize(&raw_input) {
+                        Ok(DeployErc20TokenArgs::Legacy(_)) => {
+                            let input = aurora_engine::engine::setup_deploy_erc20_input(
+                                &engine_account_id,
+                                None,
+                            );
+                            let nonce = get_nonce(storage, block_height, tx_index, &from_address);
+                            let contract_address = create_legacy_address(&from_address, &nonce);
+
+                            tx = tx
+                                .hash(hash)
+                                .from(from_address)
+                                .to(None)
+                                .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
+                                .gas_limit(u64::MAX)
+                                .max_priority_fee_per_gas(U256::zero())
+                                .max_fee_per_gas(U256::zero())
+                                .value(Wei::zero())
+                                .input(input)
+                                .access_list(vec![])
+                                .authorization_list(vec![])
+                                .tx_type(0xff)
+                                .contract_address(Some(contract_address))
+                                .v(0)
+                                .r(U256::zero())
+                                .s(U256::zero());
+
+                            let (result, output_kind, raw_output) = normalize_output(
+                                &receipt_id,
+                                raw_tx_kind,
+                                execution_status,
+                                txs.get(&hash),
+                            )?;
+                            tx = fill_hashchain_metadata(
+                                tx,
+                                near_metadata,
+                                method_name.clone(),
+                                &raw_input,
+                                &raw_output,
+                                HashchainInputKind::Explicit,
+                                output_kind,
+                            );
+                            fill_with_submit_result(tx, result, &mut bloom)
+                        }
+                        Ok(DeployErc20TokenArgs::WithMetadata(_)) => {
+                            // The engine transaction does nothing except creating promises.
+                            tx = tx.hash(hash).from(from_address);
+                            let (result, output_kind, raw_output) = normalize_output(
+                                &receipt_id,
+                                raw_tx_kind,
+                                execution_status,
+                                txs.get(&hash),
+                            )?;
+                            tx = fill_hashchain_metadata(
+                                tx,
+                                near_metadata,
+                                method_name.clone(),
+                                &raw_input,
+                                &raw_output,
+                                HashchainInputKind::Explicit,
+                                output_kind,
+                            );
+                            tx = fill_with_submit_result(tx, result, &mut bloom);
+                            fill_tx(tx, raw_input)
+                        }
+                        Err(err) => {
+                            return Err(RefinerError::BuildAuroraTransactionError(err.to_string()));
+                        }
+                    }
+                }
+                TransactionKindTag::DeployErc20Callback => {
+                    let erc20_metadata = get_erc20_metadata_from_promises(&promises_result, 0)?;
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse()
-                        .map_err(|err: ParseAccountError| {
-                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
-                            RefinerError::BuildAuroraTransactionError(err.to_string())
-                        })?,
-                        None,
+                        &engine_account_id,
+                        Some(erc20_metadata),
                     );
-                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
-                    let nonce = storage
-                        .with_engine_access(
-                            near_block.header.height,
-                            transaction_index.try_into().unwrap_or(u16::MAX),
-                            &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
-                        )
-                        .result;
+                    let nonce = get_nonce(storage, block_height, tx_index, &from_address);
                     let contract_address = create_legacy_address(&from_address, &nonce);
 
-                    tx = tx.hash(hash).from(from_address);
-
                     tx = tx
+                        .hash(hash)
+                        .from(from_address)
                         .to(None)
                         .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                         .gas_limit(u64::MAX)
@@ -900,6 +935,7 @@ fn build_transaction(
                         .value(Wei::zero())
                         .input(input)
                         .access_list(vec![])
+                        .authorization_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
                         .v(0)
@@ -924,30 +960,17 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::MirrorErc20TokenCallback => {
-                    hash = virtual_receipt_id.0.into();
-                    let erc20_metadata = get_erc20_metadata_from_promises(&promises_result)?;
+                    let erc20_metadata = get_erc20_metadata_from_promises(&promises_result, 1)?;
                     let input = aurora_engine::engine::setup_deploy_erc20_input(
-                        &engine_account_id.parse()
-                        .map_err(|err: ParseAccountError| {
-                            tracing::error!("Failed to parse engine account ID: {engine_account_id}. Error: {err}");
-                            RefinerError::BuildAuroraTransactionError(err.to_string())
-                        })?,
+                        &engine_account_id,
                         Some(erc20_metadata),
                     );
-                    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
-                    let nonce = storage
-                        .with_engine_access(
-                            near_block.header.height,
-                            transaction_index.try_into().unwrap_or(u16::MAX),
-                            &[],
-                            |io| aurora_engine::engine::get_nonce(&io, &from_address),
-                        )
-                        .result;
+                    let nonce = get_nonce(storage, block_height, tx_index, &from_address);
                     let contract_address = create_legacy_address(&from_address, &nonce);
 
-                    tx = tx.hash(hash).from(from_address);
-
                     tx = tx
+                        .hash(hash)
+                        .from(from_address)
                         .to(None)
                         .nonce(aurora_refiner_types::utils::saturating_cast(nonce))
                         .gas_limit(u64::MAX)
@@ -956,6 +979,7 @@ fn build_transaction(
                         .value(Wei::zero())
                         .input(input)
                         .access_list(vec![])
+                        .authorization_list(vec![])
                         .tx_type(0xff)
                         .contract_address(Some(contract_address))
                         .v(0)
@@ -980,42 +1004,32 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 TransactionKindTag::FtOnTransfer => {
-                    hash = virtual_receipt_id.0.into();
                     tx = tx.hash(hash);
 
-                    if let Ok(args) = serde_json::from_slice::<NEP141FtOnTransferArgs>(&raw_input) {
+                    if let Ok(args) = serde_json::from_slice::<FtOnTransferArgs>(&raw_input) {
                         let token_mint_kind =
                             get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
-                        // For now, we use `engine_account_id` converted to the EVM address as the `from address` for both ETH and ERC-20 tokens.
-                        // Later, when the engine and ethconnector split is deployed on mainnet,
-                        // this will be changed to the address of ethconnector.
-                        let from_address =
-                            near_account_to_evm_address(engine_account_id.as_bytes());
                         let to = determine_ft_on_transfer_recipient(
                             &token_mint_kind,
                             execution_outcome,
                             &args,
                             storage,
                             near_block,
-                            transaction_index,
+                            tx_index,
                         );
-                        let nonce = storage
-                            .with_engine_access(
-                                near_block.header.height,
-                                transaction_index.try_into().unwrap_or(u16::MAX),
-                                &[],
-                                |io| aurora_engine::engine::get_nonce(&io, &from_address),
-                            )
-                            .result;
+                        let amount = args.amount.as_u128();
+                        let nonce = get_nonce(storage, block_height, tx_index, &from_address);
 
                         // Differentiate between ETH and ERC-20 for setting transaction value and input
                         let (value, aurora_tx_input) = match token_mint_kind {
                             // For ETH mint transactions, set value in WEI and clear input
-                            TokenMintKind::Eth => (Wei::new_u128(args.amount.as_u128()), vec![]),
+                            TokenMintKind::Eth => (Wei::new_u128(amount), vec![]),
                             // For ERC-20 transactions, encode the amount as part of the input, not value
                             TokenMintKind::Erc20 => (
                                 Wei::zero(),
-                                aurora_engine::engine::setup_receive_erc20_tokens_input(&args, &to),
+                                aurora_engine::engine::setup_receive_erc20_tokens_input(
+                                    &to, amount,
+                                ),
                             ),
                         };
 
@@ -1029,13 +1043,13 @@ fn build_transaction(
                             .max_fee_per_gas(U256::zero())
                             .input(aurora_tx_input)
                             .access_list(vec![])
+                            .authorization_list(vec![])
                             .tx_type(0xff)
                             .contract_address(None)
                             .v(0)
                             .r(U256::zero())
                             .s(U256::zero());
                     } else {
-                        let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
                         tx = tx.from(from_address);
                         tx = fill_tx(tx, raw_input.clone());
                     };
@@ -1058,10 +1072,7 @@ fn build_transaction(
                     fill_with_submit_result(tx, result, &mut bloom)
                 }
                 _ => {
-                    hash = virtual_receipt_id.0.into();
-                    tx = tx
-                        .hash(hash)
-                        .from(near_account_to_evm_address(predecessor_id.as_bytes()));
+                    tx = tx.hash(hash).from(from_address);
                     let (result, output_kind, raw_output) = normalize_output(
                         &receipt_id,
                         raw_tx_kind,
@@ -1089,8 +1100,8 @@ fn build_transaction(
             })?;
 
             tx = tx
-                .hash(virtual_receipt_id.0.into())
-                .from(near_account_to_evm_address(predecessor_id.as_bytes()))
+                .hash(hash)
+                .from(from_address)
                 .to(Some(near_account_to_evm_address(
                     engine_account_id.as_bytes(),
                 )))
@@ -1100,17 +1111,16 @@ fn build_transaction(
                 .gas_used(0)
                 .max_priority_fee_per_gas(U256::zero())
                 .max_fee_per_gas(U256::zero())
-                .value(Wei::new(U256::zero()))
+                .value(Wei::zero())
                 .input(input)
                 .access_list(vec![])
-                .tx_type(0xff)
+                .authorization_list(vec![])
                 .logs(vec![])
                 .v(0)
                 .r(U256::zero())
                 .s(U256::zero())
                 // Type for NEAR custom transactions
                 .tx_type(0xfe)
-                .access_list(vec![])
                 .near_metadata(near_metadata);
 
             match execution_status {
@@ -1146,13 +1156,13 @@ fn build_transaction(
 fn determine_ft_on_transfer_recipient(
     token_mint_kind: &TokenMintKind,
     execution_outcome: &ExecutionOutcomeWithReceipt,
-    args: &NEP141FtOnTransferArgs,
+    args: &FtOnTransferArgs,
     storage: &Storage,
     near_block: &BlockView,
     transaction_index: u32,
 ) -> Address {
     match token_mint_kind {
-        TokenMintKind::Eth => FtTransferMessageData::parse_on_transfer_message(&args.msg)
+        TokenMintKind::Eth => FtTransferMessageData::try_from(args.msg.as_str())
             .map(|msg_data| msg_data.recipient)
             .unwrap_or_else(|err| {
                 tracing::error!(
@@ -1183,13 +1193,6 @@ fn determine_ft_on_transfer_recipient(
                     },
                 )
                 .result
-                .and_then(|bytes| {
-                    Address::try_from_slice(&bytes)
-                        .map_err(|err| {
-                            tracing::error!("Error parsing ERC20 address: {bytes:?}. Error: {err}");
-                            GetErc20FromNep141Error::InvalidAddress
-                        })
-                })
                 .unwrap_or_else(|err| {
                     tracing::error!("Error getting ERC20 from NEP141: {err:?}. Falling back to Address::zero()");
                     Address::zero()
@@ -1208,6 +1211,7 @@ fn fill_with_submit_result(
     }
 
     tx = tx.gas_used(result.gas_used).logs(result.logs);
+
     match result.status {
         aurora_engine::parameters::TransactionStatus::Succeed(output) => {
             tx.status(true).output(output)
@@ -1228,6 +1232,7 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .value(Wei::new(U256::zero()))
         .input(input)
         .access_list(vec![])
+        .authorization_list(vec![])
         .tx_type(0xff)
         .contract_address(None)
         .v(0)
@@ -1322,13 +1327,41 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
 
 fn get_erc20_metadata_from_promises(
     promises_result: &[Option<Vec<u8>>],
+    index: usize,
 ) -> Result<Erc20Metadata, RefinerError> {
     promises_result
-        .get(1) // The second promise result is the serialized ERC-20 metadata
+        .get(index) // Promise result at `index` should be the serialized ERC-20 metadata
         .and_then(|maybe_data| maybe_data.as_ref())
         .map(|data| serde_json::from_slice(data))
         .ok_or(RefinerError::PromiseResultError)?
         .map_err(|_| RefinerError::PromiseResultError)
+}
+
+fn normalize_transaction(
+    tx_bytes: &[u8],
+) -> Result<(Vec<AuthorizationTuple>, NormalizedEthTransaction), RefinerError> {
+    EthTransactionKind::try_from(tx_bytes)
+        .and_then(|tx_kind| {
+            let authorization_list = match &tx_kind {
+                EthTransactionKind::Legacy(_)
+                | EthTransactionKind::Eip2930(_)
+                | EthTransactionKind::Eip1559(_) => vec![],
+                EthTransactionKind::Eip7702(tx) => tx.transaction.authorization_list.clone(),
+            };
+
+            tx_kind
+                .try_into()
+                .map(|tx: NormalizedEthTransaction| (authorization_list, tx))
+        })
+        .map_err(RefinerError::ParseTransaction)
+}
+
+fn get_nonce(storage: &Storage, height: u64, tx_index: u32, address: &Address) -> U256 {
+    storage
+        .with_engine_access(height, tx_index.try_into().unwrap_or(u16::MAX), &[], |io| {
+            aurora_engine::engine::get_nonce(&io, address)
+        })
+        .result
 }
 
 #[cfg(test)]
@@ -1377,7 +1410,7 @@ mod tests {
         let promises_results = super::find_promises_results(&block.shards, input_data_ids);
         assert_eq!(promises_results, expected_result);
 
-        let erc20_metadata = super::get_erc20_metadata_from_promises(&promises_results).unwrap();
+        let erc20_metadata = super::get_erc20_metadata_from_promises(&promises_results, 1).unwrap();
         assert_eq!(erc20_metadata.name, "USDC");
         assert_eq!(erc20_metadata.symbol, "USDC");
         assert_eq!(erc20_metadata.decimals, 6);

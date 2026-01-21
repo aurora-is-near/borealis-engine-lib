@@ -7,7 +7,7 @@ lazy_static! {
         counter("refiner_missing_shards", "Blocks that are missing shards");
     pub static ref BATCHED_ACTIONS: IntCounter = counter(
         "refiner_batched_actions",
-        "Transactions that uses batched actions"
+        "Transactions that use batched actions"
     );
     pub static ref ERROR_BUILDING_TRANSACTION: IntCounter = counter(
         "refiner_error_building_transaction",
@@ -15,7 +15,7 @@ lazy_static! {
     );
     pub static ref LATEST_BLOCK_PROCESSED: IntGauge = gauge(
         "refiner_number_of_latest_block_processed",
-        "Height of last block processed. Can be slightly out of sync with the actual height given multiple process"
+        "Height of the last block processed. Can be slightly out of sync with the actual height given multiple processes"
     );
     pub static ref FAILING_NEAR_TRANSACTION: IntCounter =
         counter("refiner_near_transaction_failed", "NEAR Transaction failed");
@@ -62,6 +62,10 @@ lazy_static! {
     pub static ref TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN: IntCounter = counter(
         "refiner_tx_type_deploy_erc20_token",
         "Number of transactions of type: deploy_erc20_token"
+    );
+    pub static ref TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN_CALLBACK: IntCounter = counter(
+        "refiner_tx_type_deploy_erc20_token_callback",
+        "Number of transactions of type: deploy_erc20_token_callback"
     );
     pub static ref TRANSACTION_TYPE_FT_ON_TRANSFER: IntCounter = counter(
         "refiner_tx_type_ft_on_transfer",
@@ -271,6 +275,9 @@ pub fn record_metric(tx_kind: &TransactionKindTag) {
         }
         TransactionKindTag::DeployErc20 => {
             TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN.inc();
+        }
+        TransactionKindTag::DeployErc20Callback => {
+            TRANSACTION_TYPE_DEPLOY_ERC20_TOKEN_CALLBACK.inc();
         }
         TransactionKindTag::FtOnTransfer => {
             TRANSACTION_TYPE_FT_ON_TRANSFER.inc();

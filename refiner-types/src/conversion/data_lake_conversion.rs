@@ -264,7 +264,7 @@ impl Converter<ValidatorStakeView> for near_lake_framework::near_indexer_primiti
     fn convert(self) -> ValidatorStakeView {
         match self {
             Self::V1(inner) =>{
-                near_primitives::views::validator_stake_view::ValidatorStakeView::V1(
+                ValidatorStakeView::V1(
                     near_primitives::views::validator_stake_view::ValidatorStakeViewV1 {
                         account_id: inner.account_id,
                         public_key: inner.public_key.convert(),
