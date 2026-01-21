@@ -2,8 +2,9 @@ use std::io;
 use std::path::Path;
 
 use aurora_standalone_engine::{
-    gas::{EthCallRequest, estimate_gas},
+    gas::estimate_gas,
     tracing::lib::{DebugTraceTransactionRequest, trace_transaction},
+    types::EthCallRequest,
 };
 use engine_standalone_storage::Storage;
 use engine_standalone_tracing::types::call_tracer::SerializableCallFrame;
@@ -142,7 +143,8 @@ async fn handle_estimate_gas(
     storage: SharedStorage,
     msg: serde_json::Value,
 ) -> Result<serde_json::Value, JsonRpcError<String>> {
-    let req = EthCallRequest::from_json_value(msg).ok_or_else(|| invalid_params(None))?;
+    let obj = msg.as_object().ok_or_else(|| invalid_params(None))?;
+    let req = EthCallRequest::from_json_value(obj).ok_or_else(|| invalid_params(None))?;
     let storage = storage.as_ref().read().await;
     let (res, _nonce) = estimate_gas(&storage, req, 0);
     match res {
