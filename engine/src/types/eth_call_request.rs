@@ -52,9 +52,9 @@ impl EthCallRequest {
         });
         let block_id = BlockId::from_json_value(params.get(1))?;
         let state_override = StateOverride::from_json_value(params.get(2))?;
-        let access_list = Self::parse_list::<AccessItem, _>(params_obj, "accessList");
+        let access_list = Self::parse_list::<AccessItem, _>(params_obj, "accessList")?;
         let authorization_list =
-            Self::parse_list::<AuthorizationItem, _>(params_obj, "authorizationList");
+            Self::parse_list::<AuthorizationItem, _>(params_obj, "authorizationList")?;
 
         Some(Self {
             from,
@@ -126,14 +126,23 @@ impl EthCallRequest {
         Some(Vec::new())
     }
 
-    fn parse_list<T: DeserializeOwned, R: From<T>>(
+    fn parse_list<T: DeserializeOwned, R: TryFrom<T>>(
         body_obj: &serde_json::Map<String, serde_json::Value>,
         field: &str,
-    ) -> Vec<R> {
-        body_obj
-            .get(field)
-            .and_then(|value| serde_json::from_value::<Vec<T>>(value.clone()).ok())
-            .map_or(vec![], |list| list.into_iter().map(Into::into).collect())
+    ) -> Option<Vec<R>> {
+        if let Some(value) = body_obj.get(field) {
+            if value.is_null() {
+                return Some(Vec::new());
+            }
+
+            serde_json::from_value::<Vec<T>>(value.clone())
+                .ok()?
+                .into_iter()
+                .map(|item| item.try_into().ok())
+                .collect()
+        } else {
+            Some(Vec::new())
+        }
     }
 }
 
@@ -144,9 +153,11 @@ pub struct AccessItem {
     storage_keys: Vec<H256>,
 }
 
-impl From<AccessItem> for (H160, Vec<H256>) {
-    fn from(value: AccessItem) -> Self {
-        (value.address, value.storage_keys)
+impl TryFrom<AccessItem> for (H160, Vec<H256>) {
+    type Error = ();
+
+    fn try_from(value: AccessItem) -> Result<Self, Self::Error> {
+        Ok((value.address, value.storage_keys))
     }
 }
 
@@ -161,20 +172,22 @@ pub struct AuthorizationItem {
     s: U256,
 }
 
-impl From<AuthorizationItem> for AuthorizationTuple {
-    fn from(value: AuthorizationItem) -> Self {
-        Self {
+impl TryFrom<AuthorizationItem> for AuthorizationTuple {
+    type Error = ();
+
+    fn try_from(value: AuthorizationItem) -> Result<Self, Self::Error> {
+        Ok(Self {
             chain_id: value.chain_id,
             address: value.address,
             nonce: if value.nonce > U256::from(u64::MAX) {
-                u64::MAX
+                return Err(());
             } else {
                 value.nonce.as_u64()
             },
             parity: value.y_parity,
             r: value.r,
             s: value.s,
-        }
+        })
     }
 }
 
@@ -187,7 +200,7 @@ pub fn convert_authorization_list(
     SignedTransaction7702 {
         transaction: Transaction7702 {
             chain_id: if chain_id_u256 > U256::from(u64::MAX) {
-                u64::MAX
+                return vec![];
             } else {
                 chain_id_u256.as_u64()
             },
