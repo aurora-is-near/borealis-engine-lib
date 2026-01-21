@@ -34,13 +34,22 @@ impl EthCallRequest {
         let gas_limit = if !params_obj.contains_key("gas") {
             GasLimit::Default(Self::DEFAULT_GAS_LIMIT.low_u64())
         } else {
-            let value = Self::parse_hex_int(params_obj, "gas", None)?.low_u64();
-            GasLimit::UserDefined(value)
+            let gas = Self::parse_hex_int(params_obj, "gas", None)?;
+            if gas > U256::from(u64::MAX) {
+                return None;
+            }
+            GasLimit::UserDefined(gas.low_u64())
         };
         let gas_price = Self::parse_hex_int(params_obj, "gasPrice", Some(U256::zero()))?;
         let value = Self::parse_hex_int(params_obj, "value", Some(U256::zero())).map(Wei::new)?;
         let data = Self::parse_hex_bytes(params_obj, ["data", "input"])?;
-        let nonce = Self::parse_hex_int(params_obj, "nonce", None).map(|x| x.low_u64());
+        let nonce = Self::parse_hex_int(params_obj, "nonce", None).and_then(|x| {
+            if x > U256::from(u64::MAX) {
+                None
+            } else {
+                Some(x.low_u64())
+            }
+        });
         let block_id = BlockId::from_json_value(params.get(1))?;
         let state_override = StateOverride::from_json_value(params.get(2))?;
         let access_list = Self::parse_list::<AccessItem, _>(params_obj, "accessList");

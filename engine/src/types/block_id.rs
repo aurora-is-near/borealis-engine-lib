@@ -22,6 +22,11 @@ impl BlockId {
                     hex_str if hex_str.starts_with("0x") => {
                         let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
                         let block_height = U256::from_str_radix(hex_str, 16).ok()?;
+
+                        if block_height > U256::from(u64::MAX) {
+                            return None;
+                        }
+
                         Some(Self::Number(block_height.low_u64()))
                     }
                     _ => None,
@@ -34,6 +39,11 @@ impl BlockId {
                     if maybe_hex_str.starts_with("0x") {
                         let hex_str = maybe_hex_str.strip_prefix("0x").unwrap_or(maybe_hex_str);
                         let block_height = U256::from_str_radix(hex_str, 16).ok()?;
+
+                        if block_height > U256::from(u64::MAX) {
+                            return None;
+                        }
+
                         return Some(Self::Number(block_height.low_u64()));
                     }
                 }
