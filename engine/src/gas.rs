@@ -1,3 +1,4 @@
+use crate::types::{BlockId, EthCallRequest, convert_authorization_list};
 use aurora_engine::{
     engine::{Engine, EngineError, EngineErrorKind},
     parameters::SubmitResult,
@@ -5,10 +6,9 @@ use aurora_engine::{
 use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_sdk::io::IO;
 use aurora_engine_transactions::NormalizedEthTransaction;
-use aurora_engine_transactions::eip_2930::AccessTuple;
 use aurora_engine_types::{
     H160, H256, U256, storage,
-    types::{Address, NearGas, Wei},
+    types::{NearGas, Wei},
 };
 use engine_standalone_storage::{
     Storage,
@@ -16,248 +16,29 @@ use engine_standalone_storage::{
 };
 use std::collections::HashMap;
 
-fn parse_hex_int(
-    body_obj: &serde_json::Map<String, serde_json::Value>,
-    field: &str,
-    default: Option<U256>,
-) -> Option<U256> {
-    match body_obj.get(field) {
-        None => default,
-        Some(value) => {
-            let hex_str = value.as_str()?;
-            let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-            U256::from_str_radix(hex_str, 16).ok()
+/// Function for estimation gas.
+pub fn estimate_gas(
+    storage: &Storage,
+    mut request: EthCallRequest,
+    earliest_block_height: u64,
+) -> (Result<SubmitResult, StateOrEngineError>, NonceStatus) {
+    let actual_gas_price = request.gas_price;
+    request.gas_price = U256::zero();
+
+    let (result, nonce) = eth_call(storage, request.clone(), u64::MAX, earliest_block_height);
+
+    // If the request gas_price is 0, then there is no reason to try again.
+    // The only reason to retry is to see if the user has enough ETH to cover
+    // the gas cost with the estimated limit.
+    match result {
+        Ok(res) if !actual_gas_price.is_zero() => {
+            let gas_used = res.gas_used;
+            let computed_gas_limit = gas_used.saturating_add(gas_used / 3);
+            request.gas_price = actual_gas_price;
+
+            eth_call(storage, request, computed_gas_limit, earliest_block_height)
         }
-    }
-}
-
-fn parse_hex_bytes(
-    body_obj: &serde_json::Map<String, serde_json::Value>,
-    field: &str,
-) -> Option<Vec<u8>> {
-    match body_obj.get(field) {
-        None => Some(Vec::new()),
-        Some(value) => {
-            let hex_str = value.as_str()?;
-            let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-            hex::decode(hex_str).ok()
-        }
-    }
-}
-
-fn parse_h256_map<T, F: Fn(H256, H256, &mut T)>(
-    body_obj: &serde_json::Map<String, serde_json::Value>,
-    field: &str,
-    mut result: T,
-    insert_fn: F,
-) -> Option<T> {
-    let inner_map = body_obj.get(field)?.as_object()?;
-    for (k, v) in inner_map.iter() {
-        let k = parse_h256(k)?;
-        let v = v.as_str().and_then(parse_h256)?;
-        insert_fn(k, v, &mut result);
-    }
-    Some(result)
-}
-
-fn parse_h256(hex_str: &str) -> Option<H256> {
-    let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-    if hex_str.len() != 64 {
-        return None;
-    }
-    hex::decode(hex_str)
-        .map(|bytes| H256::from_slice(&bytes))
-        .ok()
-}
-
-fn parse_address(hex_str: &str) -> Option<Address> {
-    let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-    Address::decode(hex_str).ok()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StateOverride {
-    balance: Option<U256>,
-    nonce: Option<U256>,
-    code: Option<Vec<u8>>,
-    state: Option<HashMap<H256, H256>>,
-    state_diff: Option<Vec<(H256, H256)>>,
-}
-
-impl StateOverride {
-    pub fn from_json_value(value: Option<&serde_json::Value>) -> Option<Vec<(Address, Self)>> {
-        let state_object = match value.and_then(|v| v.as_object()) {
-            Some(v) => v,
-            None => return Some(Vec::new()),
-        };
-
-        let mut result = Vec::with_capacity(state_object.len());
-        for (k, v) in state_object.iter() {
-            let address = parse_address(k)?;
-            let override_object = v.as_object()?;
-            let state_override = Self::parse_single_override(override_object)?;
-            result.push((address, state_override));
-        }
-
-        Some(result)
-    }
-
-    fn parse_single_override(
-        override_object: &serde_json::Map<String, serde_json::Value>,
-    ) -> Option<Self> {
-        let balance = parse_hex_int(override_object, "balance", None);
-        let nonce = parse_hex_int(override_object, "nonce", None);
-        let code = parse_hex_bytes(override_object, "code");
-        let state = parse_h256_map(override_object, "state", HashMap::new(), |k, v, c| {
-            c.insert(k, v);
-        });
-        let state_diff = parse_h256_map(override_object, "stateDiff", Vec::new(), |k, v, c| {
-            c.push((k, v));
-        });
-        Some(Self {
-            balance,
-            nonce,
-            code,
-            state,
-            state_diff,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BlockId {
-    Number(u64),
-    Hash(H256),
-    Latest,
-    Earliest,
-}
-
-impl BlockId {
-    pub fn from_json_value(value: Option<&serde_json::Value>) -> Option<Self> {
-        match value {
-            None => Some(Self::Latest),
-            // Block Id can be a string or object as per https://eips.ethereum.org/EIPS/eip-1898
-            Some(serde_json::Value::String(value)) => {
-                let value = value.to_lowercase();
-                match value.as_str() {
-                    "latest" => Some(Self::Latest),
-                    "earliest" => Some(Self::Earliest),
-                    "pending" => Some(Self::Latest),
-                    hex_str if hex_str.starts_with("0x") => {
-                        let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-                        let block_height = U256::from_str_radix(hex_str, 16).ok()?;
-                        Some(Self::Number(block_height.low_u64()))
-                    }
-                    _ => None,
-                }
-            }
-            Some(serde_json::Value::Object(value)) => {
-                if let Some(serde_json::Value::String(value)) = value.get("blockNumber") {
-                    let value = value.to_lowercase();
-                    let maybe_hex_str = value.as_str();
-                    if maybe_hex_str.starts_with("0x") {
-                        let hex_str = maybe_hex_str.strip_prefix("0x").unwrap_or(maybe_hex_str);
-                        let block_height = U256::from_str_radix(hex_str, 16).ok()?;
-                        return Some(Self::Number(block_height.low_u64()));
-                    }
-                }
-
-                if let Some(serde_json::Value::String(value)) = value.get("blockHash") {
-                    let value = value.to_lowercase();
-                    let maybe_hex_str = value.as_str();
-                    if maybe_hex_str.starts_with("0x") {
-                        let hex_str = maybe_hex_str.strip_prefix("0x").unwrap_or(maybe_hex_str);
-                        let bytes = hex::decode(hex_str).ok()?;
-                        if bytes.len() != 32 {
-                            return None;
-                        }
-                        return Some(Self::Hash(H256::from_slice(&bytes)));
-                    }
-                }
-
-                None
-            }
-            // Also allow a regular number
-            Some(serde_json::Value::Number(n)) => n.as_u64().map(Self::Number),
-            Some(_) => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EthCallRequest {
-    pub from: Address,
-    pub to: Option<Address>,
-    pub gas_limit: u64,
-    pub gas_price: U256,
-    pub value: Wei,
-    pub data: Vec<u8>,
-    pub block_id: BlockId,
-    pub nonce: Option<u64>,
-    pub state_override: Vec<(Address, StateOverride)>,
-    pub access_list: Vec<AccessTuple>,
-}
-
-impl EthCallRequest {
-    const DEFAULT_GAS_LIMIT: U256 = U256([u64::MAX, 0, 0, 0]);
-
-    pub fn from_json_value(body: serde_json::Value) -> Option<Self> {
-        let params = body.as_object()?.get("params")?.as_array()?;
-        let params_obj = params.first()?.as_object()?;
-        let from = Self::parse_address(params_obj, "from")?;
-        let to = if params_obj.contains_key("to") {
-            Some(Self::parse_address(params_obj, "to")?)
-        } else {
-            None
-        };
-        let gas_limit = parse_hex_int(params_obj, "gas", Some(Self::DEFAULT_GAS_LIMIT))?.low_u64();
-        let gas_price = parse_hex_int(params_obj, "gasPrice", Some(U256::zero()))?;
-        let value = parse_hex_int(params_obj, "value", Some(U256::zero())).map(Wei::new)?;
-        let data = parse_hex_bytes(params_obj, "data")?;
-        let nonce = parse_hex_int(params_obj, "nonce", None).map(|x| x.low_u64());
-        let block_id = BlockId::from_json_value(params.get(1))?;
-        let state_override = StateOverride::from_json_value(params.get(2))?;
-        let access_list = Self::parse_access_list(params_obj, "accessList")?;
-
-        Some(Self {
-            from,
-            to,
-            gas_limit,
-            gas_price,
-            value,
-            data,
-            block_id,
-            nonce,
-            state_override,
-            access_list,
-        })
-    }
-
-    fn parse_address(
-        body_obj: &serde_json::Map<String, serde_json::Value>,
-        field: &str,
-    ) -> Option<Address> {
-        let hex_str = match body_obj.get(field) {
-            None | Some(serde_json::Value::Null) => "",
-            Some(value) => value.as_str()?,
-        };
-        let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-        if hex_str.is_empty() {
-            return Some(Address::zero());
-        }
-        Address::decode(hex_str).ok()
-    }
-
-    fn parse_access_list(
-        body_obj: &serde_json::Map<String, serde_json::Value>,
-        field: &str,
-    ) -> Option<Vec<AccessTuple>> {
-        match body_obj.get(field) {
-            None | Some(serde_json::Value::Null) => Some(Vec::new()),
-            Some(value) => serde_json::from_value::<Vec<AccessListItem>>(value.clone())
-                .ok()
-                .map(|access_list| access_list.into_iter().map(Into::into).collect()),
-        }
+        _ => (result, nonce),
     }
 }
 
@@ -464,6 +245,7 @@ fn compute_call_result<I: IO + Copy>(
     aurora_engine::state::get_state(&io)
         .map_err(|_| StateOrEngineError::StateMissing)
         .and_then(|engine_state| {
+            let chain_id = engine_state.chain_id;
             let mut engine: Engine<_, _, AuroraModExp> = Engine::new_with_state(
                 engine_state,
                 request.from,
@@ -471,11 +253,6 @@ fn compute_call_result<I: IO + Copy>(
                 io,
                 &env,
             );
-            let access_list = request
-                .access_list
-                .iter()
-                .map(|a| (a.address, a.storage_keys.clone()))
-                .collect();
             let result = match request.to {
                 Some(to) => engine
                     .call(
@@ -484,8 +261,8 @@ fn compute_call_result<I: IO + Copy>(
                         request.value,
                         request.data,
                         gas_limit,
-                        access_list,
-                        Vec::new(),
+                        request.access_list.clone(),
+                        convert_authorization_list(&request.authorization_list, chain_id),
                         &mut handler,
                     )
                     .map_err(StateOrEngineError::Engine),
@@ -496,7 +273,7 @@ fn compute_call_result<I: IO + Copy>(
                         request.data,
                         None,
                         gas_limit,
-                        access_list,
+                        request.access_list.clone(),
                         &mut handler,
                     )
                     .map_err(StateOrEngineError::Engine),
@@ -514,9 +291,10 @@ fn compute_call_result<I: IO + Copy>(
                     to: request.to,
                     value: request.value,
                     // We do not use the real `data` here to avoid moving it before passing to `call`.
-                    // It is ok to not have the `data` here because it is not used by the `charge_gas` function.
+                    // It is ok to not have the `data`, `access_list` and `authorization_list` here
+                    // because it is not used by the `charge_gas` function.
                     data: Vec::new(),
-                    access_list: request.access_list,
+                    access_list: Vec::new(),
                     authorization_list: Vec::new(),
                 };
                 engine
@@ -527,45 +305,4 @@ fn compute_call_result<I: IO + Copy>(
             }
             result
         })
-}
-
-pub fn estimate_gas(
-    storage: &Storage,
-    mut request: EthCallRequest,
-    earliest_block_height: u64,
-) -> (Result<SubmitResult, StateOrEngineError>, NonceStatus) {
-    let actual_gas_price = request.gas_price;
-    request.gas_price = U256::zero();
-
-    let (result, nonce) = eth_call(storage, request.clone(), u64::MAX, earliest_block_height);
-
-    // If the request gas_price is 0, then there is no reason to try again.
-    // The only reason to retry is to see if the user has enough ETH to cover
-    // the gas cost with the estimated limit.
-    match result {
-        Ok(res) if !actual_gas_price.is_zero() => {
-            let gas_used = res.gas_used;
-            let computed_gas_limit = gas_used.saturating_add(gas_used / 3);
-            request.gas_price = actual_gas_price;
-
-            eth_call(storage, request, computed_gas_limit, earliest_block_height)
-        }
-        _ => (result, nonce),
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AccessListItem {
-    address: H160,
-    storage_keys: Vec<H256>,
-}
-
-impl From<AccessListItem> for AccessTuple {
-    fn from(value: AccessListItem) -> Self {
-        Self {
-            address: value.address,
-            storage_keys: value.storage_keys,
-        }
-    }
 }
