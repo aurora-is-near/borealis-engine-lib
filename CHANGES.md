@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0-2.10.5] 2026-01-23
+
+### Changes
+
+* chore: bump aurora-engine to 3.10.1 in [#268]
+* feat: extend eth_call request with access and authorization lists in [#270]
+
+[#268]: https://github.com/aurora-is-near/borealis-engine-lib/pull/268
+[#270]: https://github.com/aurora-is-near/borealis-engine-lib/pull/270
+
 ## [0.30.9-2.10.5] 2026-01-20
 
 ### Changes
@@ -236,7 +246,7 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 ## [0.30.6-2.6.3] 2025-06-25
 
 * fix: Correct sh syntax for the BEL gh action by [@aleksander-borodulya] in [#232]
-* fix: Add missing serde flag to ChunkHeaderView by [@aleksander-borodulya] in [#231]
+* fix: Add a missing serde flag to ChunkHeaderView by [@aleksander-borodulya] in [#231]
 * fix: use selfhosted runners for rust tests by [@aleksuss] in [#230]
 
 [#232]: https://github.com/aurora-is-near/borealis-engine-lib/pull/232
@@ -509,7 +519,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.30.9-2.10.5...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.31.0-2.10.5...main
+[0.31.0-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.5...0.31.0-2.10.5
 [0.30.9-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.4...0.30.9-2.10.5
 [0.30.9-2.10.4]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.3...0.30.9-2.10.4
 [0.30.9-2.10.3]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.2...0.30.9-2.10.3
