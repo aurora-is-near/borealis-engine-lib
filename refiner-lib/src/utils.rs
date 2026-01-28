@@ -26,6 +26,7 @@ impl TryFrom<&[u8]> for TxMetadata {
             Err(DecoderError::Custom("Transaction"))
         } else {
             match value[0] {
+                // EIP-2930
                 0x01 => {
                     let rlp = Rlp::new(&value[1..]);
                     Ok(Self {
@@ -35,6 +36,7 @@ impl TryFrom<&[u8]> for TxMetadata {
                         s: rlp.val_at(10)?,
                     })
                 }
+                // EIP-1559
                 0x02 => {
                     let rlp = Rlp::new(&value[1..]);
                     Ok(Self {
@@ -42,6 +44,16 @@ impl TryFrom<&[u8]> for TxMetadata {
                         v: rlp.val_at(9)?,
                         r: rlp.val_at(10)?,
                         s: rlp.val_at(11)?,
+                    })
+                }
+                // EIP-7702
+                0x04 => {
+                    let rlp = Rlp::new(&value[1..]);
+                    Ok(Self {
+                        tx_type: 0x4,
+                        v: rlp.val_at(10)?,
+                        r: rlp.val_at(11)?,
+                        s: rlp.val_at(12)?,
                     })
                 }
                 0x00..=0x7f => Err(DecoderError::Custom(
