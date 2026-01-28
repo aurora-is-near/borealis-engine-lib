@@ -145,7 +145,7 @@ pub mod tests {
 
     #[tokio::test]
     async fn test_block_131407300() {
-        // The block 131407300 contains a receipt with batch of actions, one of which inits silo
+        // Block 131407300 contains a receipt with a batch of actions, one of which inits silo
         // contract. The test checks that init action in the batch is processed correctly and
         // initializes the borealis engine's state.
         let db_dir = tempfile::tempdir().unwrap();
@@ -609,6 +609,28 @@ pub mod tests {
             deployed_erc20_token.is_some(),
             "Expected mirror_erc20_token_callback transaction not found in block 134585465"
         );
+    }
+
+    #[tokio::test]
+    async fn test_block_234187695_contains_eip_7702() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContextBuilder::new()
+            .with_chain_id(1313161555)
+            .build(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let block = read_block("tests/res/testnet-block-234187695.json");
+        let aurora_blocks = stream.next_block(&block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 234187695);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+        let aurora_block = aurora_blocks.first().unwrap();
+
+        assert_eq!(aurora_block.transactions.len(), 1);
+        assert_eq!(aurora_block.transactions[0].authorization_list.len(), 1);
     }
 
     pub fn read_block(path: &str) -> NEARBlock {
