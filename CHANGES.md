@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.1-2.10.5] 2026-01-23
+
+### Fixes
+
+* fix: add support for EIP-7702 transaction in the refiner by [@aleksuss] in [#272]
+* 
+[#272]: https://github.com/aurora-is-near/borealis-engine-lib/pull/272
+
 ## [0.31.0-2.10.5] 2026-01-23
 
 ### Changes
@@ -519,7 +527,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.31.0-2.10.5...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.1-2.10.5...main
+[0.31.1-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.0-2.10.5...0.31.1-2.10.5
 [0.31.0-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.5...0.31.0-2.10.5
 [0.30.9-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.4...0.30.9-2.10.5
 [0.30.9-2.10.4]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.3...0.30.9-2.10.4
