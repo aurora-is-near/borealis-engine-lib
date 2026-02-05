@@ -121,6 +121,7 @@ pub struct AuroraTransaction {
     /// Gas price for the transaction. Related to Aurora Gas not NEAR Gas.
     pub gas_price: U256,
     /// Effective gas price for the transaction. Related to Aurora Gas not NEAR Gas.
+    #[serde(default)]
     pub effective_gas_price: U256,
     /// Gas limit of the transaction. In the context of Aurora it should be U256::MAX
     #[serde(with = "u64_hex_serde")]

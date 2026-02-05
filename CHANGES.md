@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.2-2.10.6] 2026-02-05
+
+### Fixes
+
+* fix: introduce the `effective_gas_price` field for the aurora transaction in [#275]
+
+[#275]: https://github.com/aurora-is-near/borealis-engine-lib/pull/275
+
 ## [0.31.1-2.10.6] 2026-02-03
 
 ### Changes
@@ -535,7 +543,8 @@ Later, when `near-primitives` was updated to `0.31.0` in the `near-lake-framewor
 
 ## [v0.10.0] 
 
-[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/0.31.1-2.10.6...main
+[Unreleased]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.2-2.10.6...main
+[0.31.2-2.10.6]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.1-2.10.6...0.31.2-2.10.6
 [0.31.1-2.10.6]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.1-2.10.5...0.31.1-2.10.6
 [0.31.1-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.31.0-2.10.5...0.31.1-2.10.5
 [0.31.0-2.10.5]: https://github.com/aurora-is-near/borealis-engine-lib/compare/0.30.9-2.10.5...0.31.0-2.10.5

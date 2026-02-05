@@ -529,7 +529,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner"
-version = "0.31.1-2.10.6"
+version = "0.31.2-2.10.6"
 dependencies = [
  "actix",
  "anyhow",
@@ -553,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-app-integration-tests"
-version = "0.31.1-2.10.6"
+version = "0.31.2-2.10.6"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -564,7 +564,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-lib"
-version = "0.31.1-2.10.6"
+version = "0.31.2-2.10.6"
 dependencies = [
  "actix",
  "anyhow",
@@ -597,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-refiner-types"
-version = "0.31.1-2.10.6"
+version = "0.31.2-2.10.6"
 dependencies = [
  "aurora-engine",
  "aurora-engine-transactions",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-standalone-engine"
-version = "0.31.1-2.10.6"
+version = "0.31.2-2.10.6"
 dependencies = [
  "anyhow",
  "aurora-engine",
