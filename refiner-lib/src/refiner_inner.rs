@@ -594,7 +594,8 @@ fn build_transaction(
         .block_height(near_block.header.height)
         .chain_id(chain_id)
         .transaction_index(tx_index)
-        .gas_price(U256::zero());
+        .gas_price(U256::zero())
+        .effective_gas_price(U256::zero());
 
     // Hash used to build a transactions merkle tree
     let mut transaction_hash = H256::zero();
@@ -625,14 +626,15 @@ fn build_transaction(
                             let bytes = args.tx_data;
                             let tx_metadata = TxMetadata::try_from(bytes.as_slice())
                                 .map_err(RefinerError::ParseMetadata)?;
-                            let (authorization_list, mut eth_tx) = normalize_transaction(&bytes)?;
-
-                            if let Some(gas_price) = args.max_gas_price {
-                                let gas_price: U256 = gas_price.into();
-                                eth_tx.max_fee_per_gas = eth_tx.max_fee_per_gas.min(gas_price);
-                                eth_tx.max_priority_fee_per_gas =
-                                    eth_tx.max_priority_fee_per_gas.min(gas_price);
-                            }
+                            let (authorization_list, eth_tx) = normalize_transaction(&bytes)?;
+                            // Our RPC doesn't pass transactions with values of `max_fee_per_gas` and
+                            // `max_priority_fee_per_gas` less than the price limit, which is 0.07 GWei.
+                            let gas_price =
+                                eth_tx.max_fee_per_gas.min(eth_tx.max_priority_fee_per_gas);
+                            let effective_gas_price =
+                                args.max_gas_price.map_or(gas_price, |max_gas_price| {
+                                    gas_price.min(max_gas_price.into())
+                                });
 
                             hash = keccak256(&bytes); // https://ethereum.stackexchange.com/a/46579/45323
 
@@ -643,7 +645,8 @@ fn build_transaction(
                                 .gas_limit(aurora_refiner_types::utils::saturating_cast(
                                     eth_tx.gas_limit,
                                 ))
-                                .gas_price(eth_tx.max_fee_per_gas)
+                                .gas_price(gas_price)
+                                .effective_gas_price(effective_gas_price)
                                 .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
                                 .max_fee_per_gas(eth_tx.max_fee_per_gas)
                                 .value(eth_tx.value)
@@ -695,7 +698,7 @@ fn build_transaction(
                     let tx_metadata = TxMetadata::try_from(raw_input.as_slice())
                         .map_err(RefinerError::ParseMetadata)?;
                     let (authorization_list, eth_tx) = normalize_transaction(&raw_input)?;
-
+                    let gas_price = eth_tx.max_fee_per_gas.min(eth_tx.max_priority_fee_per_gas);
                     hash = keccak256(&raw_input); // https://ethereum.stackexchange.com/a/46579/45323
 
                     tx = tx
@@ -705,7 +708,8 @@ fn build_transaction(
                         .gas_limit(aurora_refiner_types::utils::saturating_cast(
                             eth_tx.gas_limit,
                         ))
-                        .gas_price(eth_tx.max_fee_per_gas)
+                        .gas_price(gas_price)
+                        .effective_gas_price(gas_price)
                         .max_priority_fee_per_gas(eth_tx.max_priority_fee_per_gas)
                         .max_fee_per_gas(eth_tx.max_fee_per_gas)
                         .value(eth_tx.value)
