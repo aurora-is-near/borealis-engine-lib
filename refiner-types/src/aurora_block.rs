@@ -95,7 +95,7 @@ pub struct NearBlockHeader {
 ///
 /// ## Fields from Ethereum transactions and receipts not included:
 ///
-/// `cumulativeGasUsed, effectiveGasPrice, logsBloom`
+/// `cumulativeGasUsed, logsBloom`
 #[derive(Builder, Debug, Serialize, Deserialize)]
 #[builder(pattern = "owned")]
 pub struct AuroraTransaction {
