@@ -112,7 +112,7 @@ pub struct DeserializableCallFrame {
     #[serde(default)]
     error: Option<String>,
     #[serde(default)]
-    calls: Vec<DeserializableCallFrame>,
+    calls: Vec<Self>,
 }
 
 #[allow(clippy::fallible_impl_from)]

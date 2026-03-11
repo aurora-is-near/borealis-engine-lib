@@ -12,7 +12,7 @@ pub enum AlchemyTrace {
 }
 
 impl AlchemyTrace {
-    pub fn serializable(&self) -> serialization::SerializableAlchemyTrace {
+    pub fn serializable(&self) -> serialization::SerializableAlchemyTrace<'_> {
         match self {
             Self::Create(x) => x.into(),
             Self::Suicide(x) => x.into(),
