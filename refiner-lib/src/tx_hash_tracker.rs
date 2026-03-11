@@ -172,7 +172,7 @@ impl TxHashTrackerImpl {
         self.cache.get(rx_hash).copied()
     }
 
-    fn start_write_batch(&mut self) -> TxHashTrackerWriteBatch {
+    fn start_write_batch(&mut self) -> TxHashTrackerWriteBatch<'_> {
         TxHashTrackerWriteBatch {
             cache: &mut self.cache,
             write_batch: rocksdb::WriteBatch::default(),
