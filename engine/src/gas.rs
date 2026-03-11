@@ -279,7 +279,7 @@ fn compute_call_result<I: IO + Copy>(
                     .map_err(StateOrEngineError::Engine),
             };
             if !request.gas_price.is_zero() && result.is_ok() {
-                let gas_used = result.as_ref().unwrap().gas_used;
+                let gas_used = result.as_ref().map(|r| r.gas_used).unwrap_or_default();
                 let gas_estimate = gas_used.saturating_add(gas_used / 3);
                 let transaction = NormalizedEthTransaction {
                     address: request.from,

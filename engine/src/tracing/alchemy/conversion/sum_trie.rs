@@ -12,7 +12,7 @@ pub struct SumTrie<T> {
 #[derive(Debug, Default, Clone)]
 struct SumTrieNode<T> {
     value: T,
-    children: BTreeMap<u32, SumTrieNode<T>>,
+    children: BTreeMap<u32, Self>,
 }
 
 impl<T: Copy> SumTrie<T> {
