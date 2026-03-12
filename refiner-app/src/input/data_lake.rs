@@ -5,7 +5,6 @@ use near_lake_framework::{LakeBuilder, near_lake_primitives};
 use crate::config::DataLakeConfig;
 
 /// Spawns a task that reads blocks from the NEAR Data Lake stream and sends them to the channel.
-/// The `shutdown_rx` is used to signal the task to stop.
 /// Returns a channel to send NEAR blocks to the task and a handle to the task.
 pub fn get_near_data_lake_stream(
     block_height: u64,
@@ -45,10 +44,10 @@ pub fn get_near_data_lake_stream(
                             (),
                         );
 
-                        sender
-                            .send(block_with_meta)
-                            .await
-                            .expect("Failed to send block to channel from data lake stream");
+                        if sender.send(block_with_meta).await.is_err() {
+                            tracing::warn!("Receiver dropped, stopping data lake stream");
+                            return Err("Channel closed".into());
+                        }
 
                         Ok::<(), Box<dyn std::error::Error>>(())
                     }
@@ -60,8 +59,6 @@ pub fn get_near_data_lake_stream(
             tracing::error!("get_near_data_lake_stream: data lake stream failed: {err}");
         }
     });
-
-    tracing::info!("get_near_data_lake_stream: data lake stream finished");
 
     (receiver, task_handle)
 }
