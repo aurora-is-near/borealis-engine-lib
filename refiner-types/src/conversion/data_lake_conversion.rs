@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use near_crypto::{ED25519PublicKey, PublicKey, Secp256K1PublicKey, Signature};
 use near_primitives::{
     account::{AccessKey, AccessKeyPermission, FunctionCallPermission},
@@ -19,11 +17,13 @@ use near_primitives::{
     types::{FunctionArgs, ShardId, StoreKey, StoreValue},
     views::{
         AccessKeyView, AccountView, ActionView, CostGasUsed, DataReceiverView,
-        ExecutionOutcomeView, ExecutionOutcomeWithIdView, ExecutionStatusView, GasKeyView,
+        ExecutionOutcomeView, ExecutionOutcomeWithIdView, ExecutionStatusView,
         GlobalContractIdentifierView, ReceiptEnumView, StateChangeValueView,
         validator_stake_view::ValidatorStakeView,
     },
 };
+use near_primitives_crates_io::errors::DepositCostFailureReason;
+use std::str::FromStr;
 
 use crate::{
     Converter,
@@ -87,16 +87,6 @@ impl Converter<AccessKey> for near_primitives_crates_io::account::AccessKey {
     }
 }
 
-impl Converter<GasKeyView> for near_primitives_crates_io::views::GasKeyView {
-    fn convert(self) -> GasKeyView {
-        GasKeyView {
-            num_nonces: self.num_nonces,
-            balance: self.balance,
-            permission: self.permission.convert(),
-        }
-    }
-}
-
 impl Converter<AccessKeyPermission> for near_primitives_crates_io::account::AccessKeyPermission {
     fn convert(self) -> AccessKeyPermission {
         match self {
@@ -108,6 +98,23 @@ impl Converter<AccessKeyPermission> for near_primitives_crates_io::account::Acce
                 })
             }
             Self::FullAccess => AccessKeyPermission::FullAccess,
+            Self::GasKeyFunctionCall(info, permission) => AccessKeyPermission::GasKeyFunctionCall(
+                near_primitives::account::GasKeyInfo {
+                    balance: info.balance,
+                    num_nonces: info.num_nonces,
+                },
+                FunctionCallPermission {
+                    allowance: permission.allowance,
+                    receiver_id: permission.receiver_id,
+                    method_names: permission.method_names,
+                },
+            ),
+            Self::GasKeyFullAccess(info) => {
+                AccessKeyPermission::GasKeyFullAccess(near_primitives::account::GasKeyInfo {
+                    balance: info.balance,
+                    num_nonces: info.num_nonces,
+                })
+            }
         }
     }
 }
@@ -301,7 +308,7 @@ impl From<near_lake_framework::near_indexer_primitives::views::SignedTransaction
             nonce: value.nonce,
             receiver_id: value.receiver_id,
             actions: value.actions.into_iter().map(Converter::convert).collect(),
-            priority_fee: value.priority_fee,
+            priority_fee: value._priority_fee,
             signature: value.signature.convert(),
             hash: CryptoHash(value.hash.0),
         }
@@ -369,6 +376,17 @@ impl Converter<ActionView> for near_lake_framework::near_indexer_primitives::vie
                 code: code.convert(),
                 data,
                 deposit,
+            },
+            Self::TransferToGasKey {
+                public_key,
+                deposit,
+            } => ActionView::TransferToGasKey {
+                public_key: public_key.convert(),
+                deposit,
+            },
+            Self::WithdrawFromGasKey { public_key, amount } => ActionView::WithdrawFromGasKey {
+                public_key: public_key.convert(),
+                amount,
             },
         }
     }
@@ -512,8 +530,24 @@ impl Converter<NonDelegateAction>
                         deposit: deterministic_state_init_action.deposit,
                     },
                 )),
+                near_primitives_crates_io::action::Action::TransferToGasKey(
+                    transfer_to_gas_key_action,
+                ) => near_primitives::action::Action::TransferToGasKey(Box::new(
+                    near_primitives::action::TransferToGasKeyAction {
+                        public_key: transfer_to_gas_key_action.public_key.convert(),
+                        deposit: transfer_to_gas_key_action.deposit,
+                    },
+                )),
+                near_primitives_crates_io::action::Action::WithdrawFromGasKey(
+                    withdraw_from_gas_key_action,
+                ) => near_primitives::action::Action::WithdrawFromGasKey(Box::new(
+                    near_primitives::action::WithdrawFromGasKeyAction {
+                        public_key: withdraw_from_gas_key_action.public_key.convert(),
+                        amount: withdraw_from_gas_key_action.amount,
+                    },
+                )),
             };
-            near_primitives::action::delegate::NonDelegateAction::try_from(action_inner)
+            NonDelegateAction::try_from(action_inner)
                 .expect("Failed to convert Action to NonDelegateAction")
         }
     }
@@ -543,7 +577,7 @@ impl From<near_lake_framework::near_indexer_primitives::views::ReceiptView> for 
             receiver_id: value.receiver_id,
             receipt_id: value.receipt_id.convert(),
             receipt: value.receipt.convert(),
-            priority: value.priority,
+            priority: value._priority,
         }
     }
 }
@@ -589,6 +623,7 @@ impl Converter<ReceiptEnumView>
                 target_shard,
                 already_delivered_shards,
                 code,
+                nonce,
             } => ReceiptEnumView::GlobalContractDistribution {
                 id: id.convert(),
                 target_shard: target_shard.convert(),
@@ -597,6 +632,7 @@ impl Converter<ReceiptEnumView>
                     .map(Converter::convert)
                     .collect(),
                 code,
+                nonce,
             },
         }
     }
@@ -892,6 +928,33 @@ impl Converter<ActionError>
                         identifier: identifier.convert(),
                     }
                 }
+                LakeKind::GasKeyDoesNotExist {
+                    account_id,
+                    public_key,
+                } => ActionErrorKind::GasKeyDoesNotExist {
+                    account_id,
+                    public_key: Box::new(public_key.convert()),
+                },
+                LakeKind::InsufficientGasKeyBalance {
+                    account_id,
+                    public_key,
+                    balance,
+                    required,
+                } => ActionErrorKind::InsufficientGasKeyBalance {
+                    account_id,
+                    public_key: Box::new(public_key.convert()),
+                    balance,
+                    required,
+                },
+                LakeKind::GasKeyBalanceTooHigh {
+                    account_id,
+                    public_key,
+                    balance,
+                } => ActionErrorKind::GasKeyBalanceTooHigh {
+                    account_id,
+                    public_key: public_key.map(|key| Box::new(key.convert())),
+                    balance,
+                },
             };
             ActionError {
                 index: self.index,
@@ -963,6 +1026,40 @@ impl Converter<InvalidTxError> for near_primitives_crates_io::errors::InvalidTxE
             } => InvalidTxError::ShardStuck {
                 shard_id,
                 missed_chunks,
+            },
+            Self::InvalidNonceIndex {
+                tx_nonce_index,
+                num_nonces,
+            } => InvalidTxError::InvalidNonceIndex {
+                tx_nonce_index,
+                num_nonces,
+            },
+            Self::NotEnoughGasKeyBalance {
+                signer_id,
+                balance,
+                cost,
+            } => InvalidTxError::NotEnoughGasKeyBalance {
+                signer_id,
+                balance,
+                cost,
+            },
+            Self::NotEnoughBalanceForDeposit {
+                signer_id,
+                balance,
+                cost,
+                reason,
+            } => InvalidTxError::NotEnoughBalanceForDeposit {
+                signer_id,
+                balance,
+                cost,
+                reason: match reason {
+                    DepositCostFailureReason::NotEnoughBalance => {
+                        near_primitives::errors::DepositCostFailureReason::NotEnoughBalance
+                    }
+                    DepositCostFailureReason::LackBalanceForState => {
+                        near_primitives::errors::DepositCostFailureReason::LackBalanceForState
+                    }
+                },
             },
         }
     }
@@ -1229,6 +1326,19 @@ impl Converter<ActionsValidationError>
             Self::DeterministicStateInitValueLengthExceeded { length, limit } => {
                 ActionsValidationError::DeterministicStateInitValueLengthExceeded { length, limit }
             }
+            Self::GasKeyInvalidNumNonces {
+                requested_nonces,
+                limit,
+            } => ActionsValidationError::GasKeyInvalidNumNonces {
+                requested_nonces,
+                limit,
+            },
+            Self::AddGasKeyWithNonZeroBalance { balance } => {
+                ActionsValidationError::AddGasKeyWithNonZeroBalance { balance }
+            }
+            Self::GasKeyFunctionCallAllowanceNotAllowed => {
+                ActionsValidationError::GasKeyFunctionCallAllowanceNotAllowed
+            }
         }
     }
 }
@@ -1401,15 +1511,6 @@ impl Converter<StateChangeValueView>
                 account_id,
                 public_key: public_key.convert(),
             },
-            Self::GasKeyUpdate {
-                account_id,
-                public_key,
-                gas_key,
-            } => StateChangeValueView::GasKeyUpdate {
-                account_id,
-                public_key: public_key.convert(),
-                gas_key: gas_key.convert(),
-            },
             Self::GasKeyNonceUpdate {
                 account_id,
                 public_key,
@@ -1420,13 +1521,6 @@ impl Converter<StateChangeValueView>
                 public_key: public_key.convert(),
                 index,
                 nonce,
-            },
-            Self::GasKeyDeletion {
-                account_id,
-                public_key,
-            } => StateChangeValueView::GasKeyDeletion {
-                account_id,
-                public_key: public_key.convert(),
             },
             Self::DataUpdate {
                 account_id,
