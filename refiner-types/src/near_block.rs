@@ -334,15 +334,6 @@ impl Clone for Shard {
                             account_id: account_id.clone(),
                             public_key: public_key.clone(),
                         },
-                        views::StateChangeValueView::GasKeyUpdate {
-                            account_id,
-                            public_key,
-                            gas_key,
-                        } => views::StateChangeValueView::GasKeyUpdate {
-                            account_id: account_id.clone(),
-                            public_key: public_key.clone(),
-                            gas_key: gas_key.clone(),
-                        },
                         views::StateChangeValueView::GasKeyNonceUpdate {
                             account_id,
                             public_key,
@@ -353,13 +344,6 @@ impl Clone for Shard {
                             public_key: public_key.clone(),
                             index: *index,
                             nonce: *nonce,
-                        },
-                        views::StateChangeValueView::GasKeyDeletion {
-                            account_id,
-                            public_key,
-                        } => views::StateChangeValueView::GasKeyDeletion {
-                            account_id: account_id.clone(),
-                            public_key: public_key.clone(),
                         },
                         views::StateChangeValueView::DataUpdate {
                             account_id,
@@ -443,7 +427,7 @@ impl From<views::SignedTransactionView> for SignedTransactionView {
             nonce: value.nonce,
             receiver_id: value.receiver_id,
             actions: value.actions.clone(),
-            priority_fee: value.priority_fee,
+            priority_fee: value._priority_fee,
             signature: value.signature,
             hash: value.hash,
         }
@@ -467,7 +451,7 @@ impl From<views::ReceiptView> for ReceiptView {
             receiver_id: value.receiver_id,
             receipt_id: value.receipt_id,
             receipt: value.receipt.clone(),
-            priority: value.priority,
+            priority: value._priority,
         }
     }
 }

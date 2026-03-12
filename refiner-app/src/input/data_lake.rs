@@ -1,6 +1,6 @@
 use aurora_refiner_lib::BlockWithMetadata;
 use aurora_refiner_types::near_block::NEARBlock;
-use near_lake_framework::LakeConfigBuilder;
+use near_lake_framework::{LakeBuilder, near_lake_primitives};
 
 use crate::config::DataLakeConfig;
 
@@ -10,7 +10,6 @@ use crate::config::DataLakeConfig;
 pub fn get_near_data_lake_stream(
     block_height: u64,
     config: &DataLakeConfig,
-    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> (
     tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
     tokio::task::JoinHandle<()>,
@@ -19,44 +18,60 @@ pub fn get_near_data_lake_stream(
         "get_near_data_lake_stream: starting data lake stream, block_height: {block_height:?}..."
     );
 
-    let mut opts = LakeConfigBuilder::default();
-    opts = match config.network {
-        crate::config::Network::Mainnet => opts.mainnet(),
-        crate::config::Network::Testnet => opts.testnet(),
-    };
-    let opts = opts
-        .start_block_height(block_height)
-        .build()
-        .expect("Failed to build LakeConfig");
+    let lake = match config.network {
+        crate::config::Network::Mainnet => LakeBuilder::default().mainnet(),
+        crate::config::Network::Testnet => LakeBuilder::default().testnet(),
+    }
+    .start_block_height(block_height)
+    .build()
+    .expect("Failed to build Lake");
 
     let (sender, receiver) = tokio::sync::mpsc::channel(1000);
 
     let task_handle = tokio::spawn(async move {
-        // Instantiate the NEAR Lake Framework Stream
-        let (_, mut stream) = near_lake_framework::streamer(opts);
         tracing::info!("get_near_data_lake_stream: data lake stream started");
-        loop {
-            tokio::select! {
-                Some(block) = stream.recv() => {
-                    sender
-                        .send(BlockWithMetadata::new(
-                            aurora_refiner_types::conversion::data_lake::convert(block),
+
+        let context = DataLakeContext { sender };
+
+        if let Err(err) = lake
+            .run_with_context_async(
+                |block, context: &DataLakeContext| {
+                    let sender = context.sender.clone();
+                    async move {
+                        let block_with_meta = BlockWithMetadata::new(
+                            aurora_refiner_types::conversion::data_lake::convert(
+                                block.streamer_message().clone(),
+                            ),
                             (),
-                        ))
-                        .await
-                        .expect("Failed to send block to channel from data lake stream");
-                }
-                _ = shutdown_rx.recv() => {
-                    // Explicitly close the channel, so the tx side should stop sending blocks
-                    stream.close();
-                    tracing::info!("get_near_data_lake_stream: Received shutdown signal");
-                    break;
-                }
-            }
+                        );
+
+                        sender
+                            .send(block_with_meta)
+                            .await
+                            .expect("Failed to send block to channel from data lake stream");
+
+                        Ok::<(), Box<dyn std::error::Error>>(())
+                    }
+                },
+                &context,
+            )
+            .await
+        {
+            tracing::error!("get_near_data_lake_stream: data lake stream failed: {err}");
         }
     });
 
     tracing::info!("get_near_data_lake_stream: data lake stream finished");
 
     (receiver, task_handle)
+}
+
+struct DataLakeContext {
+    sender: tokio::sync::mpsc::Sender<BlockWithMetadata<NEARBlock, ()>>,
+}
+
+impl near_lake_framework::LakeContextExt for DataLakeContext {
+    fn execute_before_run(&self, _block: &mut near_lake_primitives::Block) {}
+
+    fn execute_after_run(&self) {}
 }
