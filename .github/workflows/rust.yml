@@ -10,7 +10,7 @@ on:
 jobs:
   fmt:
     name: Formatting
-    runs-on: runs-on=${{ github.run_id }}/family=c6a.xlarge/image=ubuntu24-full-x64
+    runs-on: runs-on=${{ github.run_id }}/family=c5a.xlarge,c6a.xlarge/image=ubuntu24-full-x64
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: runs-on=${{ github.run_id }}/family=c6a.4xlarge/image=ubuntu24-full-x64/extras=s3-cache
+    runs-on: runs-on=${{ github.run_id }}/family=c5a.4xlarge,c6a.4xlarge/image=ubuntu24-full-x64/extras=s3-cache
     container: rust:latest
     steps:
       - name: Setup RunsOn
@@ -53,7 +53,7 @@ jobs:
         build: [ Linux, macOS ]
         include:
           - build: Linux
-            image: runs-on=${{ github.run_id }}/family=c6a.8xlarge/image=ubuntu24-full-x64/volume=100gb/extras=s3-cache
+            image: runs-on=${{ github.run_id }}/family=c5a.8xlarge,c6a.8xlarge/image=ubuntu24-full-x64/volume=100gb/extras=s3-cache
             container: rust:latest
           - build: macOS
             image: macos-latest
@@ -83,7 +83,7 @@ jobs:
 
   run-test:
     name: Run app test
-    runs-on: runs-on=${{ github.run_id }}/family=c6a.8xlarge/image=ubuntu24-full-x64/extras=s3-cache
+    runs-on: runs-on=${{ github.run_id }}/family=c5a.8xlarge,c6a.8xlarge/image=ubuntu24-full-x64/volume=100gb/extras=s3-cache
     container: rust:latest
     steps:
       - name: Setup RunsOn
