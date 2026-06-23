@@ -1,4 +1,4 @@
-FROM rust as build
+FROM rust:latest as build
 
 ARG ENV=mainnet
 ARG SOURCE=nearcore
