@@ -1,9 +1,14 @@
-use near_crypto::{ED25519PublicKey, PublicKey, Secp256K1PublicKey, Signature};
+use near_crypto::{
+    ED25519PublicKey, MlDsa65PublicKey, MlDsa65PublicKeyHandle, PublicKey, PublicKeyHandle,
+    Secp256K1PublicKey, Signature,
+};
 use near_primitives::{
     account::{AccessKey, AccessKeyPermission, FunctionCallPermission},
     action::{
         GlobalContractDeployMode, GlobalContractIdentifier,
-        delegate::{DelegateAction, NonDelegateAction},
+        delegate::{
+            DelegateAction, DelegateActionV2, NonDelegateAction, VersionedDelegateActionPayload,
+        },
     },
     challenge::SlashedValidator,
     deterministic_account_id::{DeterministicAccountStateInit, DeterministicAccountStateInitV1},
@@ -14,9 +19,10 @@ use near_primitives::{
     },
     gas::Gas,
     hash::CryptoHash,
+    transaction::TransactionNonce,
     types::{FunctionArgs, ShardId, StoreKey, StoreValue},
     views::{
-        AccessKeyView, AccountView, ActionView, CostGasUsed, DataReceiverView,
+        AccessKeyView, AccountContractView, AccountView, ActionView, CostGasUsed, DataReceiverView,
         ExecutionOutcomeView, ExecutionOutcomeWithIdView, ExecutionStatusView,
         GlobalContractIdentifierView, ReceiptEnumView, StateChangeValueView,
         validator_stake_view::ValidatorStakeView,
@@ -63,6 +69,7 @@ impl Converter<Signature> for near_crypto_crates_io::Signature {
                 let s: [u8; 65] = s.into();
                 Signature::SECP256K1(near_crypto::Secp256K1Signature::from(s))
             }
+            Self::MLDSA65(s) => Signature::MLDSA65(near_crypto::MlDsa65Signature(s.0)),
         }
     }
 }
@@ -74,6 +81,17 @@ impl Converter<PublicKey> for near_crypto_crates_io::PublicKey {
             Self::SECP256K1(s) => {
                 PublicKey::SECP256K1(Secp256K1PublicKey::try_from(s.as_ref()).expect("Failed to convert Secp256K1PublicKey from near_crypto_crates_io::PublicKey to near_crypto::PublicKey"))
             }
+           Self::MLDSA65(s) => PublicKey::MLDSA65(MlDsa65PublicKey(s.0)),
+        }
+    }
+}
+
+impl Converter<PublicKeyHandle> for near_crypto_crates_io::PublicKeyHandle {
+    fn convert(self) -> PublicKeyHandle {
+        match self {
+            Self::ED25519(key) => PublicKeyHandle::ED25519(ED25519PublicKey(key.0)),
+            Self::SECP256K1(key) => PublicKeyHandle::SECP256K1(Secp256K1PublicKey::try_from(key.as_ref()).expect("Failed to convert Secp256K1PublicKey from near_crypto_crates_io::PublicKey to near_crypto::PublicKey")),
+            Self::MlDsa65(key) => PublicKeyHandle::MlDsa65(MlDsa65PublicKeyHandle(key.0)),
         }
     }
 }
@@ -388,6 +406,13 @@ impl Converter<ActionView> for near_lake_framework::near_indexer_primitives::vie
                 public_key: public_key.convert(),
                 amount,
             },
+            Self::DelegateV2 {
+                delegate_action,
+                signature,
+            } => ActionView::DelegateV2 {
+                delegate_action: delegate_action.convert(),
+                signature: signature.convert(),
+            },
         }
     }
 }
@@ -544,6 +569,14 @@ impl Converter<NonDelegateAction>
                     near_primitives::action::WithdrawFromGasKeyAction {
                         public_key: withdraw_from_gas_key_action.public_key.convert(),
                         amount: withdraw_from_gas_key_action.amount,
+                    },
+                )),
+                near_primitives_crates_io::action::Action::DelegateV2(
+                    versioned_signed_delegate_action,
+                ) => near_primitives::action::Action::DelegateV2(Box::new(
+                    near_primitives::action::delegate::VersionedSignedDelegateAction {
+                        delegate_action: versioned_signed_delegate_action.delegate_action.convert(),
+                        signature: versioned_signed_delegate_action.signature.convert(),
                     },
                 )),
             };
@@ -781,6 +814,9 @@ impl Converter<near_primitives::views::ExecutionMetadataView>
             gas_profile: self
                 .gas_profile
                 .map(|v| v.into_iter().map(Converter::convert).collect()),
+            contracts: self
+                .contracts
+                .map(|v| v.into_iter().map(|v| v.map(Converter::convert)).collect()),
         }
     }
 }
@@ -955,6 +991,13 @@ impl Converter<ActionError>
                     public_key: public_key.map(|key| Box::new(key.convert())),
                     balance,
                 },
+                LakeKind::DelegateActionInvalidNonceIndex {
+                    nonce_index,
+                    num_nonces,
+                } => ActionErrorKind::DelegateActionInvalidNonceIndex {
+                    nonce_index,
+                    num_nonces,
+                },
             };
             ActionError {
                 index: self.index,
@@ -1122,6 +1165,14 @@ impl Converter<PrepareError> for near_primitives_crates_io::errors::PrepareError
             Self::TooManyLocals => PrepareError::TooManyLocals,
             Self::TooManyTables => PrepareError::TooManyTables,
             Self::TooManyTableElements => PrepareError::TooManyTableElements,
+            Self::FunctionBodyTooLarge => PrepareError::FunctionBodyTooLarge,
+            Self::InstrumentedCodeTooLarge => PrepareError::InstrumentedCodeTooLarge,
+            Self::TooManyBlocksPerFunction => PrepareError::TooManyBlocksPerFunction,
+            Self::TooManyBlocksPerContract => PrepareError::TooManyBlocksPerContract,
+            Self::TooManyTypes => PrepareError::TooManyTypes,
+            Self::TooManyParamsPerFunction => PrepareError::TooManyParamsPerFunction,
+            Self::TooManyParamsPerContract => PrepareError::TooManyParamsPerContract,
+            Self::OperandStackTooLarge => PrepareError::OperandStackTooLarge,
         }
     }
 }
@@ -1210,6 +1261,7 @@ impl Converter<HostError> for near_primitives_crates_io::errors::HostError {
             Self::ECRecoverError { msg } => HostError::ECRecoverError { msg },
             Self::AltBn128InvalidInput { msg } => HostError::AltBn128InvalidInput { msg },
             Self::Ed25519VerifyInvalidInput { msg } => HostError::Ed25519VerifyInvalidInput { msg },
+            Self::P256VerifyInvalidInput { msg } => HostError::P256VerifyInvalidInput { msg },
         }
     }
 }
@@ -1339,6 +1391,13 @@ impl Converter<ActionsValidationError>
             Self::GasKeyFunctionCallAllowanceNotAllowed => {
                 ActionsValidationError::GasKeyFunctionCallAllowanceNotAllowed
             }
+            Self::TotalNumberOfDeployActionsExceeded {
+                number_of_deploy_actions,
+                limit,
+            } => ActionsValidationError::TotalNumberOfDeployActionsExceeded {
+                number_of_deploy_actions,
+                limit,
+            },
         }
     }
 }
@@ -1407,6 +1466,12 @@ impl Converter<InvalidAccessKeyError> for near_primitives_crates_io::errors::Inv
                 cost,
             },
             Self::DepositWithFunctionCall => InvalidAccessKeyError::DepositWithFunctionCall,
+            Self::DelegateActionRequiresNonGasKey => {
+                InvalidAccessKeyError::DelegateActionRequiresNonGasKey
+            }
+            Self::DelegateActionRequiresGasKey => {
+                InvalidAccessKeyError::DelegateActionRequiresGasKey
+            }
         }
     }
 }
@@ -1555,6 +1620,44 @@ impl Converter<AccountView> for near_primitives_crates_io::views::AccountView {
             storage_paid_at: self.storage_paid_at,
             global_contract_hash: self.global_contract_hash.map(Converter::convert),
             global_contract_account_id: self.global_contract_account_id,
+        }
+    }
+}
+
+impl Converter<VersionedDelegateActionPayload>
+    for near_primitives_crates_io::action::delegate::VersionedDelegateActionPayload
+{
+    fn convert(self) -> VersionedDelegateActionPayload {
+        match self {
+            Self::V2(action) => VersionedDelegateActionPayload::V2(DelegateActionV2 {
+                sender_id: action.sender_id,
+                receiver_id: action.receiver_id,
+                actions: action.actions.into_iter().map(Converter::convert).collect(),
+                nonce: action.nonce.convert(),
+                max_block_height: action.max_block_height,
+                public_key: action.public_key.convert(),
+            }),
+        }
+    }
+}
+
+impl Converter<TransactionNonce> for near_primitives_crates_io::transaction::TransactionNonce {
+    fn convert(self) -> TransactionNonce {
+        match self {
+            Self::Nonce { nonce } => TransactionNonce::Nonce { nonce },
+            Self::GasKeyNonce { nonce, nonce_index } => {
+                TransactionNonce::GasKeyNonce { nonce, nonce_index }
+            }
+        }
+    }
+}
+
+impl Converter<AccountContractView> for near_primitives_crates_io::views::AccountContractView {
+    fn convert(self) -> AccountContractView {
+        match self {
+            Self::Local(hash) => AccountContractView::Local(hash.convert()),
+            Self::GlobalHash(hash) => AccountContractView::GlobalHash(hash.convert()),
+            Self::GlobalAccountId(account_id) => AccountContractView::GlobalAccountId(account_id),
         }
     }
 }
