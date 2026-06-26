@@ -24,10 +24,7 @@ pub async fn get_nearcore_stream(
         finality: near_indexer::near_primitives::types::Finality::Final,
         validate_genesis: true,
     };
-    let near_config = indexer_config.load_near_config()?;
-    let near_node =
-        near_indexer::Indexer::start_near_node(&indexer_config, near_config.clone()).await?;
-    let indexer = near_indexer::Indexer::from_near_node(indexer_config, near_config, &near_node);
+    let indexer = near_indexer::Indexer::new(indexer_config).await?;
     tracing::info!("get_nearcore_stream: nearcore indexer started");
 
     let task_handle = tokio::spawn(async move {

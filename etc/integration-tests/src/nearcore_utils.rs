@@ -21,15 +21,13 @@ pub async fn clone_nearcore(nearcore_root: &Path, tag: &str) -> anyhow::Result<P
         .await?;
 
     if !status.success() {
-        return Err(anyhow::Error::msg("Failed to clone nearcore"));
+        anyhow::bail!("Failed to clone nearcore");
     }
 
     let expected_path = nearcore_root.join("nearcore");
 
     if !expected_path.exists() {
-        return Err(anyhow::Error::msg(
-            "nearcore repository not created in the expected location",
-        ));
+        anyhow::bail!("nearcore repository not created in the expected location");
     }
 
     Ok(expected_path)
@@ -43,7 +41,7 @@ pub async fn build_neard(nearcore_repository: &Path) -> anyhow::Result<PathBuf> 
         .await?;
 
     if !status.success() {
-        return Err(anyhow::Error::msg("Failed to build neard binary"));
+        anyhow::bail!("Failed to build neard binary");
     }
 
     let expected_path = nearcore_repository
@@ -52,9 +50,7 @@ pub async fn build_neard(nearcore_repository: &Path) -> anyhow::Result<PathBuf> 
         .join("neard");
 
     if !expected_path.exists() {
-        return Err(anyhow::Error::msg(
-            "neard binary not created in the expected location",
-        ));
+        anyhow::bail!("neard binary not created in the expected location");
     }
 
     let to_path = neard_path().await?;
@@ -88,9 +84,7 @@ pub async fn create_localnet_configs(
         .await?;
 
     if !status.success() {
-        return Err(anyhow::Error::msg(
-            "Failed to generate localnet nearcore configs",
-        ));
+        anyhow::bail!("Failed to generate localnet nearcore configs");
     }
 
     Ok(())
