@@ -14,7 +14,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: runs-on=${{ github.run_id }}/family=c6a.4xlarge/image=ubuntu24-full-x64/extras=s3-cache
+    runs-on: runs-on=${{ github.run_id }}/family=c5a.4xlarge,c6a.4xlarge/image=ubuntu24-full-x64/volume=100gb/extras=s3-cache
     steps:
     - name: Setup RunsOn
       uses: runs-on/action@v2
