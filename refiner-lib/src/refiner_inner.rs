@@ -370,7 +370,7 @@ fn build_virtual_receipt_id(
         let mut bytes = [0u8; 36];
         bytes[0..32].copy_from_slice(receipt_id.0.as_slice());
         bytes[32..36].copy_from_slice(&action_index.to_be_bytes());
-        CryptoHash(aurora_refiner_types::utils::keccak256(&bytes).0)
+        CryptoHash(keccak256(&bytes).0)
     }
 }
 
@@ -1024,10 +1024,10 @@ fn build_transaction(
                         let amount = args.amount.as_u128();
                         let nonce = get_nonce(storage, block_height, tx_index, &from_address);
 
-                        // Differentiate between ETH and ERC-20 for setting transaction value and input
+                        // Differentiate between Base and ERC-20 for setting transaction value and input
                         let (value, aurora_tx_input) = match token_mint_kind {
-                            // For ETH mint transactions, set value in WEI and clear input
-                            TokenMintKind::Eth => (Wei::new_u128(amount), vec![]),
+                            // For Base mint transactions, set value in WEI and clear input
+                            TokenMintKind::Base => (Wei::new_u128(amount), vec![]),
                             // For ERC-20 transactions, encode the amount as part of the input, not value
                             TokenMintKind::Erc20 => (
                                 Wei::zero(),
@@ -1166,7 +1166,7 @@ fn determine_ft_on_transfer_recipient(
     transaction_index: u32,
 ) -> Address {
     match token_mint_kind {
-        TokenMintKind::Eth => FtTransferMessageData::try_from(args.msg.as_str())
+        TokenMintKind::Base => FtTransferMessageData::try_from(args.msg.as_str())
             .map(|msg_data| msg_data.recipient)
             .unwrap_or_else(|err| {
                 tracing::error!(
@@ -1244,23 +1244,22 @@ fn fill_tx(tx: AuroraTransactionBuilder, input: Vec<u8>) -> AuroraTransactionBui
         .s(U256::zero())
 }
 
-/// Describes the type of a specific mint transaction.
+/// Describes the type of specific mint transaction.
 enum TokenMintKind {
-    Eth,
+    Base,
     Erc20,
 }
 
-/// Returns the type of token minted in an `ft_on_transfer` transaction (either ETH or ERC20).
+/// Returns the type of token minted in an `ft_on_transfer` transaction (either Base or ERC-20).
 ///
-/// NOTE: This function assumes the presence of a "Mint" event in the logs.
-/// Currently, ETH transactions lack a "Mint" log entry, so this function explicitly returns `TokenMintKind::ETH` in such cases.
-/// This will be updated once the corresponding transaction logs are available in the aurora-engine workspace.
+/// NOTE: This function assumes the presence of a "Mint" event message in the logs.
+/// For base tokens it was `ETH` before Aurora 3.10.0 and after the release became `base`.
 fn get_token_mint_kind(logs: &[String]) -> TokenMintKind {
     let has_mint_eth_tokens = logs
         .iter()
-        .any(|log| log.contains("Mint") && log.contains("ETH"));
+        .any(|log| log.contains("Mint") && (log.contains("base") || log.contains("ETH")));
     if has_mint_eth_tokens {
-        TokenMintKind::Eth
+        TokenMintKind::Base
     } else {
         TokenMintKind::Erc20
     }

@@ -431,6 +431,42 @@ pub mod tests {
         );
     }
 
+    // The test after changing log message in the `ft_on_transfer` after Aurora 3.10.0 release.
+    #[tokio::test]
+    async fn test_block_211846994_contains_eth_token_mint() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let ctx = TestContext::new(&db_dir);
+        let mut stream = ctx.create_stream();
+
+        let near_block = read_block("tests/res/block_211846994.json");
+
+        let aurora_blocks = stream.next_block(&near_block).await;
+        assert_eq!(aurora_blocks.len(), 1);
+        assert_eq!(aurora_blocks[0].height, 211846994);
+        assert!(matches!(
+            aurora_blocks[0].near_metadata,
+            NearBlock::ExistingBlock(..)
+        ));
+
+        // {"sender_id":"aurora","amount":"100000000000000000","msg":"23085597c58a6dcacf94161cbf43f5f684bcb0a9"}%
+        let expected_sender = Address::decode("b81a75866dc89bbf62910de5f802eecc23850e0f").unwrap(); // `sender_id` is near_account_to_evm_address("eth.bridge.near")
+        let expected_recipient =
+            Address::decode("23085597c58a6dcacf94161cbf43f5f684bcb0a9").unwrap(); // The recipient is the address from the args-decoded msg field
+        let expected_amount = Wei::new(U256::from_dec_str("100000000000000000").unwrap());
+
+        let aurora_block = aurora_blocks.first().unwrap();
+        let ft_on_transfer_eth_tx = aurora_block.transactions.iter().find(|tx| {
+            tx.from == expected_sender
+                && tx.to == Some(expected_recipient)
+                && tx.value == expected_amount
+        });
+
+        assert!(
+            ft_on_transfer_eth_tx.is_some(),
+            "Expected ft_on_transfer mint transaction of base tokens not found in block 211846994"
+        );
+    }
+
     #[tokio::test]
     async fn test_block_125229395_contains_erc20_token_mint() {
         let db_dir = tempfile::tempdir().unwrap();
