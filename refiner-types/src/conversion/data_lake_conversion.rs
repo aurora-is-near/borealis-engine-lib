@@ -1,7 +1,15 @@
+use crate::{
+    Converter,
+    near_block::{
+        BlockView, ChunkHeaderView, ExecutionOutcomeWithOptionalReceipt, IndexerBlockHeaderView,
+        ReceiptView, SignedTransactionView,
+    },
+};
 use near_crypto::{
     ED25519PublicKey, MlDsa65PublicKey, MlDsa65PublicKeyHandle, PublicKey, PublicKeyHandle,
     Secp256K1PublicKey, Signature,
 };
+use near_primitives::account::AccountState;
 use near_primitives::{
     account::{AccessKey, AccessKeyPermission, FunctionCallPermission},
     action::{
@@ -21,6 +29,7 @@ use near_primitives::{
     hash::CryptoHash,
     transaction::TransactionNonce,
     types::{FunctionArgs, ShardId, StoreKey, StoreValue},
+    universal_state_init::RawStateInit,
     views::{
         AccessKeyView, AccountContractView, AccountView, ActionView, CostGasUsed, DataReceiverView,
         ExecutionOutcomeView, ExecutionOutcomeWithIdView, ExecutionStatusView,
@@ -30,15 +39,6 @@ use near_primitives::{
 };
 use near_primitives_crates_io::errors::DepositCostFailureReason;
 use std::str::FromStr;
-
-use crate::{
-    Converter,
-    near_block::{
-        BlockView, ChunkHeaderView, ExecutionOutcomeWithOptionalReceipt, IndexerBlockHeaderView,
-        ReceiptView, SignedTransactionView,
-    },
-};
-
 //
 // Base types
 //
@@ -413,6 +413,13 @@ impl Converter<ActionView> for near_lake_framework::near_indexer_primitives::vie
                 delegate_action: delegate_action.convert(),
                 signature: signature.convert(),
             },
+            Self::UniversalStateInit {
+                state_init,
+                deposit,
+            } => ActionView::UniversalStateInit {
+                state_init: RawStateInit(state_init.0),
+                deposit,
+            },
         }
     }
 }
@@ -579,6 +586,14 @@ impl Converter<NonDelegateAction>
                         signature: versioned_signed_delegate_action.signature.convert(),
                     },
                 )),
+                near_primitives_crates_io::action::Action::UniversalStateInit(state) => {
+                    near_primitives::action::Action::UniversalStateInit(Box::new(
+                        near_primitives::action::UniversalStateInitAction {
+                            state_init: RawStateInit(state.state_init.0),
+                            deposit: state.deposit,
+                        },
+                    ))
+                }
             };
             NonDelegateAction::try_from(action_inner)
                 .expect("Failed to convert Action to NonDelegateAction")
@@ -998,6 +1013,18 @@ impl Converter<ActionError>
                     nonce_index,
                     num_nonces,
                 },
+                LakeKind::TotalPromiseInputSizeExceeded { size, limit } => {
+                    ActionErrorKind::TotalPromiseInputSizeExceeded { size, limit }
+                }
+                LakeKind::ReceiptStorageProofSizeExceeded { limit } => {
+                    ActionErrorKind::ReceiptStorageProofSizeExceeded { limit }
+                }
+                LakeKind::MalformedUniversalStateInit => {
+                    ActionErrorKind::MalformedUniversalStateInit
+                }
+                LakeKind::AccountNotInitialized { account_id } => {
+                    ActionErrorKind::AccountNotInitialized { account_id }
+                }
             };
             ActionError {
                 index: self.index,
@@ -1173,6 +1200,7 @@ impl Converter<PrepareError> for near_primitives_crates_io::errors::PrepareError
             Self::TooManyParamsPerFunction => PrepareError::TooManyParamsPerFunction,
             Self::TooManyParamsPerContract => PrepareError::TooManyParamsPerContract,
             Self::OperandStackTooLarge => PrepareError::OperandStackTooLarge,
+            Self::TooManyGlobals => PrepareError::TooManyGlobals,
         }
     }
 }
@@ -1262,6 +1290,7 @@ impl Converter<HostError> for near_primitives_crates_io::errors::HostError {
             Self::AltBn128InvalidInput { msg } => HostError::AltBn128InvalidInput { msg },
             Self::Ed25519VerifyInvalidInput { msg } => HostError::Ed25519VerifyInvalidInput { msg },
             Self::P256VerifyInvalidInput { msg } => HostError::P256VerifyInvalidInput { msg },
+            Self::MlDsaVerifyInvalidInput { msg } => HostError::MlDsaVerifyInvalidInput { msg },
         }
     }
 }
@@ -1396,6 +1425,49 @@ impl Converter<ActionsValidationError>
                 limit,
             } => ActionsValidationError::TotalNumberOfDeployActionsExceeded {
                 number_of_deploy_actions,
+                limit,
+            },
+            Self::FunctionCallEmptyMethodName => {
+                ActionsValidationError::FunctionCallEmptyMethodName
+            }
+            Self::InvalidUniversalStateInitReceiver {
+                receiver_id,
+                derived_id,
+            } => ActionsValidationError::InvalidUniversalStateInitReceiver {
+                receiver_id,
+                derived_id,
+            },
+            Self::UniversalStateInitKeyLengthExceeded { length, limit } => {
+                ActionsValidationError::UniversalStateInitKeyLengthExceeded { length, limit }
+            }
+            Self::UniversalStateInitValueLengthExceeded { length, limit } => {
+                ActionsValidationError::UniversalStateInitValueLengthExceeded { length, limit }
+            }
+            Self::MalformedUniversalStateInit => {
+                ActionsValidationError::MalformedUniversalStateInit
+            }
+            Self::RemovedProtocolFeature {
+                protocol_feature,
+                version,
+            } => ActionsValidationError::RemovedProtocolFeature {
+                protocol_feature,
+                version,
+            },
+            Self::WithdrawFromGasKeyNotAllowedInDelegate => {
+                ActionsValidationError::WithdrawFromGasKeyNotAllowedInDelegate
+            }
+            Self::TotalNumberOfStateInitKeysExceeded {
+                number_of_keys,
+                limit,
+            } => ActionsValidationError::TotalNumberOfStateInitKeysExceeded {
+                number_of_keys,
+                limit,
+            },
+            Self::TotalNumberOfStateInitEntriesExceeded {
+                number_of_entries,
+                limit,
+            } => ActionsValidationError::TotalNumberOfStateInitEntriesExceeded {
+                number_of_entries,
                 limit,
             },
         }
@@ -1620,6 +1692,12 @@ impl Converter<AccountView> for near_primitives_crates_io::views::AccountView {
             storage_paid_at: self.storage_paid_at,
             global_contract_hash: self.global_contract_hash.map(Converter::convert),
             global_contract_account_id: self.global_contract_account_id,
+            state: if self.state.is_initialized() {
+                AccountState::Initialized
+            } else {
+                AccountState::Uninitialized
+            },
+            bootstrap_nonce: self.bootstrap_nonce,
         }
     }
 }
