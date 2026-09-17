@@ -23,6 +23,7 @@ pub async fn get_nearcore_stream(
         await_for_node_synced: near_indexer::AwaitForNodeSyncedEnum::StreamWhileSyncing,
         finality: near_indexer::near_primitives::types::Finality::Final,
         validate_genesis: true,
+        skip_broken_blocks: false,
     };
     let indexer = near_indexer::Indexer::new(indexer_config).await?;
     tracing::info!("get_nearcore_stream: nearcore indexer started");
