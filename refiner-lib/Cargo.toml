@@ -35,7 +35,7 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tokio = { workspace = true, features = ["sync", "macros", "signal"] }
-rocksdb.workspace = true
+rocksdb = { workspace = true, features = ["jemalloc", "lz4", "snappy", "zlib", "zstd"] }
 
 [build-dependencies]
 anyhow.workspace = true
