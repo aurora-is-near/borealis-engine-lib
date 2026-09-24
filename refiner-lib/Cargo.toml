@@ -9,41 +9,40 @@ repository.workspace = true
 license.workspace = true
 publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-aurora-engine.workspace = true
-aurora-engine-modexp.workspace = true
 aurora-engine-hashchain.workspace = true
+aurora-engine-modexp.workspace = true
+aurora-engine-sdk.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
-aurora-engine-sdk.workspace = true
+aurora-engine.workspace = true
 aurora-refiner-types.workspace = true
 aurora-standalone-engine.workspace = true
 engine-standalone-storage.workspace = true
 
-anyhow.workspace = true
 actix.workspace = true
+anyhow.workspace = true
 borsh.workspace = true
-triehash-ethereum.workspace = true
 byteorder.workspace = true
 hex.workspace = true
 lazy_static.workspace = true
 lru.workspace = true
+near-primitives.workspace = true
 prometheus.workspace = true
 rlp.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tracing.workspace = true
-tokio = { workspace = true, features = ["sync", "macros", "signal"] }
 rocksdb = { workspace = true, features = ["jemalloc", "lz4", "snappy", "zlib", "zstd"] }
+serde_json.workspace = true
+triehash-ethereum.workspace = true
+tokio = { workspace = true, features = ["sync", "macros", "signal"] }
+tracing.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
 vergen-git2 = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+semver.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
-semver.workspace = true
 
 [features]

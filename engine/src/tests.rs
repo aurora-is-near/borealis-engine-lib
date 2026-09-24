@@ -1,11 +1,12 @@
 use aurora_engine::parameters::TransactionStatus;
 use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::{H256, account_id::AccountId};
-use aurora_refiner_types::near_block::NEARBlock;
+use aurora_refiner_types::inner_block::InnerNearBlock;
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 use engine_standalone_storage::sync::TransactionExecutionResult;
 use std::collections::HashMap;
+use std::io::Read;
 use std::num::NonZeroUsize;
 
 /// This test processes a real block from mainnet:
@@ -17,10 +18,7 @@ use std::num::NonZeroUsize;
 fn test_random_value() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_105089746.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_105089746.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -63,10 +61,7 @@ fn test_random_value() {
 fn test_empty_submit_input() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_71771951.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_71771951.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -93,10 +88,7 @@ fn test_empty_submit_input() {
 fn test_batched_transactions() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_66381607.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_66381607.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -201,4 +193,14 @@ impl TestContext {
         drop(self.storage);
         self.storage_path.close().unwrap();
     }
+}
+
+fn read_inner_block(path: &str) -> InnerNearBlock {
+    let mut buffer = vec![];
+    let _result = std::fs::File::open(path)
+        .map(std::io::BufReader::new)
+        .map(|mut f| f.read_to_end(&mut buffer))
+        .unwrap();
+
+    InnerNearBlock::from_bytes(&buffer).unwrap()
 }

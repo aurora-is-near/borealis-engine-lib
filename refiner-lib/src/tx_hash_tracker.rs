@@ -1,4 +1,5 @@
-use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
+use aurora_refiner_types::inner_block::InnerNearBlock;
+use near_primitives::hash::CryptoHash;
 use std::path::Path;
 
 /// A helper object for tracking the NEAR transaction hash that caused each NEAR receipt
@@ -24,7 +25,7 @@ impl TxHashTracker {
         self.inner.get_tx_hash(rx_hash)
     }
 
-    pub fn consume_near_block(&mut self, near_block: &NEARBlock) -> anyhow::Result<()> {
+    pub fn consume_near_block(&mut self, near_block: &InnerNearBlock) -> anyhow::Result<()> {
         let block_height = near_block.block.header.height;
 
         let tx_iter = near_block
@@ -37,8 +38,8 @@ impl TxHashTracker {
 
         // Track receipts created from transactions
         for tx in tx_iter {
-            let tx_hash = tx.transaction.hash;
-            for rx_hash in tx.outcome.execution_outcome.outcome.receipt_ids.iter() {
+            let tx_hash = tx.hash;
+            for rx_hash in tx.receipt_ids.iter() {
                 batch.record_rx(*rx_hash, tx_hash, block_height);
             }
         }
@@ -54,11 +55,11 @@ impl TxHashTracker {
             let tx_hash = match batch.get_tx_hash(rx_hash) {
                 Some(tx_hash) => tx_hash,
                 None => {
-                    tracing::warn!("Transaction provenance unknown for receipt {}", rx_hash);
+                    tracing::warn!("Transaction provenance is unknown for receipt {rx_hash}");
                     continue;
                 }
             };
-            for rx_hash in rx.execution_outcome.outcome.receipt_ids.iter() {
+            for rx_hash in &rx.execution_outcome.receipt_ids {
                 batch.record_rx(*rx_hash, tx_hash, block_height);
             }
         }
@@ -88,7 +89,7 @@ struct TxHashTrackerImpl {
 
 /// At 64 bytes per entry (two 32-byte hashes), this caps the memory footprint of the tracker
 /// at around 70 MB, which seems reasonable. One million entries should also be sufficient to
-/// ensure the cache never miss under normal conditions; it would require a receipt to be
+/// ensure the cache never misses under normal conditions; it would require a receipt to be
 /// created and then not included in a block before one million other receipts we created first.
 /// With the maximum daily number of transactions ever observed on NEAR at just over two million,
 /// this means the receipt would not have been included in a block for at least 8 hours; an
@@ -159,14 +160,14 @@ impl TxHashTrackerImpl {
     /// We intentionally do not fall back on the rocksdb storage layer in the event of a cache
     /// miss. This is because the rocksdb storage layer is optimized for fast pruning by
     /// prepending each receipt hash with the block height where it was created (this means the
-    /// keys are chronologically ordered and thus pruning old keys acts on a contiguous section
+    /// keys are chronologically ordered, and thus pruning old keys acts on a contiguous section
     /// of the DB). However, this optimization means we cannot look up a transaction hash from
     /// a receipt hash alone, we need the block height the receipt was created at as well, but
     /// that information is not easily available. Note that fast pruning is required to ensure
     /// the size of the state needed to run the refiner stays bounded.
     ///
     /// Therefore, the cache must be large enough such that misses never happen under normal
-    /// conditions and the cache must be populated eagerly from the rocksdb storage layer
+    /// conditions, and the cache must be populated eagerly from the rocksdb storage layer
     /// on start-up.
     fn get_tx_hash(&mut self, rx_hash: &CryptoHash) -> Option<CryptoHash> {
         self.cache.get(rx_hash).copied()
@@ -234,6 +235,7 @@ fn slice_to_crypto_hash(slice: &[u8]) -> anyhow::Result<CryptoHash> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::read_inner_block;
     use std::str::FromStr;
 
     #[test]
@@ -241,9 +243,9 @@ mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let mut tracker = TxHashTracker::new(db_dir.path(), 0).unwrap();
 
-        let block_1 = read_block("tests/res/block-34834053.json");
-        let block_2 = read_block("tests/res/block-51188689.json");
-        let block_3 = read_block("tests/res/block-51188690.json");
+        let block_1 = read_inner_block("tests/res/block-34834053.json");
+        let block_2 = read_inner_block("tests/res/block-51188689.json");
+        let block_3 = read_inner_block("tests/res/block-51188690.json");
 
         tracker.consume_near_block(&block_1).unwrap();
 
@@ -295,10 +297,5 @@ mod tests {
         let mut tracker = TxHashTracker::new(db_dir.path(), 51188690).unwrap();
         assert_eq!(tracker.get_tx_hash(&rx_hash_2).unwrap(), expected_tx_hash_2);
         assert_eq!(tracker.get_tx_hash(&rx_hash_3).unwrap(), expected_tx_hash_2);
-    }
-
-    fn read_block(path: &str) -> NEARBlock {
-        let data = std::fs::read_to_string(path).unwrap();
-        serde_json::from_str(&data).unwrap()
     }
 }

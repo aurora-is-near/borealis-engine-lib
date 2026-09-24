@@ -281,7 +281,8 @@ pub enum ValidationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::near_stream::tests::{TestContext, read_block};
+    use crate::near_stream::tests::TestContext;
+    use crate::utils::read_inner_block;
 
     // All transactions in test blocks should pass `validate_tx_hashchain`.
     // I.e. the method of reproducing the original Near input and output
@@ -299,7 +300,7 @@ mod tests {
         ];
 
         for file in test_blocks {
-            let near_block = read_block(file);
+            let near_block = read_inner_block(file);
             let ctx = TestContext::new(&db_dir);
             let mut stream = ctx.create_stream();
             let aurora_blocks = stream.next_block(&near_block).await;
