@@ -1328,8 +1328,10 @@ fn get_log_blooms(log: &ResultLog) -> Bloom {
     bloom
 }
 
+/// Returns the promise result for each of `ids`, in the same order. A result is `None` if the
+/// promise failed or its data receipt is not in this block (e.g. it arrived in an earlier one).
 fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec<u8>>> {
-    let mut result = Vec::with_capacity(ids.len());
+    let mut result = vec![None; ids.len()];
 
     shards
         .iter()
@@ -1347,7 +1349,7 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
                     .map(|idx| (idx, data.data.clone()))
             })
         })
-        .for_each(|(idx, data)| result.insert(idx, data));
+        .for_each(|(idx, data)| result[idx] = data);
 
     result
 }
@@ -1442,6 +1444,28 @@ mod tests {
         assert_eq!(erc20_metadata.name, "USDC");
         assert_eq!(erc20_metadata.symbol, "USDC");
         assert_eq!(erc20_metadata.decimals, 6);
+    }
+
+    #[test]
+    fn test_find_promises_result_with_missing_and_reordered_data() {
+        let block = read_inner_block("tests/res/block-134585465.json");
+        let input_data_ids = &[
+            // Data receipt, which is not in the block, e.g. it arrived in an earlier block.
+            CryptoHash([7; 32]),
+            CryptoHash::from_str("9AuxSvd6WtSKZHaqYMzQKKSLRgwoEhNM4xiF53oNRwUK").unwrap(),
+            CryptoHash::from_str("J5GehrK5EwaSa2QBwZjhJzZfMu44tVwaedP4ECvvVpuN").unwrap(),
+        ];
+        let expected_result = vec![
+            None,
+            Some(
+                from_base64("eyJuYW1lIjoiVVNEQyIsInN5bWJvbCI6IlVTREMiLCJkZWNpbWFscyI6Nn0=")
+                    .unwrap(),
+            ),
+            Some(from_base64("No67RqymuNB4fJaysgvTzD8sRfc=").unwrap()),
+        ];
+
+        let promises_results = super::find_promises_results(&block.shards, input_data_ids);
+        assert_eq!(promises_results, expected_result);
     }
 
     #[test]

@@ -46,7 +46,7 @@ pub async fn consume_near_block<M: ModExpAlgorithm>(
     block: &InnerNearBlock,
     context: &mut EngineContext,
     outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
-) -> Result<(), error::Error> {
+) -> Result<(), sync::ConsumeBlockError> {
     let mut storage = context.storage.as_ref().write().await;
     sync::consume_near_block::<M>(
         &mut storage,

@@ -65,7 +65,6 @@ async fn run_refiner_app(
 
     // Broadcast shutdown channel
     let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(16);
-    let shutdown_rx_input_stream = shutdown_tx.subscribe();
     let shutdown_rx_output_stream = shutdown_tx.subscribe();
     let mut shutdown_rx_socket = shutdown_tx.subscribe();
     let mut shutdown_rx_app = shutdown_tx.subscribe();
@@ -79,14 +78,7 @@ async fn run_refiner_app(
             shutdown_tx.clone(),
         ),
         config::InputMode::Nearcore(config) => {
-            let (stream, task) =
-                input::nearcore::get_nearcore_stream(next_block, config, shutdown_rx_input_stream)
-                    .await?;
-            let task = tokio::spawn(async move {
-                task.await
-                    .map_err(|err| anyhow!("Nearcore input task failed: {err}"))
-            });
-            (stream, task)
+            input::nearcore::get_nearcore_stream(next_block, config, shutdown_tx.clone()).await?
         }
     };
 

@@ -37,7 +37,8 @@ impl InnerNearBlock {
     }
 
     /// Checks the fields whose exact NEAR Borsh representation is required to
-    /// produce a block for this engine account.
+    /// produce a block for this engine account, and that every storage change of
+    /// the engine account can be attributed to the receipt that caused it.
     pub fn validate_for_engine(&self, engine_account_id: &str) -> Result<(), ConversionError> {
         for outcome in self
             .shards
@@ -67,6 +68,22 @@ impl InnerNearBlock {
                     io::Error::other(format!(
                         "cannot decode Aurora receipt {} execution status: {reason}",
                         outcome.receipt.receipt_id
+                    )),
+                ));
+            }
+        }
+        for change in self
+            .shards
+            .iter()
+            .flat_map(|shard| &shard.state_changes)
+            .filter(|change| change.account_id.as_str() == engine_account_id)
+        {
+            if let StateChangeCause::Other(cause) = &change.cause {
+                return Err(ConversionError::new(
+                    self.block.header.height,
+                    self.block.header.hash,
+                    io::Error::other(format!(
+                        "unsupported cause of Aurora storage change: {cause}"
                     )),
                 ));
             }
@@ -218,7 +235,8 @@ pub enum StateChangeCause {
     ReceiptProcessing {
         receipt_hash: CryptoHash,
     },
-    /// Keep the cause for diagnostics. Consumers must reject an unsupported cause
-    /// for their engine account rather than silently dropping its storage diff.
+    /// Keep the cause for diagnostics. `InnerNearBlock::validate_for_engine`
+    /// rejects it for the engine account rather than silently dropping its
+    /// storage diff.
     Other(String),
 }
