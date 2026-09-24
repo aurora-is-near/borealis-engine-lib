@@ -522,3 +522,21 @@ fn keeps_provenance_for_unknown_external_receipt_without_inventing_borsh_size() 
         serde_json::from_slice(&serde_json::to_vec(&block).unwrap()).unwrap();
     assert_eq!(restored, block);
 }
+
+#[test]
+fn rejects_unsupported_state_change_cause_only_for_engine_account() {
+    let mut source = source_message();
+    source.shards[0].state_changes = vec![views::StateChangeWithCauseView {
+        cause: views::StateChangeCauseView::Migration,
+        value: views::StateChangeValueView::DataUpdate {
+            account_id: "aurora".parse().unwrap(),
+            key: vec![1].into(),
+            value: vec![2].into(),
+        },
+    }];
+
+    let block = InnerNearBlock::try_from(source).unwrap();
+    block.validate_for_engine("unrelated.near").unwrap();
+    let error = block.validate_for_engine("aurora").unwrap_err().to_string();
+    assert!(error.contains("unsupported cause of Aurora storage change: Migration"));
+}

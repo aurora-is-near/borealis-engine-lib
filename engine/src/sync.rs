@@ -4,7 +4,7 @@ use aurora_engine_sdk::env;
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{H256, account_id::AccountId};
 use aurora_refiner_types::inner_block::{
-    Action, ExecutionStatus, InnerNearBlock, ReceiptKind, StateChangeCause,
+    Action, ConversionError, ExecutionStatus, InnerNearBlock, ReceiptKind, StateChangeCause,
 };
 use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
@@ -21,6 +21,21 @@ use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
 
+/// Failure to consume a NEAR block.
+#[derive(Debug)]
+pub enum ConsumeBlockError {
+    /// The block contains engine account data the engine cannot process.
+    InvalidBlock(ConversionError),
+    /// The standalone storage failed.
+    Storage(engine_standalone_storage::Error),
+}
+
+impl From<engine_standalone_storage::Error> for ConsumeBlockError {
+    fn from(error: engine_standalone_storage::Error) -> Self {
+        Self::Storage(error)
+    }
+}
+
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
@@ -29,7 +44,12 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
     engine_account_id: &AccountId,
     chain_id: [u8; 32],
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
-) -> Result<(), engine_standalone_storage::Error> {
+) -> Result<(), ConsumeBlockError> {
+    // Reject unprocessable engine data before anything is written to the storage.
+    message
+        .validate_for_engine(engine_account_id.as_ref())
+        .map_err(ConsumeBlockError::InvalidBlock)?;
+
     let block_hash =
         add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;

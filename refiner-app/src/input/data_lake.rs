@@ -69,17 +69,8 @@ pub fn get_near_json_stream(
             },
             &context,
         );
-        tokio::pin!(source_run);
 
-        let result = tokio::select! {
-            result = &mut source_run => result
-                .map_err(|err| anyhow::anyhow!("NEAR block stream failed: {err}")),
-            Some(err) = fatal_error_rx.recv() => Err(err),
-            _ = shutdown_rx.recv() => {
-                tracing::info!("get_near_json_stream: received shutdown signal");
-                Ok(())
-            }
-        };
+        let result = wait_for_input_end(source_run, &mut fatal_error_rx, &mut shutdown_rx).await;
 
         context.stopped.store(true, Ordering::Release);
 
@@ -92,6 +83,28 @@ pub fn get_near_json_stream(
     });
 
     (receiver, task_handle)
+}
+
+/// Waits for the block source to finish, a fatal input error, or a shutdown signal.
+///
+/// The shutdown signal is checked first: the refiner drops its input receiver after receiving
+/// it, so a failed sending reported at that point is part of the shutdown rather than an input
+/// failure. A fatal error is checked before the source result, so it is never lost.
+async fn wait_for_input_end<E: std::fmt::Display>(
+    source_run: impl Future<Output = Result<(), E>>,
+    fatal_error_rx: &mut mpsc::UnboundedReceiver<anyhow::Error>,
+    shutdown_rx: &mut broadcast::Receiver<()>,
+) -> anyhow::Result<()> {
+    tokio::select! {
+        biased;
+        _ = shutdown_rx.recv() => {
+            tracing::info!("get_near_json_stream: received shutdown signal");
+            Ok(())
+        }
+        Some(err) = fatal_error_rx.recv() => Err(err),
+        result = source_run => result
+            .map_err(|err| anyhow::anyhow!("NEAR block stream failed: {err}")),
+    }
 }
 
 struct RawBlockContext {
@@ -313,5 +326,39 @@ mod tests {
 
         let err = fatal_error_rx.recv().await.unwrap();
         assert_eq!(err.to_string(), "Refiner input receiver was dropped");
+    }
+
+    #[tokio::test]
+    async fn receiver_dropped_during_shutdown_is_not_an_error() {
+        let (fatal_error_tx, mut fatal_error_rx) = mpsc::unbounded_channel();
+        let (shutdown_tx, mut shutdown_rx) = broadcast::channel(1);
+        // The refiner receives the shutdown signal and then drops its input receiver,
+        // which fails the pending send.
+        shutdown_tx.send(()).unwrap();
+        fatal_error_tx
+            .send(anyhow::anyhow!("Refiner input receiver was dropped"))
+            .unwrap();
+
+        let source_run = std::future::pending::<Result<(), String>>();
+        assert!(
+            wait_for_input_end(source_run, &mut fatal_error_rx, &mut shutdown_rx)
+                .await
+                .is_ok()
+        );
+    }
+
+    #[tokio::test]
+    async fn fatal_error_is_not_lost_when_source_finishes() {
+        let (fatal_error_tx, mut fatal_error_rx) = mpsc::unbounded_channel();
+        let (_shutdown_tx, mut shutdown_rx) = broadcast::channel(1);
+        fatal_error_tx
+            .send(anyhow::anyhow!("invalid block"))
+            .unwrap();
+
+        let source_run = std::future::ready(Ok::<(), String>(()));
+        let err = wait_for_input_end(source_run, &mut fatal_error_rx, &mut shutdown_rx)
+            .await
+            .unwrap_err();
+        assert_eq!(err.to_string(), "invalid block");
     }
 }
