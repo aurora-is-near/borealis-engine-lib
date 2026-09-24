@@ -46,6 +46,7 @@ near-primitives = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.2
 serde_with = "3.23"
 near-lake-framework = { git = "https://github.com/aleksuss/near-lake-framework-rs.git", tag = "v0.8.0-beta.6" }
 prometheus = "0.14"
+reqwest = "0.13"
 rlp = "0.6"
 rocksdb = { version = "0.24", default-features = false }
 serde = { version = "1", features = ["derive"] }

@@ -540,3 +540,74 @@ fn rejects_unsupported_state_change_cause_only_for_engine_account() {
     let error = block.validate_for_engine("aurora").unwrap_err().to_string();
     assert!(error.contains("unsupported cause of Aurora storage change: Migration"));
 }
+
+// Test block 151768255 from mainnet
+#[test]
+fn test_de_nearblock_151768255_mainnet_from_json() {
+    InnerNearBlock::from_bytes(include_bytes!(
+        "../../tests/res/near_block/block_151768255_mainnet.json"
+    ))
+    .expect("Failed to load InnerNearBlock");
+}
+
+#[test]
+#[ignore]
+fn test_de_nearblock_mainnet_latest_finalized_api_fetch() {
+    check_latest_finalized_block("mainnet");
+}
+
+#[test]
+#[ignore]
+fn test_de_nearblock_testnet_latest_finalized_api_fetch() {
+    check_latest_finalized_block("testnet");
+}
+
+fn check_latest_finalized_block(network: &str) {
+    let client = reqwest::blocking::Client::new();
+    let response_text = fetch_block(&client, network, "last_block/final");
+    let height = extract_block_height(&response_text);
+    println!("Latest finalized block height on {network}: {height}");
+    assert_block_parses(&response_text, network, height);
+}
+
+// Sample blocks from 100_000_000 to the latest height to find unsupported ranges.
+#[test]
+#[ignore]
+fn test_de_nearblock_both_networks_range_100m_to_latest_10m_step_api_fetch() {
+    let client = reqwest::blocking::Client::new();
+    println!();
+    for network in ["mainnet", "testnet"] {
+        println!("Testing {network} network...");
+        let latest_height =
+            extract_block_height(&fetch_block(&client, network, "last_block/final"));
+
+        for height in (100_000_000..=latest_height).step_by(10_000_000) {
+            println!("Test NEARBlock at height: {height} on {network}");
+            let response_text = fetch_block(&client, network, &format!("block/{height}"));
+            assert_block_parses(&response_text, network, height);
+        }
+    }
+}
+
+fn fetch_block(client: &reqwest::blocking::Client, network: &str, path: &str) -> String {
+    let url = format!("https://{network}.neardata.xyz/v0/{path}");
+    client
+        .get(&url)
+        .send()
+        .unwrap_or_else(|e| panic!("Failed to fetch {url}: {e}"))
+        .error_for_status()
+        .unwrap_or_else(|e| panic!("Unexpected response from {url}: {e}"))
+        .text()
+        .unwrap_or_else(|e| panic!("Failed to read response from {url}: {e}"))
+}
+
+fn assert_block_parses(response_text: &str, network: &str, height: u64) {
+    InnerNearBlock::from_bytes(response_text.as_bytes()).unwrap_or_else(|e| {
+        panic!("NEARBlock parse error: {e}, height: {height}, network: {network}")
+    });
+}
+
+fn extract_block_height(response_text: &str) -> u64 {
+    let json: serde_json::Value = serde_json::from_str(response_text).unwrap();
+    json["block"]["header"]["height"].as_u64().unwrap()
+}
