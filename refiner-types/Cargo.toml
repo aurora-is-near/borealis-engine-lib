@@ -30,6 +30,7 @@ sha3.workspace = true
 
 [dev-dependencies]
 criterion = "0.8"
+reqwest = { workspace = true, features = ["blocking"] }
 
 [[bench]]
 name = "convert"
