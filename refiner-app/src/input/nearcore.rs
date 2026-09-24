@@ -1,5 +1,5 @@
 use aurora_refiner_lib::BlockWithMetadata;
-use aurora_refiner_types::near_block::NEARBlock;
+use aurora_refiner_types::inner_block::InnerNearBlock;
 
 use crate::config::NearcoreConfig;
 
@@ -8,7 +8,7 @@ pub async fn get_nearcore_stream(
     config: &NearcoreConfig,
     mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<(
-    tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, ()>>,
+    tokio::sync::mpsc::Receiver<BlockWithMetadata<InnerNearBlock, ()>>,
     tokio::task::JoinHandle<()>,
 )> {
     tracing::info!(
@@ -35,11 +35,17 @@ pub async fn get_nearcore_stream(
         loop {
             tokio::select! {
                 Some(block) = stream.recv() => {
+                    let block = match InnerNearBlock::try_from(block) {
+                        Ok(block) => block,
+                        Err(err) => {
+                            tracing::error!("Failed to convert nearcore block: {err}");
+                            stream.close();
+                            break;
+                        }
+                    };
+
                     sender
-                        .send(BlockWithMetadata::new(
-                            aurora_refiner_types::conversion::nearcore::convert(block),
-                            ())
-                        )
+                        .send(BlockWithMetadata::new(block, ()))
                         .await
                         .expect("Failed to send block to the channel from nearcore stream");
                 }

@@ -21,17 +21,16 @@ use aurora_refiner_types::aurora_block::{
     HashchainOutputKind, NearBlock, NearBlockHeader, NearTransaction,
 };
 use aurora_refiner_types::bloom::Bloom;
-use aurora_refiner_types::near_block::{BlockView, ExecutionOutcomeWithReceipt, NEARBlock, Shard};
-use aurora_refiner_types::near_primitives::hash::CryptoHash;
-use aurora_refiner_types::near_primitives::types::{AccountId, BlockHeight};
-use aurora_refiner_types::near_primitives::views::{
-    ActionView, ExecutionStatusView, ReceiptEnumView,
+use aurora_refiner_types::inner_block::{
+    Action, Block, ExecutionStatus, InnerNearBlock, ReceiptExecutionOutcome, ReceiptKind, Shard,
 };
 use byteorder::{BigEndian, WriteBytesExt};
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{
     TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
 };
+use near_primitives::hash::CryptoHash;
+use near_primitives::types::{AccountId, BlockHeight};
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -128,7 +127,7 @@ impl Refiner {
 }
 
 impl Refiner {
-    pub fn on_block_skip(&self, height: u64, next_block: &NEARBlock) -> AuroraBlock {
+    pub fn on_block_skip(&self, height: u64, next_block: &InnerNearBlock) -> AuroraBlock {
         AuroraBlock {
             chain_id: self.chain_id,
             engine_account_id: self.engine_account_id.clone(),
@@ -153,12 +152,15 @@ impl Refiner {
         }
     }
 
-    pub fn on_block_start(&self, block: &NEARBlock) {
-        let NEARBlock { block, shards, .. } = &block;
+    pub fn on_block_start(&self, near_block: &InnerNearBlock) {
+        near_block
+            .validate_for_engine(self.engine_account_id.as_str())
+            .unwrap_or_else(|error| panic!("{error}"));
+        let InnerNearBlock { block, shards, .. } = near_block;
         // Check if all chunks were parsed
         tracing::trace!(target: "block", "Processing block at height {}, hash={}", block.header.height, block.header.hash);
-        if block.header.chunk_mask.len() != shards.len() {
-            tracing::warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.chunk_mask.len(), shards.len());
+        if block.header.expected_shards != shards.len() {
+            tracing::warn!(target: "block", "Not all shards are being tracked. Expected number of shards {}, found {}", block.header.expected_shards, shards.len());
             crate::metrics::MISSING_SHARDS.inc();
         }
     }
@@ -166,27 +168,32 @@ impl Refiner {
     #[allow(clippy::cognitive_complexity)]
     pub fn on_execution_outcome(
         &mut self,
-        block: &NEARBlock,
+        block: &InnerNearBlock,
         near_tx_hash: Option<CryptoHash>,
-        execution_outcome: &ExecutionOutcomeWithReceipt,
+        execution_outcome: &ReceiptExecutionOutcome,
         txs: &HashMap<H256, TransactionIncludedOutcome>,
         storage: &Storage,
     ) {
-        let NEARBlock { block, shards } = &block;
+        let InnerNearBlock { block, shards } = &block;
 
         if self
             .partial_state
             .seen_receipts
             .insert(execution_outcome.receipt.receipt_id)
         {
-            // Using a recent version of borsh to serialize the receipt.
-            // Include in the size of the block the size of this transaction.
-            self.partial_state.size +=
-                borsh::to_vec(&execution_outcome.receipt).unwrap().len() as u64;
+            if let ExecutionStatus::Unsupported(reason) =
+                &execution_outcome.execution_outcome.status
+            {
+                panic!("Cannot process an unsupported Aurora execution status: {reason}");
+            }
+            // The input adapter preserves the Borsh size before reducing the receipt.
+            self.partial_state.size += execution_outcome
+                .receipt_size
+                .expect("Aurora receipt must have a known Borsh size");
         }
 
         match &execution_outcome.receipt.receipt {
-            ReceiptEnumView::Action {
+            ReceiptKind::Action {
                 actions,
                 input_data_ids, // Results of the promises execution.
                 ..
@@ -195,9 +202,11 @@ impl Refiner {
 
                 // Receipts with multiple actions are atomic; they either entirely succeed or
                 // there no state changes from any action. If the execution outcome is
-                // a failure then we can skip the receipt (regardless of how many actions it has)
-                if let ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_) =
-                    &execution_outcome.execution_outcome.outcome.status
+                // a failure, then we can skip the receipt (regardless of how many actions it has)
+                if let ExecutionStatus::Unknown
+                | ExecutionStatus::Failure(_)
+                | ExecutionStatus::UnencodedFailure(_) =
+                    &execution_outcome.execution_outcome.status
                 {
                     tracing::trace!(target: "transactions", "Failing NEAR Transaction at block: {}", block.header.hash);
                     return;
@@ -218,7 +227,7 @@ impl Refiner {
 
                     // The execution outcome only applies to the last action in the batch
                     let status = if index + 1 == num_actions {
-                        Some(&execution_outcome.execution_outcome.outcome.status)
+                        Some(&execution_outcome.execution_outcome.status)
                     } else {
                         None
                     };
@@ -269,6 +278,12 @@ impl Refiner {
                         Err(RefinerError::FailNearTx) => {
                             tracing::trace!(target: "transactions", "Failing NEAR Transaction at block: {}", block.header.hash);
                         }
+                        Err(RefinerError::UnencodedNearFailure(err)) => {
+                            panic!(
+                                "Cannot encode NEAR failure in block {}: {err}",
+                                block.header.hash
+                            );
+                        }
                         Err(err) => {
                             tracing::error!(target: "transactions", "Error while building transaction: {:?}. Block: {}", err, block.header.hash);
                             crate::metrics::ERROR_BUILDING_TRANSACTION.inc();
@@ -277,7 +292,7 @@ impl Refiner {
                 }
             }
             // Ignore receipts of type Data
-            ReceiptEnumView::Data { data_id, .. } => {
+            ReceiptKind::Data { data_id, .. } => {
                 crate::metrics::TRANSACTIONS_DATA.inc();
                 tracing::warn!(target: "transactions",
                     "Ignore receipt data. Receipt Id: {} Data Id: {:?}",
@@ -286,12 +301,15 @@ impl Refiner {
                 )
             }
             // Safe to ignore as it doesn't impact Aurora state
-            ReceiptEnumView::GlobalContractDistribution { .. } => {}
+            ReceiptKind::GlobalContractDistribution => {}
+            ReceiptKind::Unsupported(reason) => {
+                panic!("Cannot process an unsupported Aurora receipt: {reason}")
+            }
         }
     }
 
-    pub fn on_block_end(&mut self, block: &NEARBlock) -> AuroraBlock {
-        let NEARBlock { block, .. } = &block;
+    pub fn on_block_end(&mut self, block: &InnerNearBlock) -> AuroraBlock {
+        let InnerNearBlock { block, .. } = &block;
 
         // Compute near metadata
         let near_header = NearBlockHeader {
@@ -300,7 +318,7 @@ impl Refiner {
             author: block.author.clone(),
         };
 
-        // Build transactions root
+        // Build transaction root
         let transactions_root = as_h256(
             ordered_trie_root(
                 self.partial_state
@@ -385,7 +403,7 @@ struct BuiltTransaction {
 fn normalize_output(
     receipt_id: &CryptoHash,
     tx_kind: TransactionKindTag,
-    execution_status: Option<&ExecutionStatusView>,
+    execution_status: Option<&ExecutionStatus>,
     engine_outcome: Option<&TransactionIncludedOutcome>,
 ) -> Result<(SubmitResult, HashchainOutputKind, Vec<u8>), RefinerError> {
     let engine_output = engine_outcome
@@ -417,7 +435,14 @@ fn normalize_output(
         });
 
     let near_output = match execution_status {
-        Some(ExecutionStatusView::Unknown | ExecutionStatusView::Failure(_)) => {
+        Some(ExecutionStatus::Unsupported(reason)) => {
+            panic!("Cannot process an unsupported Aurora execution status: {reason}")
+        }
+        Some(
+            ExecutionStatus::Unknown
+            | ExecutionStatus::Failure(_)
+            | ExecutionStatus::UnencodedFailure(_),
+        ) => {
             // Regardless of anything else, if the transaction failed on Near then we report an error.
             crate::metrics::FAILING_NEAR_TRANSACTION.inc();
             tracing::debug!(
@@ -427,7 +452,7 @@ fn normalize_output(
             );
             return Err(RefinerError::FailNearTx);
         }
-        Some(ExecutionStatusView::SuccessValue(result)) => {
+        Some(ExecutionStatus::SuccessValue(result)) => {
             let bytes = result.clone();
             match tx_kind {
                 TransactionKindTag::Submit
@@ -462,7 +487,7 @@ fn normalize_output(
         // the execution of various XCC receipts, but the EVM computation still happened.
         // In terms of the hashchain, we still treat it as `HashchainOutputKind::None` because
         // `io.return_output` is never called since the promise is returned instead.
-        Some(ExecutionStatusView::SuccessReceiptId(result))
+        Some(ExecutionStatus::SuccessReceiptId(result))
             if tx_kind == TransactionKindTag::WithdrawWnearToRouter =>
         {
             let submit_result = engine_output.as_ref().cloned().unwrap_or_else(|| {
@@ -475,7 +500,7 @@ fn normalize_output(
             });
             Some((submit_result, HashchainOutputKind::None, Vec::new()))
         }
-        Some(ExecutionStatusView::SuccessReceiptId(result)) => {
+        Some(ExecutionStatus::SuccessReceiptId(result)) => {
             // No need to check the transaction kind in this case because transactions that
             // produce a SubmitResult as output do not produce a receipt id.
             let bytes = result.0.to_vec();
@@ -563,11 +588,11 @@ fn fill_hashchain_metadata(
 
 #[allow(clippy::too_many_arguments)]
 fn build_transaction(
-    near_block: &BlockView,
-    action: &ActionView,
-    execution_outcome: &ExecutionOutcomeWithReceipt,
+    near_block: &Block,
+    action: &Action,
+    execution_outcome: &ReceiptExecutionOutcome,
     near_metadata: NearTransaction,
-    execution_status: Option<&ExecutionStatusView>,
+    execution_status: Option<&ExecutionStatus>,
     chain_id: u64,
     tx_index: u32,
     virtual_receipt_id: CryptoHash,
@@ -602,7 +627,7 @@ fn build_transaction(
     let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
 
     match action {
-        ActionView::FunctionCall {
+        Action::FunctionCall {
             method_name, args, ..
         } => {
             let raw_input = args.to_vec();
@@ -1012,7 +1037,7 @@ fn build_transaction(
 
                     if let Ok(args) = serde_json::from_slice::<FtOnTransferArgs>(&raw_input) {
                         let token_mint_kind =
-                            get_token_mint_kind(&execution_outcome.execution_outcome.outcome.logs);
+                            get_token_mint_kind(&execution_outcome.execution_outcome.logs);
                         let to = determine_ft_on_transfer_recipient(
                             &token_mint_kind,
                             execution_outcome,
@@ -1097,12 +1122,7 @@ fn build_transaction(
                 }
             }
         }
-        action => {
-            let input = borsh::to_vec(&action).map_err(|err| {
-                tracing::error!("Failed to serialize action: {err}");
-                RefinerError::BuildAuroraTransactionError(err.to_string())
-            })?;
-
+        Action::Other { borsh_bytes } => {
             tx = tx
                 .hash(hash)
                 .from(from_address)
@@ -1116,7 +1136,7 @@ fn build_transaction(
                 .max_priority_fee_per_gas(U256::zero())
                 .max_fee_per_gas(U256::zero())
                 .value(Wei::zero())
-                .input(input)
+                .input(borsh_bytes.clone())
                 .access_list(vec![])
                 .authorization_list(vec![])
                 .logs(vec![])
@@ -1128,21 +1148,22 @@ fn build_transaction(
                 .near_metadata(near_metadata);
 
             match execution_status {
-                None | Some(ExecutionStatusView::Unknown) => {
+                None | Some(ExecutionStatus::Unknown) => {
                     tx = tx.output(vec![]).status(false);
                 }
-                Some(ExecutionStatusView::Failure(err)) => {
-                    tx = tx
-                        .output(borsh::to_vec(err).map_err(|err| {
-                            tracing::error!("Failed to serialize execution failure: {err}");
-                            RefinerError::BuildAuroraTransactionError(err.to_string())
-                        })?)
-                        .status(false);
+                Some(ExecutionStatus::Failure(err)) => {
+                    tx = tx.output(err.clone()).status(false);
                 }
-                Some(ExecutionStatusView::SuccessValue(value)) => {
+                Some(ExecutionStatus::UnencodedFailure(err)) => {
+                    return Err(RefinerError::UnencodedNearFailure(err.clone()));
+                }
+                Some(ExecutionStatus::Unsupported(reason)) => {
+                    panic!("Cannot process an unsupported Aurora execution status: {reason}");
+                }
+                Some(ExecutionStatus::SuccessValue(value)) => {
                     tx = tx.output(value.clone()).status(true);
                 }
-                Some(ExecutionStatusView::SuccessReceiptId(data)) => {
+                Some(ExecutionStatus::SuccessReceiptId(data)) => {
                     tx = tx.output(data.0.to_vec()).status(true);
                 }
             }
@@ -1159,10 +1180,10 @@ fn build_transaction(
 
 fn determine_ft_on_transfer_recipient(
     token_mint_kind: &TokenMintKind,
-    execution_outcome: &ExecutionOutcomeWithReceipt,
+    execution_outcome: &ReceiptExecutionOutcome,
     args: &FtOnTransferArgs,
     storage: &Storage,
-    near_block: &BlockView,
+    near_block: &Block,
     transaction_index: u32,
 ) -> Address {
     match token_mint_kind {
@@ -1274,6 +1295,8 @@ enum RefinerError {
     ParseMetadata(rlp::DecoderError),
     /// NEAR transaction failed
     FailNearTx,
+    /// A future NEAR error requires exact Borsh bytes for Aurora output.
+    UnencodedNearFailure(String),
     /// Could not get data from the promise result
     PromiseResultError,
     /// The error while building Aurora transaction in the scope of the build_transaction function
@@ -1287,6 +1310,7 @@ impl fmt::Debug for RefinerError {
             Self::ParseTransaction(err) => write!(f, "ParseTransaction: {err:?}"),
             Self::ParseMetadata(err) => write!(f, "ParseMetadata: {err:?}"),
             Self::FailNearTx => write!(f, "FailNearTx"),
+            Self::UnencodedNearFailure(err) => write!(f, "UnencodedNearFailure: {err}"),
             Self::PromiseResultError => write!(f, "PromiseResultError"),
             Self::BuildAuroraTransactionError(msg) => {
                 write!(f, "BuildAuroraTransactionError: {msg}")
@@ -1316,12 +1340,12 @@ fn find_promises_results(shards: &[Shard], ids: &[CryptoHash]) -> Vec<Option<Vec
             // https://github.com/near/nearcore/blob/c555199aca449c1c12b6ab7b672deda097f6a541/runtime/runtime/src/lib.rs#L2038
             chunk.local_receipts.iter().chain(chunk.receipts.iter())
         })
-        .filter_map(|outcome| match &outcome.receipt {
-            ReceiptEnumView::Data { data_id, data, .. } => ids
-                .iter()
-                .position(|id| id == data_id)
-                .map(|idx| (idx, data.clone())),
-            _ => None,
+        .filter_map(|receipt| {
+            receipt.data.as_ref().and_then(|data| {
+                ids.iter()
+                    .position(|id| id == &data.data_id)
+                    .map(|idx| (idx, data.data.clone()))
+            })
         })
         .for_each(|(idx, data)| result.insert(idx, data));
 
@@ -1369,10 +1393,11 @@ fn get_nonce(storage: &Storage, height: u64, tx_index: u32, address: &Address) -
 
 #[cfg(test)]
 mod tests {
-    use super::{compute_block_hash, compute_block_hash_preimage};
-    use crate::near_stream::tests::read_block;
-    use aurora_refiner_types::near_primitives::hash::CryptoHash;
-    use aurora_refiner_types::near_primitives::serialize::from_base64;
+    use super::{Refiner, compute_block_hash, compute_block_hash_preimage};
+    use crate::utils::read_inner_block;
+    use aurora_refiner_types::inner_block::ReceiptKind;
+    use near_primitives::hash::CryptoHash;
+    use near_primitives::serialize::from_base64;
     use std::str::FromStr;
 
     #[test]
@@ -1397,7 +1422,7 @@ mod tests {
 
     #[test]
     fn test_find_promises_result() {
-        let block = read_block("tests/res/block-134585465.json");
+        let block = read_inner_block("tests/res/block-134585465.json");
         let input_data_ids = &[
             CryptoHash::from_str("J5GehrK5EwaSa2QBwZjhJzZfMu44tVwaedP4ECvvVpuN").unwrap(),
             CryptoHash::from_str("9AuxSvd6WtSKZHaqYMzQKKSLRgwoEhNM4xiF53oNRwUK").unwrap(),
@@ -1417,5 +1442,38 @@ mod tests {
         assert_eq!(erc20_metadata.name, "USDC");
         assert_eq!(erc20_metadata.symbol, "USDC");
         assert_eq!(erc20_metadata.decimals, 6);
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot decode Aurora receipt")]
+    fn rejects_unknown_aurora_receipt_before_building_block() {
+        let mut block = read_inner_block("tests/res/block-134585465.json");
+        let outcome = block
+            .shards
+            .iter_mut()
+            .flat_map(|shard| &mut shard.receipt_execution_outcomes)
+            .next()
+            .unwrap();
+        outcome.receipt.receiver_id = "aurora".parse().unwrap();
+        outcome.receipt.receipt = ReceiptKind::Unsupported("future action".into());
+        outcome.receipt_size = None;
+
+        Refiner::new(1_313_161_554, "aurora".parse().unwrap()).on_block_start(&block);
+    }
+
+    #[test]
+    fn ignores_unknown_receipt_for_other_contract() {
+        let mut block = read_inner_block("tests/res/block-134585465.json");
+        let outcome = block
+            .shards
+            .iter_mut()
+            .flat_map(|shard| &mut shard.receipt_execution_outcomes)
+            .next()
+            .unwrap();
+        outcome.receipt.receiver_id = "other.near".parse().unwrap();
+        outcome.receipt.receipt = ReceiptKind::Unsupported("future action".into());
+        outcome.receipt_size = None;
+
+        Refiner::new(1_313_161_554, "aurora".parse().unwrap()).on_block_start(&block);
     }
 }

@@ -26,6 +26,7 @@ engine-standalone-storage = { workspace = true, features = ["snappy", "zstd", "z
 engine-standalone-tracing.workspace = true
 hex.workspace = true
 lru.workspace = true
+near-primitives.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
