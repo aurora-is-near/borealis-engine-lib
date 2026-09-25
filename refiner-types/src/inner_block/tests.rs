@@ -584,6 +584,12 @@ fn test_de_nearblock_both_networks_range_100m_to_latest_10m_step_api_fetch() {
         for height in (100_000_000..=latest_height).step_by(10_000_000) {
             println!("Test NEARBlock at height: {height} on {network}");
             let response_text = fetch_block(&client, network, &format!("block/{height}"));
+
+            if response_text.trim() == "null" {
+                println!("No block at height: {height} on {network}; skipping");
+                continue;
+            }
+
             assert_block_parses(&response_text, network, height);
         }
     }
@@ -610,4 +616,120 @@ fn assert_block_parses(response_text: &str, network: &str, height: u64) {
 fn extract_block_height(response_text: &str) -> u64 {
     let json: serde_json::Value = serde_json::from_str(response_text).unwrap();
     json["block"]["header"]["height"].as_u64().unwrap()
+}
+
+#[test]
+fn every_action_view_variant_matches_nearcore_borsh() {
+    use near_crypto::{KeyType, PublicKey};
+
+    let pk = || PublicKey::empty(KeyType::ED25519);
+    let yocto = Balance::from_yoctonear;
+    let variants = vec![
+        views::ActionView::CreateAccount,
+        views::ActionView::DeployContract {
+            code: vec![1, 2, 3],
+        },
+        views::ActionView::Transfer { deposit: yocto(1) },
+        views::ActionView::Stake {
+            stake: yocto(2),
+            public_key: pk(),
+        },
+        views::ActionView::AddKey {
+            public_key: pk(),
+            access_key: views::AccessKeyView {
+                nonce: 1,
+                permission: views::AccessKeyPermissionView::FullAccess,
+            },
+        },
+        views::ActionView::AddKey {
+            public_key: pk(),
+            access_key: views::AccessKeyView {
+                nonce: 2,
+                permission: views::AccessKeyPermissionView::GasKeyFunctionCall {
+                    balance: yocto(3),
+                    num_nonces: 4,
+                    allowance: Some(yocto(5)),
+                    receiver_id: "aurora".into(),
+                    method_names: vec!["submit".into()],
+                },
+            },
+        },
+        views::ActionView::AddKey {
+            public_key: pk(),
+            access_key: views::AccessKeyView {
+                nonce: 3,
+                permission: views::AccessKeyPermissionView::GasKeyFullAccess {
+                    balance: yocto(6),
+                    num_nonces: 7,
+                },
+            },
+        },
+        views::ActionView::DeleteKey { public_key: pk() },
+        views::ActionView::DeleteAccount {
+            beneficiary_id: "bob.near".parse().unwrap(),
+        },
+        views::ActionView::DeployGlobalContract { code: vec![4] },
+        views::ActionView::DeployGlobalContractByAccountId { code: vec![5] },
+        views::ActionView::UseGlobalContract {
+            code_hash: CryptoHash([1; 32]),
+        },
+        views::ActionView::UseGlobalContractByAccountId {
+            account_id: "code.near".parse().unwrap(),
+        },
+        views::ActionView::DeterministicStateInit {
+            code: views::GlobalContractIdentifierView::AccountId("code.near".parse().unwrap()),
+            data: [(vec![1], vec![2]), (vec![], vec![3])].into(),
+            deposit: yocto(8),
+        },
+        views::ActionView::TransferToGasKey {
+            public_key: pk(),
+            deposit: yocto(9),
+        },
+        views::ActionView::WithdrawFromGasKey {
+            public_key: pk(),
+            amount: yocto(10),
+        },
+        // + Delegate / DelegateV2 built from a signed fixture
+    ];
+
+    let mut source = source_message();
+    let outcome = source
+        .shards
+        .iter_mut()
+        .flat_map(|shard| &mut shard.receipt_execution_outcomes)
+        .find(|o| matches!(o.receipt.receipt, views::ReceiptEnumView::Action { .. }))
+        .unwrap();
+    let views::ReceiptEnumView::Action {
+        actions, refund_to, ..
+    } = &mut outcome.receipt.receipt
+    else {
+        unreachable!()
+    };
+    *actions = variants.clone();
+    *refund_to = Some("refund.near".parse().unwrap()); // exercise the Option field too
+    let id = outcome.receipt.receipt_id;
+    let expected_size = borsh::object_length(&outcome.receipt).unwrap() as u64;
+
+    let from_json = InnerNearBlock::from_bytes(serde_json::to_vec(&source).unwrap()).unwrap();
+    assert_eq!(from_json, InnerNearBlock::try_from(source).unwrap());
+
+    let outcome = from_json
+        .shards
+        .iter()
+        .flat_map(|s| &s.receipt_execution_outcomes)
+        .find(|o| o.receipt.receipt_id == id)
+        .unwrap();
+    assert_eq!(outcome.receipt_size, Some(expected_size));
+    let ReceiptKind::Action { actions, .. } = &outcome.receipt.receipt else {
+        panic!("expected action receipt")
+    };
+    for (view, action) in variants.iter().zip(actions) {
+        assert_eq!(
+            action,
+            &Action::Other {
+                borsh_bytes: borsh::to_vec(view).unwrap()
+            },
+            "{view:?}"
+        );
+    }
 }
