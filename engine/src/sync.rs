@@ -16,6 +16,7 @@ use engine_standalone_storage::{
 };
 use lru::LruCache;
 use near_primitives::hash::CryptoHash;
+use std::fmt::{Display, Formatter};
 use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
@@ -35,6 +36,17 @@ impl From<engine_standalone_storage::Error> for ConsumeBlockError {
         Self::Storage(error)
     }
 }
+
+impl Display for ConsumeBlockError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidBlock(err) => write!(f, "Invalid block: {err}"),
+            Self::Storage(err) => write!(f, "Storage error: {err:?  }"),
+        }
+    }
+}
+
+impl std::error::Error for ConsumeBlockError {}
 
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
