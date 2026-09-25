@@ -1,13 +1,14 @@
+use aurora_engine_modexp::AuroraModExp;
+use aurora_refiner_types::aurora_block::AuroraBlock;
+use aurora_refiner_types::inner_block::InnerNearBlock;
+use aurora_standalone_engine::EngineContext;
+
 use crate::metrics::{PROCESSED_BLOCKS, SKIP_BLOCKS};
 use crate::refiner_inner::Refiner;
 use crate::tx_hash_tracker::TxHashTracker;
-use aurora_engine_modexp::AuroraModExp;
-use aurora_refiner_types::aurora_block::AuroraBlock;
-use aurora_refiner_types::near_block::NEARBlock;
-use aurora_standalone_engine::EngineContext;
 
 pub struct NearStream {
-    /// Keep track of last block seen, to report empty blocks
+    /// Keep track of the last block seen to report empty blocks
     last_block_height: Option<u64>,
     /// Pass the filtered information to the handler
     handler: Refiner,
@@ -37,7 +38,7 @@ impl NearStream {
         }
     }
 
-    async fn handle_block(&mut self, near_block: &NEARBlock) -> AuroraBlock {
+    async fn handle_block(&mut self, near_block: &InnerNearBlock) -> AuroraBlock {
         self.handler.on_block_start(near_block);
 
         let mut txs = Default::default();
@@ -87,7 +88,7 @@ impl NearStream {
         aurora_block
     }
 
-    pub async fn next_block(&mut self, near_block: &NEARBlock) -> Vec<AuroraBlock> {
+    pub async fn next_block(&mut self, near_block: &InnerNearBlock) -> Vec<AuroraBlock> {
         let mut blocks = vec![];
 
         let height = near_block.block.header.height;
@@ -112,6 +113,8 @@ impl NearStream {
 
 #[cfg(test)]
 pub mod tests {
+    use super::*;
+    use crate::utils::read_inner_block;
     use aurora_engine::{engine::setup_receive_erc20_tokens_input, state::EngineStateError};
     use aurora_engine_sdk::types::near_account_to_evm_address;
     use aurora_engine_types::parameters::connector::Erc20Metadata;
@@ -124,8 +127,6 @@ pub mod tests {
     use engine_standalone_storage::json_snapshot::{initialize_engine_state, types::JsonSnapshot};
     use std::{collections::HashSet, matches};
 
-    use super::*;
-
     #[tokio::test]
     async fn test_block_120572296() {
         // The testnet block at height 120572296 contains a `DelegateAction` action.
@@ -134,7 +135,7 @@ pub mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
-        let block = read_block("tests/res/testnet-block-120572296.json");
+        let block = read_inner_block("tests/res/testnet-block-120572296.json");
 
         let mut aurora_blocks = stream.next_block(&block).await;
 
@@ -167,7 +168,7 @@ pub mod tests {
             assert!(matches!(result, Err(EngineStateError::NotFound)));
         }
 
-        let block = read_block("tests/res/block_131407300.json");
+        let block = read_inner_block("tests/res/block_131407300.json");
         let _ = stream.next_block(&block).await;
         let chain_id_from_state = stream
             .context
@@ -186,7 +187,7 @@ pub mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
-        let block = read_block("tests/res/block-89402026.json");
+        let block = read_inner_block("tests/res/block-89402026.json");
 
         let mut aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
@@ -205,7 +206,7 @@ pub mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
-        let block = read_block("tests/res/block-84423722.json");
+        let block = read_inner_block("tests/res/block-84423722.json");
 
         let mut aurora_blocks = stream.next_block(&block).await;
 
@@ -219,7 +220,7 @@ pub mod tests {
         let db_dir = tempfile::tempdir().unwrap();
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
-        let block = read_block("tests/res/block-81206675.json");
+        let block = read_inner_block("tests/res/block-81206675.json");
 
         let mut aurora_blocks = stream.next_block(&block).await;
 
@@ -280,7 +281,7 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         // parameters of the test
-        let block = read_block("tests/res/block-82654651.json");
+        let block = read_inner_block("tests/res/block-82654651.json");
         let expected_nonce = 12773;
 
         // run and assert
@@ -305,7 +306,7 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         // parameters of the test
-        let block = read_block("tests/res/block-75306841.json");
+        let block = read_inner_block("tests/res/block-75306841.json");
 
         // run and assert
         let mut aurora_block = stream.next_block(&block).await.pop().unwrap();
@@ -346,7 +347,7 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         // near block 70834059
-        let near_block = read_block("tests/res/block-70834059.json");
+        let near_block = read_inner_block("tests/res/block-70834059.json");
 
         let aurora_blocks = stream.next_block(&near_block).await;
 
@@ -358,7 +359,7 @@ pub mod tests {
         ));
 
         // near skip block 70834061; 70834060 does not exist
-        let near_skip_block = read_block("tests/res/block-70834061.json");
+        let near_skip_block = read_inner_block("tests/res/block-70834061.json");
 
         let aurora_blocks = stream.next_block(&near_skip_block).await;
 
@@ -382,7 +383,7 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         // near block 34834052; aurora block genesis is 34834053
-        let near_block = read_block("tests/res/block-34834052.json");
+        let near_block = read_inner_block("tests/res/block-34834052.json");
 
         let aurora_blocks = stream.next_block(&near_block).await;
 
@@ -400,7 +401,7 @@ pub mod tests {
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let near_block = read_block("tests/res/block_128945880.json");
+        let near_block = read_inner_block("tests/res/block_128945880.json");
 
         let aurora_blocks = stream.next_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
@@ -438,7 +439,7 @@ pub mod tests {
         let ctx = TestContext::new(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let near_block = read_block("tests/res/block_211846994.json");
+        let near_block = read_inner_block("tests/res/block_211846994.json");
 
         let aurora_blocks = stream.next_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
@@ -474,7 +475,7 @@ pub mod tests {
         let mut stream = ctx.create_stream();
 
         // Read the block where the wNEAR contract is created to obtain a state that contains a key-value pair representing the wrap.near and ERC20 addresses.
-        let near_block_wnear_contract_create = read_block("tests/res/block_42598892.json");
+        let near_block_wnear_contract_create = read_inner_block("tests/res/block_42598892.json");
         let aurora_blocks = stream.next_block(&near_block_wnear_contract_create).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 42598892);
@@ -486,7 +487,7 @@ pub mod tests {
         // Directly setting the height, we ensure the stream will process the target block (125229395)
         stream.last_block_height = Some(125229394);
         // Read the block that contains the ERC20 token mint transaction.
-        let near_block = read_block("tests/res/block_125229395.json");
+        let near_block = read_inner_block("tests/res/block_125229395.json");
         let aurora_blocks = stream.next_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 125229395);
@@ -533,7 +534,7 @@ pub mod tests {
             .build(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let block = read_block("tests/res/testnet_block_182018895.json");
+        let block = read_inner_block("tests/res/testnet_block_182018895.json");
         let aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 182018895);
@@ -571,7 +572,7 @@ pub mod tests {
             .build(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let block = read_block("tests/res/testnet-block-232952651.json");
+        let block = read_inner_block("tests/res/testnet-block-232952651.json");
         let aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 232952651);
@@ -613,7 +614,7 @@ pub mod tests {
             .build(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let block = read_block("tests/res/block-134585465.json");
+        let block = read_inner_block("tests/res/block-134585465.json");
         let aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 134585465);
@@ -655,7 +656,7 @@ pub mod tests {
             .build(&db_dir);
         let mut stream = ctx.create_stream();
 
-        let block = read_block("tests/res/testnet-block-234187695.json");
+        let block = read_inner_block("tests/res/testnet-block-234187695.json");
         let aurora_blocks = stream.next_block(&block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 234187695);
@@ -667,13 +668,6 @@ pub mod tests {
 
         assert_eq!(aurora_block.transactions.len(), 1);
         assert_eq!(aurora_block.transactions[0].authorization_list.len(), 1);
-    }
-
-    pub fn read_block(path: &str) -> NEARBlock {
-        let data = std::fs::read_to_string(path).unwrap();
-        serde_json::from_str(&data).unwrap_or_else(|e| {
-            panic!("Failed to parse block from {path}: {e}");
-        })
     }
 
     pub struct TestContext {

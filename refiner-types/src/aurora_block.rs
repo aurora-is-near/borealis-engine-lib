@@ -82,7 +82,7 @@ pub enum NearBlock {
 pub struct NearBlockHeader {
     /// Hash of the block on NEAR
     pub near_hash: CryptoHash,
-    /// Hash of the parent of block on NEAR. Note that some blocks can be skipped.
+    /// Hash of the parent of a block on NEAR. Note that some blocks can be skipped.
     pub near_parent_hash: CryptoHash,
     /// Account id of the validator that produced this block
     pub author: AccountId,

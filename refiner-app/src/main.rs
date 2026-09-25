@@ -1,6 +1,5 @@
 mod cli;
 mod config;
-mod conversion;
 mod input;
 mod socket;
 mod store;
@@ -66,18 +65,20 @@ async fn run_refiner_app(
 
     // Broadcast shutdown channel
     let (shutdown_tx, mut shutdown_rx_refiner) = tokio::sync::broadcast::channel(16);
-    let shutdown_rx_input_stream = shutdown_tx.subscribe();
     let shutdown_rx_output_stream = shutdown_tx.subscribe();
     let mut shutdown_rx_socket = shutdown_tx.subscribe();
+    let mut shutdown_rx_app = shutdown_tx.subscribe();
 
     // Build input stream
     let (input_stream, task_input_stream) = match &config.input_mode {
-        config::InputMode::DataLake(config) => {
-            input::data_lake::get_near_data_lake_stream(next_block, config)
-        }
+        config::InputMode::DataLake(config) => input::data_lake::get_near_json_stream(
+            next_block,
+            config,
+            engine_account_id.as_ref(),
+            shutdown_tx.clone(),
+        ),
         config::InputMode::Nearcore(config) => {
-            input::nearcore::get_nearcore_stream(next_block, config, shutdown_rx_input_stream)
-                .await?
+            input::nearcore::get_nearcore_stream(next_block, config, shutdown_tx.clone()).await?
         }
     };
 
@@ -118,7 +119,16 @@ async fn run_refiner_app(
 
     let (signals_result, input_result, output_result, ..) = tokio::join!(
         // Handle all signals
-        signal_handlers::handle_all_signals(shutdown_tx),
+        async {
+            tokio::select! {
+                result = signal_handlers::handle_all_signals(shutdown_tx) => result,
+                _ = shutdown_rx_app.recv() => {
+                    tracing::info!("Application received an internal shutdown signal");
+                    actix::System::current().stop();
+                    Ok(())
+                }
+            }
+        },
         // Wait for input stream to finish
         task_input_stream,
         // Wait for output stream to finish
@@ -149,11 +159,13 @@ async fn run_refiner_app(
     if let Err(err) = signals_result {
         tracing::error!("Signal handler failed: {:?}", err);
     }
-    if let Err(err) = input_result {
-        tracing::error!("Input stream failed: {:?}", err);
+    match input_result {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => return Err(err),
+        Err(err) => return Err(anyhow!("Input stream task failed: {err}")),
     }
     if let Err(err) = output_result {
-        tracing::error!("Output stream failed: {:?}", err);
+        tracing::error!("Output stream failed: {err:?}");
     }
 
     Ok(())

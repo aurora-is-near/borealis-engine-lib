@@ -1,7 +1,7 @@
 use crate::near_stream::NearStream;
 use crate::tx_hash_tracker;
 use aurora_refiner_types::aurora_block::AuroraBlock;
-use aurora_refiner_types::near_block::NEARBlock;
+use aurora_refiner_types::inner_block::InnerNearBlock;
 use aurora_standalone_engine::EngineContext;
 use std::fmt::Debug;
 use std::path::Path;
@@ -23,7 +23,7 @@ pub async fn run_refiner<P: AsRef<Path> + Send, M: Debug + Clone + Send + Sync>(
     ctx: EngineContext,
     chain_id: u64,
     tx_storage_path: P,
-    mut input: tokio::sync::mpsc::Receiver<BlockWithMetadata<NEARBlock, M>>,
+    mut input: tokio::sync::mpsc::Receiver<BlockWithMetadata<InnerNearBlock, M>>,
     output: tokio::sync::mpsc::Sender<BlockWithMetadata<AuroraBlock, M>>,
     last_block: Option<u64>,
     stop_signal: &mut tokio::sync::broadcast::Receiver<()>,

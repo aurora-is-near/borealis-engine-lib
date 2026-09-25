@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changes
+
+* Replace `aurora_refiner_types::near_block::NEARBlock` with `aurora_refiner_types::inner_block::InnerNearBlock` in [#304].
+  Build it with `InnerNearBlock::try_from(near_indexer::StreamerMessage)` or `InnerNearBlock::from_bytes(<NEAR block JSON>)`.
+* Remove `aurora_refiner_types::{conversion, Converter}` and the `near_primitives` re-export; depend on `near-primitives` directly.
+* `aurora_standalone_engine::consume_near_block` now takes `&InnerNearBlock` and returns `ConsumeBlockError`.
+
+[#304]: https://github.com/aurora-is-near/borealis-engine-lib/pull/304
+
 ## [0.31.3-2.14.0-rc.2] 2026-09-17
 
 ### Changes
