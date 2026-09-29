@@ -73,3 +73,15 @@ impl TryFrom<&[u8]> for TxMetadata {
         }
     }
 }
+
+#[cfg(test)]
+pub fn read_inner_block(path: &str) -> aurora_refiner_types::inner_block::InnerNearBlock {
+    use std::io::Read;
+    let mut buffer = vec![];
+    let _result = std::fs::File::open(path)
+        .map(std::io::BufReader::new)
+        .map(|mut f| f.read_to_end(&mut buffer))
+        .unwrap();
+
+    aurora_refiner_types::inner_block::InnerNearBlock::from_bytes(&buffer).unwrap()
+}

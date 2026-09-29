@@ -1,7 +1,8 @@
 use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_types::{H256, account_id::AccountId};
-use aurora_refiner_types::{near_block::NEARBlock, near_primitives::hash::CryptoHash};
+use aurora_refiner_types::inner_block::InnerNearBlock;
 use engine_standalone_storage::{Storage, error, sync::TransactionIncludedOutcome};
+use near_primitives::hash::CryptoHash;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -42,10 +43,10 @@ impl EngineContext {
 }
 
 pub async fn consume_near_block<M: ModExpAlgorithm>(
-    block: &NEARBlock,
+    block: &InnerNearBlock,
     context: &mut EngineContext,
     outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
-) -> Result<(), error::Error> {
+) -> Result<(), sync::ConsumeBlockError> {
     let mut storage = context.storage.as_ref().write().await;
     sync::consume_near_block::<M>(
         &mut storage,
