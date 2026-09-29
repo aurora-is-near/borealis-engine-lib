@@ -107,7 +107,7 @@ def update_link_definitions(bottom_section, new_version, prev_version):
     """Update link definitions in bottom section."""
     bottom_section = re.sub(
         r'\[Unreleased\]: .*',
-        f'[Unreleased]: {REPO_URL}/{new_version}...main',
+        f'[Unreleased]: {REPO_URL}/compare/{new_version}...main',
         bottom_section
     )
 
