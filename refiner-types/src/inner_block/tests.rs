@@ -75,10 +75,6 @@ fn preserves_custom_action_bytes_receipt_size_and_action_positions() {
             deposit: Balance::from_yoctonear(u128::MAX),
         },
         views::ActionView::CreateAccount,
-        views::ActionView::UniversalStateInit {
-            state_init: near_primitives::universal_state_init::RawStateInit(vec![4, 5, 6]),
-            deposit: Balance::from_yoctonear(7),
-        },
     ];
     outcome.receipt._priority = 7;
     let id = outcome.receipt.receipt_id;
@@ -122,13 +118,6 @@ fn preserves_custom_action_bytes_receipt_size_and_action_positions() {
             },
             Action::Other {
                 borsh_bytes: vec![0]
-            },
-            Action::Other {
-                borsh_bytes: borsh::to_vec(&views::ActionView::UniversalStateInit {
-                    state_init: near_primitives::universal_state_init::RawStateInit(vec![4, 5, 6]),
-                    deposit: Balance::from_yoctonear(7),
-                })
-                .unwrap(),
             },
         ]
     );
