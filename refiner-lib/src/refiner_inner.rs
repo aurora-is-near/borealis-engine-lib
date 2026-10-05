@@ -29,6 +29,7 @@ use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{
     TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
 };
+use near_primitives::account::id::TryIntoAccountId;
 use near_primitives::hash::CryptoHash;
 use near_primitives::types::{AccountId, BlockHeight};
 use std::collections::{HashMap, HashSet};
@@ -354,7 +355,7 @@ impl Refiner {
                 self.chain_id,
             ),
             height: block.header.height,
-            miner: near_account_to_evm_address(block.author.as_bytes()),
+            miner: near_account_to_evm_address(block.author.as_str()),
             timestamp: block.header.timestamp,
             gas_limit: u64::MAX,
             state_root: self.prev_state_root,
@@ -624,7 +625,7 @@ fn build_transaction(
 
     // Hash used to build a transactions merkle tree
     let mut transaction_hash = H256::zero();
-    let from_address = near_account_to_evm_address(predecessor_id.as_bytes());
+    let from_address = near_account_to_evm_address(predecessor_id.as_str());
 
     match action {
         Action::FunctionCall {
@@ -1126,9 +1127,7 @@ fn build_transaction(
             tx = tx
                 .hash(hash)
                 .from(from_address)
-                .to(Some(near_account_to_evm_address(
-                    engine_account_id.as_bytes(),
-                )))
+                .to(Some(near_account_to_evm_address(&engine_account_id)))
                 .contract_address(None)
                 .nonce(0)
                 .gas_limit(0)
