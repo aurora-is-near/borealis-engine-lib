@@ -29,7 +29,6 @@ use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{
     TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
 };
-use near_primitives::account::id::TryIntoAccountId;
 use near_primitives::hash::CryptoHash;
 use near_primitives::types::{AccountId, BlockHeight};
 use std::collections::{HashMap, HashSet};
