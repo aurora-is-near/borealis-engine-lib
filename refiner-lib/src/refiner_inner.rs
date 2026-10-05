@@ -29,6 +29,7 @@ use engine_standalone_storage::Storage;
 use engine_standalone_storage::sync::{
     TransactionExecutionResult, TransactionIncludedOutcome, types::TransactionKindTag,
 };
+use keccak_hasher::KeccakHasher;
 use near_primitives::hash::CryptoHash;
 use near_primitives::types::{AccountId, BlockHeight};
 use std::collections::{HashMap, HashSet};
@@ -36,7 +37,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::io::Write;
 use std::str::FromStr;
-use triehash_ethereum::ordered_trie_root;
+use triehash::ordered_trie_root;
 
 use crate::legacy::decode_submit_result;
 use crate::metrics::{LATEST_BLOCK_PROCESSED, record_metric};
@@ -319,24 +320,18 @@ impl Refiner {
         };
 
         // Build transaction root
-        let transactions_root = as_h256(
-            ordered_trie_root(
-                self.partial_state
-                    .transactions_extra_data
-                    .iter()
-                    .map(|tx| tx.transaction_hash),
-            )
-            .as_bytes(),
-        );
-        let receipts_root = as_h256(
-            ordered_trie_root(
-                self.partial_state
-                    .transactions_extra_data
-                    .iter()
-                    .map(|tx| tx.receipt_hash),
-            )
-            .as_bytes(),
-        );
+        let transactions_root = as_h256(&ordered_trie_root::<KeccakHasher, _>(
+            self.partial_state
+                .transactions_extra_data
+                .iter()
+                .map(|tx| tx.transaction_hash.as_bytes()),
+        ));
+        let receipts_root = as_h256(&ordered_trie_root::<KeccakHasher, _>(
+            self.partial_state
+                .transactions_extra_data
+                .iter()
+                .map(|tx| tx.receipt_hash.as_ref()),
+        ));
 
         self.prev_state_root = H256::from(block.header.prev_state_root.0);
 

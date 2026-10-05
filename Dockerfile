@@ -4,7 +4,7 @@ ARG ENV=mainnet
 ARG SOURCE=nearcore
 ARG RELEASE_TAG
 
-RUN apt update && apt install make pkg-config libssl-dev clang -y  \
+RUN apt update && apt install make pkg-config libssl-dev clang libclang-dev -y  \
     && mkdir -p /src && cd /src  \
     && git clone https://github.com/aurora-is-near/borealis-engine-lib.git .  \
     && git fetch --tags  \
