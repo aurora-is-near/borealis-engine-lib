@@ -1,11 +1,12 @@
 use aurora_engine::parameters::TransactionStatus;
 use aurora_engine_modexp::AuroraModExp;
 use aurora_engine_types::{H256, account_id::AccountId};
-use aurora_refiner_types::near_block::NEARBlock;
+use aurora_refiner_types::inner_block::{InnerNearBlock, ReceiptKind};
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
 use engine_standalone_storage::sync::TransactionExecutionResult;
 use std::collections::HashMap;
+use std::io::Read;
 use std::num::NonZeroUsize;
 
 /// This test processes a real block from mainnet:
@@ -17,10 +18,7 @@ use std::num::NonZeroUsize;
 fn test_random_value() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_105089746.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_105089746.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -63,10 +61,7 @@ fn test_random_value() {
 fn test_empty_submit_input() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_71771951.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_71771951.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -93,10 +88,7 @@ fn test_empty_submit_input() {
 fn test_batched_transactions() {
     let mut test_context =
         TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
-    let block: NEARBlock = {
-        let file = std::fs::File::open("src/res/block_66381607.json").unwrap();
-        serde_json::from_reader(file).unwrap()
-    };
+    let block = read_inner_block("src/res/block_66381607.json");
     let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
     let mut outcomes_map = HashMap::new();
     let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
@@ -176,6 +168,47 @@ fn test_batched_transactions() {
     test_context.close()
 }
 
+/// Engine data that cannot be processed must be reported as an error
+/// before anything from the block is written to the storage.
+#[test]
+fn test_rejects_unsupported_receipt_before_storing_block() {
+    let mut test_context =
+        TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
+    let mut block = read_inner_block("src/res/block_105089746.json");
+    let outcome = block
+        .shards
+        .iter_mut()
+        .flat_map(|shard| &mut shard.receipt_execution_outcomes)
+        .find(|outcome| outcome.receipt.receiver_id.as_str() == "aurora")
+        .unwrap();
+    outcome.receipt.receipt = ReceiptKind::Unsupported("future action".into());
+    outcome.receipt_size = None;
+    let mut data_id_mapping = lru::LruCache::new(NonZeroUsize::new(1000).unwrap());
+    let chain_id = aurora_engine_types::types::u256_to_arr(&(1313161554.into()));
+
+    let result = crate::sync::consume_near_block::<AuroraModExp>(
+        &mut test_context.storage,
+        &block,
+        &mut data_id_mapping,
+        &test_context.engine_account_id,
+        chain_id,
+        None,
+    );
+
+    assert!(matches!(
+        result,
+        Err(crate::sync::ConsumeBlockError::InvalidBlock(_))
+    ));
+    assert!(
+        test_context
+            .storage
+            .get_block_hash_by_height(block.block.header.height)
+            .is_err()
+    );
+
+    test_context.close()
+}
+
 struct TestContext {
     storage: Storage,
     storage_path: tempfile::TempDir,
@@ -201,4 +234,14 @@ impl TestContext {
         drop(self.storage);
         self.storage_path.close().unwrap();
     }
+}
+
+fn read_inner_block(path: &str) -> InnerNearBlock {
+    let mut buffer = vec![];
+    let _result = std::fs::File::open(path)
+        .map(std::io::BufReader::new)
+        .map(|mut f| f.read_to_end(&mut buffer))
+        .unwrap();
+
+    InnerNearBlock::from_bytes(&buffer).unwrap()
 }

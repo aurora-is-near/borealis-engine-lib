@@ -3,10 +3,8 @@ use aurora_engine_modexp::ModExpAlgorithm;
 use aurora_engine_sdk::env;
 use aurora_engine_types::borsh::BorshDeserialize;
 use aurora_engine_types::{H256, account_id::AccountId};
-use aurora_refiner_types::near_primitives::{
-    self,
-    hash::CryptoHash,
-    views::{ActionView, StateChangeValueView},
+use aurora_refiner_types::inner_block::{
+    Action, ConversionError, ExecutionStatus, InnerNearBlock, ReceiptKind, StateChangeCause,
 };
 use engine_standalone_storage::sync::types::TransactionKind;
 use engine_standalone_storage::{
@@ -17,20 +15,53 @@ use engine_standalone_storage::{
     },
 };
 use lru::LruCache;
+use near_primitives::hash::CryptoHash;
+use std::fmt::{Display, Formatter};
 use std::{cell::RefCell, collections::HashMap};
 use tracing::{debug, warn};
 
 use crate::batch_tx_processing::BatchIO;
 
+/// Failure to consume a NEAR block.
+#[derive(Debug)]
+pub enum ConsumeBlockError {
+    /// The block contains engine account data the engine cannot process.
+    InvalidBlock(ConversionError),
+    /// The standalone storage failed.
+    Storage(engine_standalone_storage::Error),
+}
+
+impl From<engine_standalone_storage::Error> for ConsumeBlockError {
+    fn from(error: engine_standalone_storage::Error) -> Self {
+        Self::Storage(error)
+    }
+}
+
+impl Display for ConsumeBlockError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidBlock(err) => write!(f, "Invalid block: {err}"),
+            Self::Storage(err) => write!(f, "Storage error: {err:?  }"),
+        }
+    }
+}
+
+impl std::error::Error for ConsumeBlockError {}
+
 #[allow(clippy::cognitive_complexity, clippy::option_if_let_else)]
 pub fn consume_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
-    message: &aurora_refiner_types::near_block::NEARBlock,
+    message: &InnerNearBlock,
     data_id_mapping: &mut LruCache<CryptoHash, Option<Vec<u8>>>,
     engine_account_id: &AccountId,
     chain_id: [u8; 32],
     mut outcomes: Option<&mut HashMap<H256, TransactionIncludedOutcome>>,
-) -> Result<(), engine_standalone_storage::Error> {
+) -> Result<(), ConsumeBlockError> {
+    // Reject unprocessable engine data before anything is written to the storage.
+    message
+        .validate_for_engine(engine_account_id.as_ref())
+        .map_err(ConsumeBlockError::InvalidBlock)?;
+
     let block_hash =
         add_block_data_from_near_block::<M>(storage, message, chain_id, engine_account_id)?;
     let near_block_hash = &message.block.header.hash;
@@ -48,10 +79,8 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .enumerate()
         .filter_map(|(i, r)| {
             if r.receiver_id.as_str() == engine_account_id.as_ref() {
-                if let near_primitives::views::ReceiptEnumView::Data { data_id, data, .. } =
-                    &r.receipt
-                {
-                    data_id_mapping.put(*data_id, data.clone());
+                if let Some(data) = &r.data {
+                    data_id_mapping.put(data.data_id, data.data.clone());
                 }
 
                 Some((r.receipt_id, i))
@@ -66,32 +95,20 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
         .shards
         .iter()
         .flat_map(|s| s.state_changes.iter())
-        .filter_map(|change| match &change.value {
-            StateChangeValueView::DataUpdate {
-                account_id,
-                key,
-                value,
-            } => Some((account_id, key, Some(value), &change.cause)),
-            StateChangeValueView::DataDeletion { account_id, key } => {
-                Some((account_id, key, None, &change.cause))
-            }
-            _ => None,
-        })
-        .filter(|(account_id, _, _, _)| account_id.as_str() == engine_account_id.as_ref());
+        .filter(|change| change.account_id.as_str() == engine_account_id.as_ref());
 
     let mut expected_diffs: HashMap<H256, Diff> = HashMap::new();
-    for (_, key, expected_value, cause) in aurora_state_changes {
-        let receipt_id: H256 = match cause {
-            aurora_refiner_types::near_block::StateChangeCauseView::ReceiptProcessing {
-                receipt_hash,
-            } => receipt_hash.0.into(),
+    for change in aurora_state_changes {
+        let receipt_id: H256 = match &change.cause {
+            StateChangeCause::ReceiptProcessing { receipt_hash } => receipt_hash.0.into(),
             other => panic!("Unexpected state change cause {other:?}"),
         };
 
         let diff = expected_diffs.entry(receipt_id).or_default();
-        match expected_value {
-            Some(value) => diff.modify(key.to_vec(), value.to_vec()),
-            None => diff.delete(key.to_vec()),
+
+        match &change.value {
+            Some(value) => diff.modify(change.key.clone(), value.clone()),
+            None => diff.delete(change.key.clone()),
         }
     }
 
@@ -115,15 +132,18 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
 
     let transaction_messages = receipt_execution_outcomes.iter().filter_map(|outcome| {
         // Ignore failed transactions since they do not impact the engine state
-        let execution_result_bytes = match &outcome.execution_outcome.outcome.status {
-            near_primitives::views::ExecutionStatusView::Unknown => return None,
-            near_primitives::views::ExecutionStatusView::Failure(_) => return None,
-            near_primitives::views::ExecutionStatusView::SuccessValue(bytes) => Some(bytes),
-            near_primitives::views::ExecutionStatusView::SuccessReceiptId(_) => None,
+        let execution_result_bytes = match &outcome.execution_outcome.status {
+            ExecutionStatus::Unknown => return None,
+            ExecutionStatus::Failure(_) | ExecutionStatus::UnencodedFailure(_) => return None,
+            ExecutionStatus::Unsupported(reason) => {
+                panic!("Cannot process an unsupported Aurora execution status: {reason}")
+            }
+            ExecutionStatus::SuccessValue(bytes) => Some(bytes),
+            ExecutionStatus::SuccessReceiptId(_) => None,
         };
 
         let (signer, maybe_tx, promise_data) = match &outcome.receipt.receipt {
-            near_primitives::views::ReceiptEnumView::Action {
+            ReceiptKind::Action {
                 signer_id,
                 actions,
                 input_data_ids,
@@ -137,9 +157,12 @@ pub fn consume_near_block<M: ModExpAlgorithm>(
 
                 (signer_id, maybe_tx, input_data)
             }
-            near_primitives::views::ReceiptEnumView::Data { .. } => return None,
-            near_primitives::views::ReceiptEnumView::GlobalContractDistribution { .. } => {
+            ReceiptKind::Data { .. } => return None,
+            ReceiptKind::GlobalContractDistribution => {
                 return None;
+            }
+            ReceiptKind::Unsupported(reason) => {
+                panic!("Cannot process an unsupported Aurora receipt: {reason}");
             }
         };
 
@@ -355,19 +378,19 @@ fn compute_action_hash(
 
 fn add_block_data_from_near_block<M: ModExpAlgorithm>(
     storage: &mut Storage,
-    message: &aurora_refiner_types::near_block::NEARBlock,
+    block: &InnerNearBlock,
     chain_id: [u8; 32],
     account_id: &AccountId,
 ) -> Result<H256, engine_standalone_storage::Error> {
-    let block_height = message.block.header.height;
+    let block_height = block.block.header.height;
     let block_hash =
         aurora_engine::engine::compute_block_hash(chain_id, block_height, account_id.as_bytes());
     let block_message = types::BlockMessage {
         height: block_height,
         hash: block_hash,
         metadata: BlockMetadata {
-            timestamp: env::Timestamp::new(message.block.header.timestamp_nanosec),
-            random_seed: message.block.header.random_value.0.into(),
+            timestamp: env::Timestamp::new(block.block.header.timestamp_nanosec),
+            random_seed: block.block.header.random_value.0.into(),
         },
     };
 
@@ -632,10 +655,7 @@ impl TransactionBatchOutcome {
     }
 }
 
-fn parse_actions(
-    actions: &[ActionView],
-    promise_data: &[Option<Vec<u8>>],
-) -> Option<ParsedActions> {
+fn parse_actions(actions: &[Action], promise_data: &[Option<Vec<u8>>]) -> Option<ParsedActions> {
     let num_actions = actions.len();
     if num_actions == 1 {
         parse_action(&actions[0], promise_data).map(|(tx, input, n)| {
@@ -680,16 +700,11 @@ fn parse_actions(
 }
 
 /// Attempt to parse an Aurora transaction from the given NEAR action.
-///
-/// NOTE:
-/// `ActionView::FunctionCall.deposit` comes in as a `NearToken` wrapper instead of a bare `u128`.
-/// Everything inside engine/src/sync.rs still expects to work with raw yoctoNEAR amounts.
-/// deposit.as_yoctonear() converts the new NearToken wrapper back into the u128 yoctoNEAR value.
 fn parse_action(
-    action: &ActionView,
+    action: &Action,
     promise_data: &[Option<Vec<u8>>],
 ) -> Option<(TransactionKind, Vec<u8>, u128)> {
-    if let ActionView::FunctionCall {
+    if let Action::FunctionCall {
         method_name,
         args,
         deposit,
@@ -699,7 +714,7 @@ fn parse_action(
         let bytes = args.to_vec();
         let transaction_kind =
             sync::parse_transaction_kind(method_name, bytes.clone(), promise_data).ok()?;
-        return Some((transaction_kind, bytes, deposit.as_yoctonear()));
+        return Some((transaction_kind, bytes, *deposit));
     }
 
     None
