@@ -1,6 +1,11 @@
 use aurora_engine::parameters::TransactionStatus;
 use aurora_engine_modexp::AuroraModExp;
-use aurora_engine_types::{H256, account_id::AccountId};
+use aurora_engine_types::{
+    H256, U256,
+    account_id::AccountId,
+    parameters::{CrossContractCallArgs, PromiseArgs, PromiseCreateArgs},
+    types::{Address, NearGas, Wei, Yocto},
+};
 use aurora_refiner_types::inner_block::{InnerNearBlock, ReceiptKind};
 use engine_standalone_storage::Storage;
 use engine_standalone_storage::json_snapshot::{self, types::JsonSnapshot};
@@ -75,6 +80,50 @@ fn test_empty_submit_input() {
         Some(&mut outcomes_map),
     )
     .unwrap();
+
+    test_context.close()
+}
+
+/// An engine panic during gas estimation must be returned as an error.
+#[test]
+fn test_estimate_gas_returns_engine_panic() {
+    let test_context =
+        TestContext::load_snapshot("src/res/contract.aurora.block66381606.minimal.json");
+    let args = CrossContractCallArgs::Eager(PromiseArgs::Create(PromiseCreateArgs {
+        target_account_id: "test.near".parse().unwrap(),
+        method: "test".into(),
+        args: Vec::new(),
+        attached_balance: Yocto::new(0),
+        attached_gas: NearGas::new(0),
+    }));
+    // This snapshot has no XCC configuration, so calling the precompile panics
+    // when it tries to read the missing wNEAR address.
+    let request = crate::types::EthCallRequest {
+        from: Address::default(),
+        to: Some(Address::decode("516cded1d16af10cad47d6d49128e2eb7d27b372").unwrap()),
+        gas_limit: crate::types::GasLimit::Default(u64::MAX),
+        gas_price: U256::zero(),
+        value: Wei::zero(),
+        data: borsh::to_vec(&args).unwrap(),
+        block_id: crate::types::BlockId::Number(66_381_606),
+        nonce: None,
+        state_override: Vec::new(),
+        access_list: Vec::new(),
+        authorization_list: Vec::new(),
+    };
+
+    let (result, nonce_status) = crate::gas::estimate_gas(&test_context.storage, request, 0);
+
+    match result {
+        Err(crate::gas::StateOrEngineError::PanicError(message)) => {
+            assert_eq!(message, "ERR_MISSING_WNEAR_ADDRESS");
+        }
+        other => panic!("Expected engine panic error, got {other:?}"),
+    }
+    assert!(matches!(
+        nonce_status,
+        crate::gas::NonceStatus::NotProvided { current_nonce: 0 }
+    ));
 
     test_context.close()
 }
