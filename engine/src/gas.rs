@@ -15,6 +15,7 @@ use engine_standalone_storage::{
     engine_state::{EngineStateAccess, EngineStorageValue},
 };
 use std::collections::HashMap;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 /// Function for estimation gas.
 pub fn estimate_gas(
@@ -68,7 +69,7 @@ fn eth_call(
     let block_metadata = storage.get_block_metadata(block_hash).unwrap_or_else(|_| {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos();
         let random_seed = aurora_engine_sdk::keccak(&nanos.to_be_bytes());
         engine_standalone_storage::BlockMetadata {
@@ -90,7 +91,7 @@ fn eth_call(
         used_gas: NearGas::new(0),
     };
     storage
-        .with_engine_access(block_height + 1, 0, &[], |io| {
+        .with_engine_access(block_height.saturating_add(1), 0, &[], |io| {
             let current_nonce = aurora_engine::engine::get_nonce(&io, &request.from).low_u64();
             let mut local_io = io;
             let mut full_override = HashMap::new();
@@ -233,6 +234,7 @@ pub enum NonceStatus {
 pub enum StateOrEngineError {
     StateMissing,
     Engine(EngineError),
+    PanicError(String),
 }
 
 fn compute_call_result<I: IO + Copy>(
@@ -253,31 +255,30 @@ fn compute_call_result<I: IO + Copy>(
                 io,
                 &env,
             );
-            let result = match request.to {
-                Some(to) => engine
-                    .call(
-                        &request.from,
-                        &to,
-                        request.value,
-                        request.data,
-                        gas_limit,
-                        request.access_list.clone(),
-                        convert_authorization_list(&request.authorization_list, chain_id),
-                        &mut handler,
-                    )
-                    .map_err(StateOrEngineError::Engine),
-                None => engine
-                    .deploy_code(
-                        request.from,
-                        request.value,
-                        request.data,
-                        None,
-                        gas_limit,
-                        request.access_list.clone(),
-                        &mut handler,
-                    )
-                    .map_err(StateOrEngineError::Engine),
-            };
+            let result = catch_unwind(AssertUnwindSafe(|| match request.to {
+                Some(to) => engine.call(
+                    &request.from,
+                    &to,
+                    request.value,
+                    request.data,
+                    gas_limit,
+                    request.access_list.clone(),
+                    convert_authorization_list(&request.authorization_list, chain_id),
+                    &mut handler,
+                ),
+                None => engine.deploy_code(
+                    request.from,
+                    request.value,
+                    request.data,
+                    None,
+                    gas_limit,
+                    request.access_list.clone(),
+                    &mut handler,
+                ),
+            }))
+            .map_err(|panic| StateOrEngineError::PanicError(panic_message(panic)))?
+            .map_err(StateOrEngineError::Engine);
+
             if !request.gas_price.is_zero() && result.is_ok() {
                 let gas_used = result.as_ref().map(|r| r.gas_used).unwrap_or_default();
                 let gas_estimate = gas_used.saturating_add(gas_used / 3);
@@ -305,4 +306,13 @@ fn compute_call_result<I: IO + Copy>(
             }
             result
         })
+}
+
+/// Extracts the message from a panic payload caught by `catch_unwind`.
+fn panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| payload.downcast_ref::<&str>().copied().map(str::to_owned))
+        .unwrap_or_else(|| "Unknown engine panic".to_owned())
 }
