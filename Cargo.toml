@@ -61,3 +61,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 triehash = "0.8"
 vergen-git2 = "10"
+
+[patch."https://github.com/aurora-is-near/borealis-engine-lib.git"]
+# Use the workspace types to avoid block-client-rs pulling in an older nearcore/RocksDB.
+aurora-refiner-types = { path = "refiner-types" }
