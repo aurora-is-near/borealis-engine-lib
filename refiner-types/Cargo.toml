@@ -29,8 +29,11 @@ serde_with.workspace = true
 sha3.workspace = true
 
 [dev-dependencies]
+block-client-rs = { git = "https://github.com/aurora-is-near/block-client-rs.git", tag = "0.1.4" }
 criterion = "0.8"
-reqwest = { workspace = true, features = ["blocking"] }
+lz4 = "1"
+serde_cbor = "0.11"
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
 
 [[bench]]
 name = "convert"
