@@ -12,6 +12,7 @@ use near_primitives::{hash::CryptoHash, types::AccountId};
 use serde::{Deserialize, Serialize, de};
 use std::io;
 
+use crate::bus_message::bus_serde::{DecodeError, FromCbor};
 use crate::inner_block::wire::RawBlockMessage;
 pub use wire::ConversionError;
 
@@ -27,6 +28,16 @@ mod wire;
 pub struct InnerNearBlock {
     pub block: Block,
     pub shards: Vec<Shard>,
+}
+
+impl FromCbor for InnerNearBlock {
+    fn from_cbor(input: serde_cbor::Value) -> Result<Self, DecodeError> {
+        let json_comp = Vec::<u8>::from_cbor(input)?;
+        let json_bytes = crate::bus_message::compression::decompress(&json_comp)?;
+        let result = Self::from_bytes(json_bytes)?;
+
+        Ok(result)
+    }
 }
 
 impl InnerNearBlock {

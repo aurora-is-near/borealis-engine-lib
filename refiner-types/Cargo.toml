@@ -13,6 +13,7 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
+anyhow.workspace = true
 aurora-engine-transactions.workspace = true
 aurora-engine-types.workspace = true
 aurora-engine.workspace = true
@@ -20,19 +21,21 @@ borsh.workspace = true
 derive_builder.workspace = true
 fixed-hash.workspace = true
 impl-serde.workspace = true
+lz4 = "1"
 near-crypto.workspace = true
 near-indexer.workspace = true
 near-primitives = { workspace = true, features = ["rand"] }
+rand = "0.10"
 serde.workspace = true
+serde_cbor = "0.11"
 serde_json = { workspace = true, features = ["raw_value"] }
 serde_with.workspace = true
 sha3.workspace = true
 
 [dev-dependencies]
-block-client-rs = { git = "https://github.com/aurora-is-near/block-client-rs.git", tag = "0.1.4" }
+block-client-rs = { git = "https://github.com/aurora-is-near/block-client-rs.git", tag = "0.1.5" }
 criterion = "0.8"
-lz4 = "1"
-serde_cbor = "0.11"
+hex.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
 
 [[bench]]
