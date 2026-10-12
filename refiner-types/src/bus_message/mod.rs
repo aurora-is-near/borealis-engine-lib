@@ -2,12 +2,13 @@ use bus_serde::{FromCbor, ToCbor};
 use message_type::MessageType;
 use payloads::Payload;
 use rand::RngExt;
+use serde::Deserialize;
 use std::time::SystemTime;
 
 pub mod bus_serde;
 pub mod compression;
-mod error;
-mod message_type;
+pub mod error;
+pub mod message_type;
 pub mod payloads;
 
 /// Current version of Borealis Messages
@@ -61,11 +62,21 @@ impl<T: ToCbor> BusMessage<T> {
 impl<T: FromCbor> BusMessage<T> {
     pub fn deserialize(bytes: &[u8]) -> Result<Self, error::Error> {
         let (version, message) = bytes.split_first().ok_or(error::Error::MissingData)?;
-        let mut chunks =
-            serde_cbor::Deserializer::from_slice(message).into_iter::<serde_cbor::Value>();
-        let envelope_value = chunks.next().ok_or(error::Error::MissingData)??;
+
+        if message.is_empty() {
+            return Err(error::Error::MissingData);
+        }
+
+        let mut deserializer = serde_cbor::Deserializer::from_slice(message);
+        let envelope_value = serde_cbor::Value::deserialize(&mut deserializer)?;
         let envelope = Envelope::from_cbor(envelope_value)?;
-        let payload_value = chunks.next().ok_or(error::Error::MissingData)??;
+
+        if deserializer.byte_offset() == message.len() {
+            return Err(error::Error::MissingData);
+        }
+
+        let payload_value = serde_cbor::Value::deserialize(&mut deserializer)?;
+        deserializer.end()?;
         let payload = T::from_cbor(payload_value)?;
 
         Ok(Self {

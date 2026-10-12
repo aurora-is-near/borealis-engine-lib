@@ -748,6 +748,21 @@ fn block_client_payload_decodes_supported_json_formats() {
 }
 
 #[test]
+fn block_client_payload_rejects_trailing_data() {
+    let message = block_client_message(151_768_255, MAINNET_BLOCK.as_bytes());
+    for trailing in [&[0x00][..], &[0xff][..], &[0x18][..]] {
+        let mut payload = message.payload.clone();
+        payload.extend_from_slice(trailing);
+        let malformed = BlockMessage {
+            height: message.height,
+            payload,
+            format: BlockPayloadFormat::NearBlockV2,
+        };
+        assert!(decode_block_payload(&malformed).is_err());
+    }
+}
+
+#[test]
 fn block_client_payload_rejects_unsupported_formats() {
     for format in [
         BlockPayloadFormat::AuroraBlockV2,
