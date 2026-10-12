@@ -35,9 +35,13 @@ jobs:
       - name: Run network-dependent tests
         run: |
           # Run all network tests from the inner_block module
-          cargo test -p aurora-refiner-types inner_block -- --ignored --nocapture --test-threads=1
+          cargo test -p aurora-refiner-types inner_block -- --ignored --nocapture
         env:
           RUST_LOG: debug
+          BLOCK_CLIENT_MAINNET_URL: ${{ vars.BLOCK_CLIENT_MAINNET_URL }}
+          BLOCK_CLIENT_MAINNET_TOKEN: ${{ secrets.BLOCK_CLIENT_MAINNET_TOKEN }}
+          BLOCK_CLIENT_TESTNET_URL: ${{ vars.BLOCK_CLIENT_TESTNET_URL }}
+          BLOCK_CLIENT_TESTNET_TOKEN: ${{ secrets.BLOCK_CLIENT_TESTNET_TOKEN }}
 
       - name: Send Slack notification
         if: failure()

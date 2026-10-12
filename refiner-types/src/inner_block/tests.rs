@@ -1,5 +1,15 @@
 use super::*;
+use crate::bus_message::{
+    BusMessage, VERSION,
+    bus_serde::{CborType, DecodeError, FromCbor},
+    compression,
+};
+use block_client_rs::stream::read::ReadStream;
+use block_client_rs::types::request::{BlocksRequestBuilder, DeliverySettings, StartPolicy};
+use block_client_rs::types::{BlockMessage, BlockPayloadFormat};
+use block_client_rs::{BlockClient, Config};
 use near_primitives::{types::Balance, views};
+use std::time::Duration;
 
 const STREAMER_MESSAGE: &str =
     include_str!("../../tests/res/streamer_message_190534818_branch_remove_custom_indexer.json");
@@ -505,7 +515,10 @@ fn keeps_provenance_for_unknown_external_receipt_without_inventing_borsh_size() 
     outcome["receipt"]["receipt"]["Action"]["actions"][0] =
         serde_json::json!({"FutureAction": {"unknown_field": true}});
 
-    let block = InnerNearBlock::from_bytes(serde_json::to_vec(&source).unwrap()).unwrap();
+    let json = serde_json::to_vec(&source).unwrap();
+    let block = InnerNearBlock::from_bytes(&json).unwrap();
+    let message = block_client_message(block.block.header.height, &json);
+    assert_eq!(decode_block_payload(&message).unwrap(), block);
     let outcome = block
         .shards
         .iter()
@@ -550,72 +563,281 @@ fn test_de_nearblock_151768255_mainnet_from_json() {
     .expect("Failed to load InnerNearBlock");
 }
 
-#[test]
-#[ignore]
-fn test_de_nearblock_mainnet_latest_finalized_api_fetch() {
-    check_latest_finalized_block("mainnet");
+#[tokio::test]
+#[ignore = "requires BLOCK_CLIENT_MAINNET_URL and BLOCK_CLIENT_MAINNET_TOKEN"]
+async fn test_de_nearblock_mainnet_latest_block_client_fetch() {
+    check_latest_block("mainnet").await;
 }
 
-#[test]
-#[ignore]
-fn test_de_nearblock_testnet_latest_finalized_api_fetch() {
-    check_latest_finalized_block("testnet");
+#[tokio::test]
+#[ignore = "requires BLOCK_CLIENT_TESTNET_URL and BLOCK_CLIENT_TESTNET_TOKEN"]
+async fn test_de_nearblock_testnet_latest_block_client_fetch() {
+    check_latest_block("testnet").await;
 }
 
-fn check_latest_finalized_block(network: &str) {
-    let client = reqwest::blocking::Client::new();
-    let response_text = fetch_block(&client, network, "last_block/final");
-    let height = extract_block_height(&response_text);
-    println!("Latest finalized block height on {network}: {height}");
-    assert_block_parses(&response_text, network, height);
+async fn check_latest_block(network: &str) {
+    let mut client = block_client(network);
+    let block = fetch_block(&mut client, network, StartPolicy::StartOnLatestAvailable).await;
+    println!(
+        "Latest available block height on {network}: {}",
+        block.block.header.height
+    );
 }
 
-// Sample blocks from 100_000_000 to the latest height to find unsupported ranges.
-#[test]
-#[ignore]
-fn test_de_nearblock_both_networks_range_100m_to_latest_10m_step_api_fetch() {
-    let client = reqwest::blocking::Client::new();
-    println!();
+// Sample the boundaries of 15 equal intervals across the available block range.
+#[tokio::test]
+#[ignore = "requires BLOCK_CLIENT_{MAINNET,TESTNET}_{URL,TOKEN}"]
+async fn test_de_nearblock_both_networks_available_range_15_intervals_block_client_fetch() {
     for network in ["mainnet", "testnet"] {
+        let mut client = block_client(network);
+
+        let start_policy = match network {
+            "mainnet" => StartPolicy::StartOnEarliestAvailable,
+            "testnet" => StartPolicy::StartExactlyOnTarget(150_000_000),
+            _ => panic!("Unsupported network: {network}"),
+        };
+
         println!("Testing {network} network...");
-        let latest_height =
-            extract_block_height(&fetch_block(&client, network, "last_block/final"));
+        let first_block = fetch_block(&mut client, network, start_policy).await;
+        let latest_block =
+            fetch_block(&mut client, network, StartPolicy::StartOnLatestAvailable).await;
+        let first_height = first_block.block.header.height;
+        let latest_height = latest_block.block.header.height;
+        println!("Available block range on {network}: {first_height}..={latest_height}");
 
-        for height in (100_000_000..=latest_height).step_by(10_000_000) {
-            println!("Test NEARBlock at height: {height} on {network}");
-            let response_text = fetch_block(&client, network, &format!("block/{height}"));
-
-            if response_text.trim() == "null" {
-                println!("No block at height: {height} on {network}; skipping");
+        for height in sample_block_heights(first_height, latest_height) {
+            if height == first_height || height == latest_height {
                 continue;
             }
 
-            assert_block_parses(&response_text, network, height);
+            let block = fetch_block(
+                &mut client,
+                network,
+                StartPolicy::StartOnClosestToTarget(height),
+            )
+            .await;
+            let actual_height = block.block.header.height;
+            assert!(
+                (height..=latest_height).contains(&actual_height),
+                "Block {actual_height} is outside {height}..={latest_height} on {network}"
+            );
+            println!("Test NEARBlock at height: {actual_height} (target: {height}) on {network}");
         }
     }
 }
 
-fn fetch_block(client: &reqwest::blocking::Client, network: &str, path: &str) -> String {
-    let url = format!("https://{network}.neardata.xyz/v0/{path}");
-    client
-        .get(&url)
-        .send()
-        .unwrap_or_else(|e| panic!("Failed to fetch {url}: {e}"))
-        .error_for_status()
-        .unwrap_or_else(|e| panic!("Unexpected response from {url}: {e}"))
-        .text()
-        .unwrap_or_else(|e| panic!("Failed to read response from {url}: {e}"))
+fn block_client(network: &str) -> BlockClient {
+    let prefix = format!("BLOCK_CLIENT_{}", network.to_ascii_uppercase());
+    let config = Config {
+        url: std::env::var(format!("{prefix}_URL"))
+            .unwrap_or_else(|_| panic!("Set {prefix}_URL to the block service URL")),
+        token: std::env::var(format!("{prefix}_TOKEN"))
+            .unwrap_or_else(|_| panic!("Set {prefix}_TOKEN to the block service token")),
+        stream_name: format!("v2_{network}_near_blocks"),
+        connection_window_size: 64 * 1024 * 1024,
+        stream_window_size: 64 * 1024 * 1024,
+        request_timeout: 30,
+        connect_timeout: 10,
+        buffer_size: 256,
+        max_message_size: 1024 * 1024 * 1024,
+    };
+    BlockClient::new(config)
+        .unwrap_or_else(|e| panic!("Failed to create block client for {network}: {e}"))
 }
 
-fn assert_block_parses(response_text: &str, network: &str, height: u64) {
-    InnerNearBlock::from_bytes(response_text.as_bytes()).unwrap_or_else(|e| {
-        panic!("NEARBlock parse error: {e}, height: {height}, network: {network}")
-    });
+async fn fetch_block(
+    client: &mut BlockClient,
+    network: &str,
+    start_policy: StartPolicy,
+) -> InnerNearBlock {
+    let target = format!("{start_policy:?}");
+    let request = BlocksRequestBuilder::new()
+        .with_stream_name(format!("v2_{network}_near_blocks"))
+        .with_start_policy(start_policy)
+        .with_delivery_settings(DeliverySettings {
+            exclude_payload: false,
+            // The client does not decode transport compression. V2 payloads already use LZ4.
+            allow_compression: 0,
+        })
+        .build();
+    let message = tokio::time::timeout(Duration::from_secs(30), async {
+        let mut blocks = client
+            .get_block_stream(request)
+            .await
+            .unwrap_or_else(|e| panic!("Failed to open {network} block stream ({target}): {e}"));
+        blocks
+            .next()
+            .await
+            .unwrap_or_else(|e| panic!("Failed to fetch {network} block ({target}): {e}"))
+    })
+    .await
+    .unwrap_or_else(|e| panic!("Timed out fetching {network} block ({target}): {e}"));
+    let block = decode_block_payload(&message)
+        .unwrap_or_else(|e| panic!("Failed to decode {network} block {}: {e}", message.height));
+    assert_eq!(
+        block.block.header.height, message.height,
+        "Decoded block height differs from the transport height on {network} ({target})"
+    );
+
+    block
 }
 
-fn extract_block_height(response_text: &str) -> u64 {
-    let json: serde_json::Value = serde_json::from_str(response_text).unwrap();
-    json["block"]["header"]["height"].as_u64().unwrap()
+fn decode_block_payload(
+    message: &BlockMessage,
+) -> Result<InnerNearBlock, Box<dyn std::error::Error>> {
+    if !matches!(message.format, BlockPayloadFormat::NearBlockV2) {
+        return Err(format!("Unsupported block payload format: {:?}", message.format).into());
+    }
+
+    let version = *message.payload.first().ok_or("Missing bus message")?;
+    if version != VERSION {
+        return Err(format!("Unsupported bus message version: {version}").into());
+    }
+
+    Ok(BusMessage::<InnerNearBlock>::deserialize(&message.payload)?.payload)
+}
+
+fn sample_block_heights(first: u64, last: u64) -> Vec<u64> {
+    assert!(
+        first <= last,
+        "Invalid available block range: {first}..={last}"
+    );
+    const INTERVALS: u128 = 15;
+    let range = u128::from(last - first);
+    let mut heights = (0..=INTERVALS)
+        .map(|i| first + (range * i / INTERVALS) as u64)
+        .collect::<Vec<_>>();
+    heights.dedup();
+    heights
+}
+
+fn block_client_message(height: u64, json: &[u8]) -> BlockMessage {
+    let compressed = compression::compress(json).unwrap();
+    let envelope = serde_cbor::Value::Array(vec![
+        0x2000.into(), // NEARBlockEvent
+        height.into(),
+        0.into(),
+        0.into(),
+        serde_cbor::Value::Bytes(vec![0; 16]),
+    ]);
+    let mut payload = vec![VERSION];
+    payload.extend(serde_cbor::to_vec(&envelope).unwrap());
+    payload.extend(serde_cbor::to_vec(&serde_cbor::Value::Bytes(compressed)).unwrap());
+    BlockMessage {
+        height,
+        payload,
+        format: BlockPayloadFormat::NearBlockV2,
+    }
+}
+
+#[test]
+fn block_client_payload_decodes_supported_json_formats() {
+    for json in [
+        STREAMER_MESSAGE,
+        HISTORICAL_BLOCK,
+        HISTORICAL_BLOCK_V2,
+        MAINNET_BLOCK,
+    ] {
+        let expected = InnerNearBlock::from_bytes(json.as_bytes()).unwrap();
+        let message = block_client_message(expected.block.header.height, json.as_bytes());
+        let actual = decode_block_payload(&message).unwrap();
+
+        assert_eq!(actual.block.header.height, message.height);
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn block_client_payload_rejects_trailing_data() {
+    let message = block_client_message(151_768_255, MAINNET_BLOCK.as_bytes());
+    for trailing in [&[0x00][..], &[0xff][..], &[0x18][..]] {
+        let mut payload = message.payload.clone();
+        payload.extend_from_slice(trailing);
+        let malformed = BlockMessage {
+            height: message.height,
+            payload,
+            format: BlockPayloadFormat::NearBlockV2,
+        };
+        assert!(decode_block_payload(&malformed).is_err());
+    }
+}
+
+#[test]
+fn block_client_payload_rejects_unsupported_formats() {
+    for format in [
+        BlockPayloadFormat::AuroraBlockV2,
+        BlockPayloadFormat::NearBlockV3,
+        BlockPayloadFormat::Unknown,
+    ] {
+        let expected_error = format!("Unsupported block payload format: {format:?}");
+        let message = BlockMessage {
+            height: 0,
+            payload: vec![],
+            format,
+        };
+        assert_eq!(
+            decode_block_payload(&message).unwrap_err().to_string(),
+            expected_error
+        );
+    }
+}
+
+#[test]
+fn block_client_payload_rejects_missing_data_and_unsupported_versions() {
+    for payload in [vec![], vec![VERSION], vec![VERSION, 0x85]] {
+        let message = BlockMessage {
+            height: 0,
+            payload,
+            format: BlockPayloadFormat::NearBlockV2,
+        };
+        assert!(decode_block_payload(&message).is_err());
+    }
+
+    let mut message = block_client_message(151_768_255, MAINNET_BLOCK.as_bytes());
+    message.payload[0] = VERSION + 1;
+    assert_eq!(
+        decode_block_payload(&message).unwrap_err().to_string(),
+        format!("Unsupported bus message version: {}", VERSION + 1)
+    );
+}
+
+#[test]
+fn inner_block_cbor_rejects_invalid_payloads() {
+    assert!(matches!(
+        InnerNearBlock::from_cbor(serde_cbor::Value::Text("invalid".into())),
+        Err(DecodeError::TypeMismatch {
+            expected: CborType::Bytes,
+            found: CborType::Text,
+        })
+    ));
+    assert!(matches!(
+        InnerNearBlock::from_cbor(serde_cbor::Value::Bytes(vec![0; 16])),
+        Err(DecodeError::Io(_))
+    ));
+    for json in [b"invalid JSON".as_slice(), br#"{"block":{}}"#.as_slice()] {
+        let compressed = compression::compress(json).unwrap();
+        assert!(matches!(
+            InnerNearBlock::from_cbor(serde_cbor::Value::Bytes(compressed)),
+            Err(DecodeError::SerdeJson(_))
+        ));
+    }
+}
+
+#[test]
+fn block_range_sampling_covers_endpoints_and_handles_short_and_large_ranges() {
+    assert_eq!(sample_block_heights(100, 100), vec![100]);
+    assert_eq!(sample_block_heights(100, 103), vec![100, 101, 102, 103]);
+    for (first, last) in [(100, 132), (0, u64::MAX)] {
+        let heights = sample_block_heights(first, last);
+        assert_eq!(heights.len(), 16);
+        assert_eq!(heights.first(), Some(&first));
+        assert_eq!(heights.last(), Some(&last));
+        let step = (last - first) / 15;
+        assert!(heights.windows(2).all(|pair| {
+            let gap = pair[1] - pair[0];
+            gap == step || gap == step + 1
+        }));
+    }
 }
 
 #[test]
