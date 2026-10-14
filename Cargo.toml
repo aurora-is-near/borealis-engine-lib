@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>"]
-version = "0.32.1-2.14.0-rc.3"
+version = "0.32.1-2.14.0-rc.4"
 edition = "2024"
 homepage = "https://github.com/aurora-is-near/aurora-standalone"
 repository = "https://github.com/aurora-is-near/aurora-standalone"
@@ -41,9 +41,9 @@ impl-serde = "0.5"
 keccak-hasher = "0.15"
 lazy_static = "1"
 lru = "0.18"
-near-crypto = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.3" }
-near-indexer = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.3" }
-near-primitives = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.3" }
+near-crypto = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.4" }
+near-indexer = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.4" }
+near-primitives = { git = "https://github.com/near/nearcore", tag = "2.14.0-rc.4" }
 serde_with = "3.23"
 near-lake-framework = { git = "https://github.com/aleksuss/near-lake-framework-rs.git", tag = "v0.8.0-beta.6" }
 prometheus = "0.14"
