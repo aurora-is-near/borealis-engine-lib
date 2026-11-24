@@ -9,7 +9,7 @@ use near_primitives::{types::AccountId, views};
 use super::{
     Action, Block, BlockHeader, Chunk, ChunkReceipt, ConversionError, DataReceipt,
     ExecutionOutcome, ExecutionStatus, InnerNearBlock, Receipt, ReceiptExecutionOutcome,
-    ReceiptKind, Shard, StateChange, StateChangeCause, Transaction,
+    ReceiptKind, Shard, StateChange, StateChangeCause, Transaction, borsh_compat,
 };
 
 impl TryFrom<near_indexer::StreamerMessage> for InnerNearBlock {
@@ -50,7 +50,7 @@ fn convert_shard(source: near_indexer::IndexerShard) -> Result<Shard, io::Error>
                 .transactions
                 .into_iter()
                 .map(|tx| Transaction {
-                    hash: tx.transaction.hash,
+                    hash: tx.transaction.id(),
                     receipt_ids: tx.outcome.execution_outcome.outcome.receipt_ids,
                 })
                 .collect(),
@@ -101,8 +101,21 @@ fn convert_chunk_receipt(source: views::ReceiptView) -> ChunkReceipt {
 fn convert_receipt_execution_outcome(
     source: near_indexer::IndexerExecutionOutcomeWithReceipt,
 ) -> Result<ReceiptExecutionOutcome, io::Error> {
-    let receipt_size = borsh::object_length(&source.receipt)? as u64;
     let receipt = source.receipt;
+    let legacy_action = match &receipt.receipt {
+        views::ReceiptEnumView::Action {
+            signer_public_key,
+            authorization_context,
+            creation_protocol_version,
+            ..
+        } => borsh_compat::is_legacy_action_receipt(
+            signer_public_key.as_ref(),
+            authorization_context.as_ref(),
+            *creation_protocol_version,
+        )?,
+        _ => false,
+    };
+    let receipt_size = borsh_compat::receipt_view_size(&receipt, legacy_action)?;
     let outcome = source.execution_outcome.outcome;
     Ok(ReceiptExecutionOutcome {
         execution_outcome: ExecutionOutcome {

@@ -8,7 +8,9 @@ use block_client_rs::stream::read::ReadStream;
 use block_client_rs::types::request::{BlocksRequestBuilder, DeliverySettings, StartPolicy};
 use block_client_rs::types::{BlockMessage, BlockPayloadFormat};
 use block_client_rs::{BlockClient, Config};
-use near_primitives::{types::Balance, views};
+use near_primitives::{
+    receipt::AuthorizationContext, types::Balance, version::PROTOCOL_VERSION, views,
+};
 use std::time::Duration;
 
 const STREAMER_MESSAGE: &str =
@@ -36,14 +38,22 @@ fn deserializes_historical_nearcore() {
 }
 
 #[test]
-fn nearcore_and_historical_inputs_produce_the_same_internal_block() {
-    let expected = InnerNearBlock::try_from(source_message()).unwrap();
-
-    let historical = InnerNearBlock::from_bytes(HISTORICAL_BLOCK.as_bytes()).unwrap();
-    let historical_v2 = InnerNearBlock::from_bytes(HISTORICAL_BLOCK_V2.as_bytes()).unwrap();
-
-    assert_eq!(historical, expected);
-    assert_eq!(historical_v2, expected);
+fn historical_receipt_sizes_match_nearcore_2_14_1() {
+    // Captured from nearcore 2.14.1 before the Action receipt view gained new fields.
+    let expected = [Some(179), Some(153), Some(153), Some(193), Some(2040)];
+    for block in [
+        InnerNearBlock::try_from(source_message()).unwrap(),
+        InnerNearBlock::from_bytes(HISTORICAL_BLOCK.as_bytes()).unwrap(),
+        InnerNearBlock::from_bytes(HISTORICAL_BLOCK_V2.as_bytes()).unwrap(),
+    ] {
+        let sizes: Vec<_> = block
+            .shards
+            .iter()
+            .flat_map(|shard| &shard.receipt_execution_outcomes)
+            .map(|outcome| outcome.receipt_size)
+            .collect();
+        assert_eq!(sizes, expected);
+    }
 }
 
 #[test]
@@ -71,9 +81,19 @@ fn preserves_custom_action_bytes_receipt_size_and_action_positions() {
             )
         })
         .unwrap();
-    let views::ReceiptEnumView::Action { actions, .. } = &mut outcome.receipt.receipt else {
+    let views::ReceiptEnumView::Action {
+        actions,
+        signer_public_key,
+        authorization_context,
+        creation_protocol_version,
+        ..
+    } = &mut outcome.receipt.receipt
+    else {
         unreachable!()
     };
+    *signer_public_key = None;
+    *authorization_context = Some(AuthorizationContext::ExternalContractCall);
+    *creation_protocol_version = Some(PROTOCOL_VERSION);
     *actions = vec![
         views::ActionView::Transfer {
             deposit: Balance::from_yoctonear(42),
@@ -147,7 +167,7 @@ fn preserves_custom_action_bytes_receipt_size_and_action_positions() {
 #[test]
 fn delegate_action_codec_matches_pinned_nearcore_borsh() {
     let source: near_indexer::StreamerMessage = serde_json::from_str(MAINNET_BLOCK).unwrap();
-    let (receipt_id, action_index, expected_action, expected_size) = source
+    let (receipt_id, action_index, expected_action) = source
         .shards
         .iter()
         .flat_map(|shard| &shard.receipt_execution_outcomes)
@@ -162,7 +182,6 @@ fn delegate_action_codec_matches_pinned_nearcore_borsh() {
                 outcome.receipt.receipt_id,
                 index,
                 borsh::to_vec(&actions[index]).unwrap(),
-                borsh::to_vec(&outcome.receipt).unwrap().len() as u64,
             ))
         })
         .unwrap();
@@ -174,7 +193,7 @@ fn delegate_action_codec_matches_pinned_nearcore_borsh() {
         .flat_map(|shard| &shard.receipt_execution_outcomes)
         .find(|outcome| outcome.receipt.receipt_id == receipt_id)
         .unwrap();
-    assert_eq!(converted.receipt_size, Some(expected_size));
+    assert_eq!(converted.receipt_size, Some(564)); // Receipt view size in nearcore 2.14.1.
     let ReceiptKind::Action { actions, .. } = &converted.receipt.receipt else {
         panic!("Expected action receipt");
     };
@@ -236,6 +255,14 @@ fn keeps_all_provenance_links_and_distinguishes_promise_results() {
         .iter_mut()
         .find_map(|shard| shard.chunk.as_mut())
         .unwrap();
+    let tx = chunk.transactions.first_mut().unwrap();
+    assert!(!tx.outcome.execution_outcome.outcome.receipt_ids.is_empty());
+    tx.transaction = views::TransactionEnvelopeView::Unsigned(views::EccTransactionView {
+        contract_id: "wallet.near".parse().unwrap(),
+        payload: vec![1, 2, 3],
+        transaction_id: tx.outcome.execution_outcome.id,
+        state_init: None,
+    });
     let make_receipt = |id, data| views::ReceiptView {
         predecessor_id: "caller.near".parse().unwrap(),
         receiver_id: "unrelated.near".parse().unwrap(),
@@ -256,7 +283,7 @@ fn keeps_all_provenance_links_and_distinguishes_promise_results() {
         .flat_map(|chunk| &chunk.transactions)
         .map(|tx| {
             (
-                tx.transaction.hash,
+                tx.transaction.id(),
                 tx.outcome.execution_outcome.outcome.receipt_ids.clone(),
             )
         })
@@ -273,6 +300,7 @@ fn keeps_all_provenance_links_and_distinguishes_promise_results() {
         })
         .collect();
 
+    let json = serde_json::to_vec(&source).unwrap();
     let block = InnerNearBlock::try_from(source).unwrap();
     let converted_tx_links: Vec<_> = block
         .shards
@@ -296,6 +324,7 @@ fn keeps_all_provenance_links_and_distinguishes_promise_results() {
     assert!(!receipt_links.is_empty());
     assert_eq!(converted_tx_links, tx_links);
     assert_eq!(converted_receipt_links, receipt_links);
+    assert_eq!(InnerNearBlock::from_bytes(json).unwrap(), block);
     let chunk = block
         .shards
         .iter()
@@ -393,7 +422,10 @@ fn ignores_new_fields_in_unneeded_chunk_receipts_and_preserves_unknown_causes() 
         .find(|change| change["type"] == "data_update")
         .unwrap();
     change["cause"] = serde_json::json!({
-        "type": "future_protocol_cause", "new_field": 42, "receipt_hash": "future-format"
+        "type": "future_protocol_cause",
+        "new_field": 42,
+        "receipt_hash": "future-format",
+        "transaction_id": {"scheme": "future", "value": 1},
     });
     let receipt = &mut shard["chunk"]["receipts"][0]["receipt"];
     *receipt = serde_json::json!({"FutureReceiptKind": {"new_field": 42}});
@@ -534,6 +566,204 @@ fn keeps_provenance_for_unknown_external_receipt_without_inventing_borsh_size() 
     let restored: InnerNearBlock =
         serde_json::from_slice(&serde_json::to_vec(&block).unwrap()).unwrap();
     assert_eq!(restored, block);
+}
+
+#[test]
+fn rejects_invalid_action_receipt_authorization() {
+    use near_crypto::{KeyType, PublicKey};
+
+    let key = PublicKey::empty(KeyType::ED25519);
+    let other_key = PublicKey::empty(KeyType::SECP256K1);
+    let cases = [
+        (None, None, None, "requires signer_public_key"),
+        (
+            Some(key.clone()),
+            Some(AuthorizationContext::AccessKey(key.clone())),
+            None,
+            "must be present together",
+        ),
+        (
+            Some(key.clone()),
+            None,
+            Some(PROTOCOL_VERSION),
+            "must be present together",
+        ),
+        (
+            Some(key.clone()),
+            Some(AuthorizationContext::ExternalContractCall),
+            Some(PROTOCOL_VERSION),
+            "disagrees with authorization_context",
+        ),
+        (
+            Some(key),
+            Some(AuthorizationContext::AccessKey(other_key)),
+            Some(PROTOCOL_VERSION),
+            "disagrees with authorization_context",
+        ),
+    ];
+
+    for (signer, authorization, version, expected_error) in cases {
+        let mut source = source_message();
+        let outcome = source
+            .shards
+            .iter_mut()
+            .flat_map(|shard| &mut shard.receipt_execution_outcomes)
+            .find(|outcome| {
+                matches!(
+                    outcome.receipt.receipt,
+                    views::ReceiptEnumView::Action { .. }
+                )
+            })
+            .unwrap();
+        outcome.receipt.receiver_id = "aurora".parse().unwrap();
+        let receipt_id = outcome.receipt.receipt_id;
+        let views::ReceiptEnumView::Action {
+            signer_public_key,
+            authorization_context,
+            creation_protocol_version,
+            ..
+        } = &mut outcome.receipt.receipt
+        else {
+            unreachable!()
+        };
+        *signer_public_key = signer;
+        *authorization_context = authorization;
+        *creation_protocol_version = version;
+
+        let json = serde_json::to_vec(&source).unwrap();
+        let block = InnerNearBlock::from_bytes(json).unwrap();
+        let outcome = block
+            .shards
+            .iter()
+            .flat_map(|shard| &shard.receipt_execution_outcomes)
+            .find(|outcome| outcome.receipt.receipt_id == receipt_id)
+            .unwrap();
+        assert_eq!(outcome.receipt_size, None);
+        assert!(matches!(
+            &outcome.receipt.receipt,
+            ReceiptKind::Unsupported(_)
+        ));
+        block.validate_for_engine("wallet.near").unwrap();
+        let error = block.validate_for_engine("aurora").unwrap_err().to_string();
+        assert!(error.contains(expected_error), "{error}");
+
+        let error = InnerNearBlock::try_from(source).unwrap_err().to_string();
+        assert!(error.contains(expected_error), "{error}");
+    }
+}
+
+#[test]
+fn preserves_external_call_transaction_id_in_json_state_changes() {
+    let transaction_id = CryptoHash([7; 32]);
+    let mut source = source_message();
+    source.shards[0].state_changes = vec![views::StateChangeWithCauseView {
+        cause: views::StateChangeCauseView::ExternalCallProcessing { transaction_id },
+        value: views::StateChangeValueView::DataUpdate {
+            account_id: "wallet.near".parse().unwrap(),
+            key: vec![1].into(),
+            value: vec![2].into(),
+        },
+    }];
+
+    let json = serde_json::to_vec(&source).unwrap();
+    let block = InnerNearBlock::from_bytes(json).unwrap();
+    assert_eq!(
+        block.shards[0].state_changes[0].cause,
+        StateChangeCause::Other(format!(
+            "ExternalCallProcessing {{ transaction_id: {transaction_id:?} }}"
+        )),
+    );
+    assert_eq!(block, InnerNearBlock::try_from(source).unwrap());
+}
+
+#[test]
+fn rejects_missing_or_invalid_transaction_id_for_external_call_processing() {
+    let mut source: serde_json::Value = serde_json::from_str(STREAMER_MESSAGE).unwrap();
+    source["shards"][0]["state_changes"] = serde_json::json!([{
+        "type": "data_update",
+        "change": {"account_id": "wallet.near", "key_base64": "AQ==", "value_base64": "Ag=="},
+    }]);
+    let cases = [
+        (None, "missing transaction_id"),
+        (Some(serde_json::json!({"id": 7})), "invalid transaction_id"),
+        (
+            Some(serde_json::json!("bad hash")),
+            "invalid transaction_id",
+        ),
+    ];
+
+    for (transaction_id, expected_error) in cases {
+        let mut cause = serde_json::json!({"type": "external_call_processing"});
+        if let Some(transaction_id) = transaction_id {
+            cause["transaction_id"] = transaction_id;
+        }
+        source["shards"][0]["state_changes"][0]["cause"] = cause;
+        let error = InnerNearBlock::from_bytes(serde_json::to_vec(&source).unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains(expected_error), "{error}");
+        assert!(error.contains("external_call_processing"), "{error}");
+    }
+}
+
+#[test]
+fn json_state_change_causes_match_the_nearcore_path() {
+    use views::StateChangeCauseView as Cause;
+
+    let hash = CryptoHash([7; 32]);
+    let causes = [
+        Cause::NotWritableToDisk,
+        Cause::InitialState,
+        Cause::TransactionProcessing { tx_hash: hash },
+        Cause::ActionReceiptProcessingStarted { receipt_hash: hash },
+        Cause::ActionReceiptGasReward { receipt_hash: hash },
+        Cause::ReceiptProcessing { receipt_hash: hash },
+        Cause::PostponedReceipt { receipt_hash: hash },
+        Cause::UpdatedDelayedReceipts,
+        Cause::ValidatorAccountsUpdate,
+        Cause::Migration,
+        Cause::BandwidthSchedulerStateUpdate,
+        Cause::ContractCompilationStatusUpdate,
+        Cause::ExternalCallProcessing {
+            transaction_id: hash,
+        },
+    ];
+    // A cause added by nearcore must be listed above and in the JSON adapter.
+    for cause in &causes {
+        match cause {
+            Cause::NotWritableToDisk
+            | Cause::InitialState
+            | Cause::TransactionProcessing { .. }
+            | Cause::ActionReceiptProcessingStarted { .. }
+            | Cause::ActionReceiptGasReward { .. }
+            | Cause::ReceiptProcessing { .. }
+            | Cause::PostponedReceipt { .. }
+            | Cause::UpdatedDelayedReceipts
+            | Cause::ValidatorAccountsUpdate
+            | Cause::Migration
+            | Cause::BandwidthSchedulerStateUpdate
+            | Cause::ContractCompilationStatusUpdate
+            | Cause::ExternalCallProcessing { .. } => {}
+        }
+    }
+
+    let mut source = source_message();
+    source.shards[0].state_changes = causes
+        .into_iter()
+        .map(|cause| views::StateChangeWithCauseView {
+            cause,
+            value: views::StateChangeValueView::DataUpdate {
+                account_id: "wallet.near".parse().unwrap(),
+                key: vec![1].into(),
+                value: vec![2].into(),
+            },
+        })
+        .collect();
+
+    let json = serde_json::to_vec(&source).unwrap();
+    let block = InnerNearBlock::from_bytes(json).unwrap();
+    assert_eq!(block.shards[0].state_changes.len(), 13);
+    assert_eq!(block, InnerNearBlock::try_from(source).unwrap());
 }
 
 #[test]
@@ -922,13 +1152,22 @@ fn every_action_view_variant_matches_nearcore_borsh() {
         .find(|o| matches!(o.receipt.receipt, views::ReceiptEnumView::Action { .. }))
         .unwrap();
     let views::ReceiptEnumView::Action {
-        actions, refund_to, ..
+        actions,
+        signer_public_key,
+        refund_to,
+        authorization_context,
+        creation_protocol_version,
+        ..
     } = &mut outcome.receipt.receipt
     else {
         unreachable!()
     };
     *actions = variants.clone();
     *refund_to = Some("refund.near".parse().unwrap()); // exercise the Option field too
+    *authorization_context = Some(AuthorizationContext::AccessKey(
+        signer_public_key.clone().unwrap(),
+    ));
+    *creation_protocol_version = Some(PROTOCOL_VERSION);
     let id = outcome.receipt.receipt_id;
     let expected_size = borsh::object_length(&outcome.receipt).unwrap() as u64;
 
