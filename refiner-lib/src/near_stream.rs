@@ -444,6 +444,7 @@ pub mod tests {
         let aurora_blocks = stream.next_block(&near_block).await;
         assert_eq!(aurora_blocks.len(), 1);
         assert_eq!(aurora_blocks[0].height, 211846994);
+        assert_eq!(aurora_blocks[0].size, 370); // Output size with nearcore 2.14.1.
         assert!(matches!(
             aurora_blocks[0].near_metadata,
             NearBlock::ExistingBlock(..)
@@ -666,6 +667,7 @@ pub mod tests {
         ));
         let aurora_block = aurora_blocks.first().unwrap();
 
+        assert_eq!(aurora_block.size, 471); // Output size with nearcore 2.14.1.
         assert_eq!(aurora_block.transactions.len(), 1);
         assert_eq!(aurora_block.transactions[0].authorization_list.len(), 1);
     }

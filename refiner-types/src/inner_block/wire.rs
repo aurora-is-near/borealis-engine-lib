@@ -2,8 +2,9 @@ use borsh::BorshSerialize;
 use near_crypto::{PublicKey, Signature};
 use near_primitives::{
     hash::CryptoHash,
+    receipt::AuthorizationContext,
     serialize::dec_format,
-    types::{AccountId, Balance, Gas, ShardId, StoreKey, StoreValue},
+    types::{AccountId, Balance, Gas, ProtocolVersion, ShardId, StoreKey, StoreValue},
 };
 use serde::{Deserialize, de};
 use serde_json::value::RawValue;
@@ -161,13 +162,29 @@ fn convert_raw_receipt_execution_outcome(
     let encoded = serde_json::from_str::<RawReceiptKind>(receipt.get())
         .map_err(io::Error::other)
         .and_then(|receipt| {
-            let receipt_size = borsh::object_length(&RawReceipt {
-                predecessor_id: predecessor_id.clone(),
-                receiver_id: receiver_id.clone(),
-                receipt_id,
-                receipt: receipt.clone(),
-                priority,
-            })? as u64;
+            let legacy_action = match &receipt {
+                RawReceiptKind::Action {
+                    signer_public_key,
+                    authorization_context,
+                    creation_protocol_version,
+                    ..
+                } => borsh_compat::is_legacy_action_receipt(
+                    signer_public_key.as_ref(),
+                    authorization_context.as_ref(),
+                    *creation_protocol_version,
+                )?,
+                _ => false,
+            };
+            let receipt_size = borsh_compat::receipt_view_size(
+                &RawReceipt {
+                    predecessor_id: predecessor_id.clone(),
+                    receiver_id: receiver_id.clone(),
+                    receipt_id,
+                    receipt: receipt.clone(),
+                    priority,
+                },
+                legacy_action,
+            )?;
             Ok((receipt.try_into()?, receipt_size))
         });
     let (receipt, receipt_size) = match encoded {
@@ -331,6 +348,7 @@ struct RawTransactionWithOutcome {
 
 #[derive(Clone, Deserialize)]
 struct RawTransaction {
+    #[serde(alias = "transaction_id")]
     hash: CryptoHash,
 }
 
@@ -483,7 +501,8 @@ struct RawChunkDataReceipt {
 enum RawReceiptKind {
     Action {
         signer_id: AccountId,
-        signer_public_key: PublicKey,
+        #[serde(default)]
+        signer_public_key: Option<PublicKey>,
         gas_price: Balance,
         output_data_receivers: Vec<RawDataReceiver>,
         input_data_ids: Vec<CryptoHash>,
@@ -492,6 +511,10 @@ enum RawReceiptKind {
         is_promise_yield: bool,
         #[serde(default)]
         refund_to: Option<AccountId>,
+        #[serde(default)]
+        authorization_context: Option<AuthorizationContext>,
+        #[serde(default)]
+        creation_protocol_version: Option<ProtocolVersion>,
     } = 0,
     Data {
         data_id: CryptoHash,
@@ -666,6 +689,8 @@ struct RawStateChangeCause {
     #[serde(default)]
     tx_hash: Option<String>,
     #[serde(default)]
+    transaction_id: Option<Box<RawValue>>,
+    #[serde(default)]
     receipt_hash: Option<String>,
 }
 
@@ -688,6 +713,21 @@ impl TryFrom<RawStateChangeCause> for StateChangeCause {
             "transaction_processing" => {
                 let tx_hash = require_hash(source.tx_hash, "tx_hash")?;
                 Self::Other(format!("TransactionProcessing {{ tx_hash: {tx_hash:?} }}"))
+            }
+            "external_call_processing" => {
+                let transaction_id = source.transaction_id.ok_or_else(|| {
+                    io::Error::other("missing transaction_id for external_call_processing")
+                })?;
+                let transaction_id: CryptoHash = serde_json::from_str(transaction_id.get())
+                    .map_err(|error| {
+                        io::Error::other(format!(
+                            "invalid transaction_id for external_call_processing: {error}"
+                        ))
+                    })?;
+
+                Self::Other(format!(
+                    "ExternalCallProcessing {{ transaction_id: {transaction_id:?} }}"
+                ))
             }
             "action_receipt_processing_started" => {
                 let receipt_hash = require_hash(source.receipt_hash, "receipt_hash")?;
@@ -715,6 +755,9 @@ impl TryFrom<RawStateChangeCause> for StateChangeCause {
             "resharding_v2" => Self::Other("ReshardingV2".into()),
             "bandwidth_scheduler_state_update" => {
                 Self::Other("BandwidthSchedulerStateUpdate".into())
+            }
+            "contract_compilation_status_update" => {
+                Self::Other("ContractCompilationStatusUpdate".into())
             }
             other => Self::Other(format!("UnknownStateChangeCause({other})")),
         })

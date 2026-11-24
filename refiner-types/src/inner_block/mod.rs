@@ -142,6 +142,7 @@ pub struct Chunk {
 /// The transaction-to-receipt links needed to recover transaction provenance.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
+    /// The outcome ID, which is the transaction hash for a signed transaction.
     pub hash: CryptoHash,
     pub receipt_ids: Vec<CryptoHash>,
 }
@@ -166,7 +167,8 @@ pub struct DataReceipt {
 pub struct ReceiptExecutionOutcome {
     pub execution_outcome: ExecutionOutcome,
     pub receipt: Receipt,
-    /// Borsh size of the original NEAR receipt, used in AuroraBlock::size.
+    /// Borsh size of the NEAR receipt view, used in `AuroraBlock::size`.
+    /// Legacy Action receipts use the nearcore 2.14.1 view layout.
     /// Unknown external receipts have no recoverable size and must not be
     /// processed as Aurora receipts.
     pub receipt_size: Option<u64>,
