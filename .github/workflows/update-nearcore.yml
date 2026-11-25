@@ -236,6 +236,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_PAT_TOKEN }}  # PAT push skips approval
 
       - name: Set PR number
         id: set_pr_number
@@ -279,6 +281,81 @@ jobs:
           else
             echo "PR does not have 'need review' label. Continuing with workflow."
             echo "has_need_review_label=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check PR author
+        id: check_pr_author
+        if: steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          pr_number="$PR_NUMBER"
+          if [[ -z "$pr_number" ]]; then
+            echo "Could not determine PR number. Cannot check PR author."
+            exit 1
+          else
+            # Get PR author login
+            pr_author=$(gh pr view "$pr_number" --json author --jq '.author.login')
+            echo "PR #$pr_number author: $pr_author"
+
+            # List of allowed authors (GitHub usernames)
+            allowed_authors=("austraylis")
+
+            # Check if PR author is in the allowed list
+            is_allowed=false
+            for allowed_author in "${allowed_authors[@]}"; do
+              if [[ "$pr_author" == "$allowed_author" ]]; then
+                is_allowed=true
+                break
+              fi
+            done
+
+            if [[ "$is_allowed" == "true" ]]; then
+              echo "PR author $pr_author is in the list of allowed authors."
+              echo "is_allowed=true" >> $GITHUB_OUTPUT
+            else
+              echo "PR author $pr_author is not in the list of allowed authors. Approval and merge aborted."
+              echo "is_allowed=false" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          fi
+
+      - name: Set up Python
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Update CHANGES.md
+        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT_TOKEN }}
+          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
+        run: |
+          # Checkout the PR branch
+          gh pr checkout $PR_NUMBER
+
+          # Extract version from Cargo.toml
+          NEW_VERSION=$(grep -m 1 'version = ' Cargo.toml | cut -d '"' -f2)
+          echo "Found version in Cargo.toml: $NEW_VERSION"
+
+          # Run the changelog update script with environment variables
+          echo "Running changelog update with PR_NUMBER=$PR_NUMBER, NEW_VERSION=$NEW_VERSION"
+          NEW_VERSION=$NEW_VERSION python .github/near_core_changelog_update.py
+
+          # Check if there are changes to commit
+          if git diff --quiet CHANGES.md; then
+            echo "No changes to CHANGES.md needed, version already exists"
+            exit 0  # Exit successfully even though no changes were made
+          else
+            # Commit and push changes
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add CHANGES.md
+            git commit -m "Update CHANGES.md"
+            git push origin update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}
+            echo "Updated CHANGES.md for version $NEW_VERSION"
           fi
 
       - name: Wait for checks to complete
@@ -355,81 +432,6 @@ jobs:
           curl -X POST -H 'Content-type: application/json' --data "{
             \"text\": \"CI checks failed for nearcore dependency update PR #$PR_NUMBER. See details: $PR_URL\nFailed checks:\n$FAILED_CHECKS\"
           }" $SLACK_WEBHOOK_URL
-
-      - name: Check PR author
-        id: check_pr_author
-        if: steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
-        run: |
-          pr_number="$PR_NUMBER"
-          if [[ -z "$pr_number" ]]; then
-            echo "Could not determine PR number. Cannot check PR author."
-            exit 1
-          else
-            # Get PR author login
-            pr_author=$(gh pr view "$pr_number" --json author --jq '.author.login')
-            echo "PR #$pr_number author: $pr_author"
-
-            # List of allowed authors (GitHub usernames)
-            allowed_authors=("austraylis")
-
-            # Check if PR author is in the allowed list
-            is_allowed=false
-            for allowed_author in "${allowed_authors[@]}"; do
-              if [[ "$pr_author" == "$allowed_author" ]]; then
-                is_allowed=true
-                break
-              fi
-            done
-
-            if [[ "$is_allowed" == "true" ]]; then
-              echo "PR author $pr_author is in the list of allowed authors."
-              echo "is_allowed=true" >> $GITHUB_OUTPUT
-            else
-              echo "PR author $pr_author is not in the list of allowed authors. Approval and merge aborted."
-              echo "is_allowed=false" >> $GITHUB_OUTPUT
-              exit 1
-            fi
-          fi
-
-      - name: Set up Python
-        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Update CHANGES.md
-        if: needs.check-update-needed.outputs.update_needed == 'true' && steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.set_pr_number.outputs.pr_number }}
-        run: |
-          # Checkout the PR branch
-          gh pr checkout $PR_NUMBER
-
-          # Extract version from Cargo.toml
-          NEW_VERSION=$(grep -m 1 'version = ' Cargo.toml | cut -d '"' -f2)
-          echo "Found version in Cargo.toml: $NEW_VERSION"
-
-          # Run the changelog update script with environment variables
-          echo "Running changelog update with PR_NUMBER=$PR_NUMBER, NEW_VERSION=$NEW_VERSION"
-          NEW_VERSION=$NEW_VERSION python .github/near_core_changelog_update.py
-
-          # Check if there are changes to commit
-          if git diff --quiet CHANGES.md; then
-            echo "No changes to CHANGES.md needed, version already exists"
-            exit 0  # Exit successfully even though no changes were made
-          else
-            # Commit and push changes
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add CHANGES.md
-            git commit -m "Update CHANGES.md"
-            git push origin update-nearcore-${{ needs.check-update-needed.outputs.latest_tag }}
-            echo "Updated CHANGES.md for version $NEW_VERSION"
-          fi
 
       - name: Approve PR
         if: steps.check_pr_author.outputs.is_allowed == 'true' && steps.set_pr_number.outputs.pr_exists == 'true' && steps.check_labels.outputs.has_need_review_label != 'true'
